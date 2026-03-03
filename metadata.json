@@ -1,0 +1,5 @@
+{
+  "name": "Dental Emergency Assistant",
+  "description": "Voice-guided assistant to help diagnose and treat medical emergencies in a dental practice.",
+  "requestFramePermissions": ["microphone"]
+}
