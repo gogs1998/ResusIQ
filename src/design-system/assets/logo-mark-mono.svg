@@ -1,0 +1,5 @@
+<svg width="160" height="160" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ResusIQ">
+  <rect width="512" height="512" rx="112" fill="none"></rect>
+  <path d="M70 270 H176 L208 270 L236 150 L276 372 L308 270 L344 270" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="384" cy="270" r="17" fill="currentColor"></circle>
+</svg>

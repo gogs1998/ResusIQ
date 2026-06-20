@@ -1,0 +1,21 @@
+/* ResusIQ — Elevation tokens
+   On a near-black theme, depth reads from BORDERS + subtle hue glows, not soft
+   grey shadows (which are invisible). Glows are tied to semantic hue and used
+   sparingly to signal priority/criticality. */
+
+:root {
+  /* Neutral elevation: a hairline border + a faint lift */
+  --elev-1: 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.5);
+  --elev-2: 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.6);
+  --elev-modal: 0 1px 0 rgba(255,255,255,0.06), 0 24px 64px rgba(0,0,0,0.7);
+
+  /* Hue glows — priority/criticality cues (use on the ONE thing that matters) */
+  --glow-red:    0 0 0 1px rgba(255,77,77,0.4), 0 8px 32px rgba(225,29,46,0.35);
+  --glow-green:  0 0 0 1px rgba(47,210,122,0.4), 0 8px 28px rgba(47,210,122,0.28);
+  --glow-brand:  0 0 0 1px rgba(47,208,201,0.4), 0 8px 28px rgba(47,208,201,0.26);
+  --glow-ai:     0 8px 32px rgba(139,92,246,0.4);
+
+  /* Glass: floating tab bar + modal scrim blur */
+  --blur-bar:    saturate(160%) blur(20px); /* @kind other */
+  --glass-bg:    rgba(18, 19, 23, 0.72);
+}

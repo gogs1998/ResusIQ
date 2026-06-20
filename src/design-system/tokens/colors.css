@@ -1,0 +1,82 @@
+/* ResusIQ — Colour tokens
+   Dark-first, high-contrast clinical palette. Semantic colour is ALWAYS
+   paired with an icon/label in components (never colour alone) — see readme
+   VISUAL FOUNDATIONS. Step-type hues carry fixed meaning and must not swap. */
+
+:root {
+  /* ---- Base surfaces (near-black, slight cool tint; not pure #000 to tame
+     halation/smear under bright clinical light, while still blending the notch) ---- */
+  --bg:            #08090B;   /* app background */
+  --surface-1:     #121317;   /* default card */
+  --surface-2:     #1B1D23;   /* elevated card / input field */
+  --surface-3:     #262932;   /* hover / pressed surface */
+  --surface-inset: #050608;   /* recessed wells, progress track */
+  --scrim:         rgba(4, 5, 7, 0.72); /* modal backdrop */
+
+  /* ---- Borders (definition comes from borders, not shadow, on black) ---- */
+  --border:         rgba(255, 255, 255, 0.10);
+  --border-strong:  rgba(255, 255, 255, 0.20);
+  --border-faint:   rgba(255, 255, 255, 0.06);
+
+  /* ---- Text ---- */
+  --text-1:        #F7F8FA;   /* primary / instructions */
+  --text-2:        #B9BEC9;   /* secondary */
+  --text-3:        #7C828F;   /* muted / meta */
+  --text-disabled: #4A4F59;
+  --text-on-color: #FFFFFF;   /* on saturated fills */
+  --text-on-light: #0A0C10;   /* on light/green fills */
+
+  /* ---- Brand ---- */
+  --brand:         #2FD0C9;   /* ResusIQ teal — identity, calm non-emergency accent */
+  --brand-strong:  #19A79F;
+  --brand-tint:    rgba(47, 208, 201, 0.14);
+
+  /* ---- Emergency / critical (red) ---- */
+  --red:           #FF4D4D;
+  --red-strong:    #E11D2E;   /* Call 999 fill */
+  --red-deep:      #B00C20;
+  --red-tint:      rgba(255, 77, 77, 0.12);
+  --red-tint-2:    rgba(255, 77, 77, 0.22);   /* contraindication, escalated */
+
+  /* ---- Go / confirm / success / progress-done (green) ---- */
+  --green:         #2FD27A;
+  --green-strong:  #14A85C;
+  --green-tint:    rgba(47, 210, 122, 0.14);
+
+  /* ---- Step-type accents (fixed meaning — do not reassign) ---- */
+  --drug:          #B57BFF;   /* DRUG step      (purple) */
+  --drug-tint:     rgba(181, 123, 255, 0.14);
+  --decision:      #FFB020;   /* DECISION step  (amber)  */
+  --decision-tint: rgba(255, 176, 32, 0.14);
+  --timed:         #2FD0E0;   /* TIMED step     (cyan)   */
+  --timed-tint:    rgba(47, 208, 224, 0.14);
+  --roles:         #5C95FF;   /* ROLES step     (blue)   */
+  --roles-tint:    rgba(92, 149, 255, 0.14);
+  --instruction:   #F7F8FA;   /* INSTRUCTION    (neutral/white) */
+
+  /* ---- AI / voice (violet → fuchsia) ---- */
+  --ai-from:       #8B5CF6;
+  --ai-to:         #E649C9;
+  --ai-tint:       rgba(139, 92, 246, 0.16);
+
+  /* ---- Warning (amber, distinct from decision usage in copy by icon+label) ---- */
+  --warn:          #FFB020;
+  --warn-tint:     rgba(255, 176, 32, 0.12);
+
+  /* ---- Focus ring: works on black AND on saturated tiles via a dark gap + bright ring ---- */
+  --focus-color:   #7DE2FF;
+  --focus-ring:    0 0 0 2px var(--bg), 0 0 0 5px var(--focus-color);
+  --focus-ring-tight: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--focus-color);
+
+  /* ---- Per-condition tile hues (largely decorative; priority-ordered) ---- */
+  --cond-cardiac:  #FF4D4D;   /* Cardiac Arrest */
+  --cond-anaphyl:  #FF7A3D;   /* Anaphylaxis */
+  --cond-choking:  #FFB020;   /* Choking */
+  --cond-asthma:   #4D9DFF;   /* Asthma */
+  --cond-chest:    #FF5D7E;   /* Chest Pain (MI) */
+  --cond-hypo:     #B57BFF;   /* Hypoglycaemia */
+  --cond-seizure:  #9B7BFF;   /* Seizure */
+  --cond-faint:    #8A93A3;   /* Faint (syncope) */
+  --cond-stroke:   #2FD0E0;   /* Stroke */
+  --cond-adrenal:  #E0A93D;   /* Adrenal Crisis */
+}

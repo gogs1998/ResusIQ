@@ -1,9 +1,20 @@
+/* Clear Signal design system first, so its :root tokens + base element
+   defaults land before Tailwind's preflight + utilities. Token files are
+   imported directly (not via design-system/styles.css) because Vite's
+   postcss-import does not rebase styles.css's nested relative @imports. */
+@import "./design-system/tokens/fonts.css";
+@import "./design-system/tokens/colors.css";
+@import "./design-system/tokens/typography.css";
+@import "./design-system/tokens/spacing.css";
+@import "./design-system/tokens/radii.css";
+@import "./design-system/tokens/elevation.css";
+@import "./design-system/tokens/motion.css";
+@import "./design-system/tokens/base.css";
 @import "tailwindcss";
 
 /* ── Base ─────────────────────────────────────────────────────── */
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Font family is provided by the DS base (var(--font-sans) = IBM Plex Sans). */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
@@ -26,8 +37,8 @@ html, body, #root {
 }
 
 body {
-  background-color: #000000;
-  color: white;
+  /* Background + text colour come from the DS base (var(--bg) #08090B,
+     var(--text-1)) — pure #000 is explicitly rejected by Clear Signal. */
   /* iOS: smooth momentum scrolling */
   -webkit-overflow-scrolling: touch;
 }
@@ -133,3 +144,25 @@ input, select, textarea, button {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Clear Signal shared primitives ─────────────────────────── */
+.cs-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
+}
+.cs-eyebrow {                 /* STEP 4 OF 9 · ADULT DOSE · CYCLE 2 */
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.cs-instruction {             /* the primary protocol step — largest body element */
+  font: var(--text-instruction);
+  color: var(--text-1);
+}
+.cs-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* Step-type left accent: set --step-accent per type, then add .cs-step-card */
+.cs-step-card { border-left: 4px solid var(--step-accent, var(--instruction)); }

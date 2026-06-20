@@ -1,0 +1,37 @@
+/* ResusIQ — Spacing tokens
+   4px base scale (matches the as-built Tailwind 4px grid). Plus semantic
+   layout tokens for screen gutters, control gaps, and iOS safe-area insets. */
+
+:root {
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-7:   32px;
+  --space-8:   40px;
+  --space-9:   48px;
+  --space-10:  64px;
+
+  /* ---- Semantic layout ---- */
+  --gutter:        20px;  /* screen left/right padding */
+  --gutter-tight:  16px;
+  --card-pad:      16px;
+  --card-pad-lg:   20px;
+  --stack-gap:     12px;  /* default vertical rhythm between cards */
+  --control-gap:   10px;
+
+  /* ---- Touch targets (glove-friendly floor) ---- */
+  --touch-min:     44px;  /* HARD minimum for anything tapped mid-emergency */
+  --touch-comfort: 56px;  /* primary actions */
+  --touch-hero:    64px;  /* Next / Call 999 / primary bottom control */
+
+  /* ---- iOS safe-area insets (notch + home indicator). Reserve top ~59px. ---- */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --appbar-h:    52px;  /* top app-bar height (sits below --safe-top) */
+}

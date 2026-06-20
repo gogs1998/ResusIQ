@@ -1,0 +1,16 @@
+<svg width="560" height="160" viewBox="0 0 560 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ResusIQ">
+  <defs>
+    <linearGradient id="riqbg2" x1="16" y1="16" x2="144" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2FD0C9"></stop>
+      <stop offset="1" stop-color="#19A79F"></stop>
+    </linearGradient>
+  </defs>
+  
+  <rect x="16" y="16" width="128" height="128" rx="30" fill="url(#riqbg2)"></rect>
+  <path d="M40 84 H73 L83 84 L92 50 L107 116 L116 84 L128 84" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="128" cy="84" r="5.5" fill="#FFFFFF"></circle>
+  
+  <text x="176" y="98" font-family="&#39;IBM Plex Sans&#39;, system-ui, sans-serif" font-size="58" letter-spacing="-1">
+    <tspan fill="#F7F8FA" font-weight="500">Resus</tspan><tspan fill="#2FD0C9" font-weight="700">IQ</tspan>
+  </text>
+</svg>
