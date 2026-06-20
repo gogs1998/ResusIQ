@@ -5,9 +5,14 @@ This document is the single source of truth for wiring the **Clear Signal** desi
 system (`src/design-system/`) into the live app. Section 1 (Foundation) is
 implement-first. Per-screen specs (Section 2+) follow.
 
+Per-screen specs are split across three files to stay readable:
+- This file — §1 Foundation, §2.1 Protocol Runner, §2.2 Emergency Dashboard, open questions.
+- `redesign-implementation-2.3-2.4.md` — §2.3 CPR Mode, §2.4 Drug Card.
+- `redesign-implementation-2.5-2.13.md` — §2.5–§2.13 (the remaining nine screens).
+
 ---
 
-## 1. FOUNDATION WIRING SPEC  *(implement this first)*
+## 1. FOUNDATION WIRING SPEC  *(implemented — commit 7f70585, branch resusiq-redesign)*
 
 ### 1.0 Goal
 Make every existing screen render on the Clear Signal foundation **without touching
@@ -16,159 +21,40 @@ DS tokens as CSS custom properties, and the global base/motion behaviour (focus 
 safe areas, `prefers-reduced-motion`). After this step the app should already look
 "darker, Plex-typed, token-driven" — per-screen work then refines each surface.
 
-### 1.1 Self-host the fonts — replace the Google Fonts `@import`
-`@fontsource/ibm-plex-sans@5.2.8` and `@fontsource/ibm-plex-mono@5.2.7` are installed.
-The DS copy at `src/design-system/tokens/fonts.css` still contains the cross-origin
-Google Fonts `@import` (the DS caveat). **Replace that file's body** so it pulls the
-self-hosted faces instead. Overwrite `src/design-system/tokens/fonts.css` with:
+### 1.1 Self-host the fonts — replace the Google Fonts `@import`  ✅
+`@fontsource/ibm-plex-sans` + `ibm-plex-mono` weights 400/500/600/700, replacing the
+cross-origin Google Fonts `@import` in `src/design-system/tokens/fonts.css`. Emitted
+woff2 are precached offline by the existing PWA `globPatterns`.
 
-```css
-/* ResusIQ webfonts — self-hosted via @fontsource (offline-safe, no cross-origin).
-   Weights 400/500/600/700 cover the Clear Signal ramp (regular→bold). */
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
-@import '@fontsource/ibm-plex-sans/700.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/ibm-plex-mono/600.css';
-@import '@fontsource/ibm-plex-mono/700.css';
-```
+### 1.2 Import the DS into the app — BEFORE Tailwind utilities  ✅
+team-lead imported the 8 token CSS files directly (fonts→colors→typography→spacing→
+radii→elevation→motion→base) before `@import "tailwindcss"`, rather than
+`design-system/styles.css`, because Vite 8/rolldown postcss-import does not rebase the
+nested relative `@import`s inside `styles.css`. Same cascade result — **approved, no
+need to patch styles.css.**
 
-Notes:
-- These `@fontsource/*/<weight>.css` entry points ship all subsets (latin, latin-ext,
-  greek, cyrillic, vietnamese). For a UK app you may later switch to
-  `@fontsource/ibm-plex-sans/latin-400.css` etc. to shave a few KB — **not required
-  now**, do not block the restyle on it. Flag as an open perf item for `resusiq-perf-bundle`.
-- Bare specifiers (`@fontsource/...`) resolve through Vite/node_modules; the emitted
-  `.woff2` land in `assets/` and are precached by the existing PWA `globPatterns`
-  (`**/*.{...,woff2}`) — so fonts work fully offline. No vite change needed for this.
-- **Dead rule to remove later:** once the `@import` is gone, the
-  `fonts.googleapis.com` `runtimeCaching` block in `vite.config.ts` (lines ~80–93)
-  is dead. Leave it for now (harmless); note it for the perf agent to delete so we
-  don't expand scope mid-restyle.
+### 1.3 Reconcile the existing `:root` / `body` block  ✅
+Removed the competing `-apple-system` font-stack and `body { background:#000; color:white }`.
+Legacy `--sat/--sab/--sal/--sar` kept as aliases of the DS `--safe-*`. App `pulse-cpr`/
+`fade-up` keyframes kept (CPR Mode migrates to DS 110-BPM timing in §2.3).
 
-### 1.2 Import the DS into the app — single entry, BEFORE Tailwind utilities
-The DS `styles.css` is `@import`-only and already lists fonts→colors→typography→
-spacing→radii→elevation→motion→base in the right order.
+### 1.4 theme-color → `#08090B`  ✅ (index.html + vite manifest).
 
-In `src/index.css`, make the **first lines**:
+### 1.5 Tailwind ↔ token strategy (governs every per-screen spec)
+> **Tokens are the source of truth for APPEARANCE; per-screen we replace ad-hoc Tailwind
+> color/radius utilities with token-driven `var(--token)` styles. Tailwind stays for
+> LAYOUT (flex/grid/gap/padding) — the 4px grids already align.**
 
-```css
-@import "./design-system/styles.css";
-@import "tailwindcss";
-```
+Known DoD note: post-foundation the app looks ~unchanged because every screen still
+hardcodes `bg-black`/`bg-zinc-900`/`text-white`, which override the new base. That is
+expected — the visible Clear Signal change lands as each screen in §2 is restyled.
 
-Order matters: DS first establishes `:root` tokens + base element defaults; then
-Tailwind's preflight + utilities layer on top. Because Tailwind 4's preflight is in a
-`@layer`, app utility classes still win specificity where used — the DS base only
-sets unlayered element defaults (`body`, focus-visible, safe-area helpers), which is
-what we want as the floor.
-
-### 1.3 Reconcile the existing `:root` / `body` block in `src/index.css`
-The current `src/index.css` hard-codes a competing foundation that will fight the DS.
-Apply these edits (remove/replace — do **not** keep both):
-
-- **`:root` font-family (lines 5–6):** delete the `-apple-system … sans-serif` stack.
-  The DS `base.css` already sets `body { font-family: var(--font-sans) }`. Leaving the
-  old stack overrides Plex.
-- **Legacy safe-area vars `--sat/--sab/--sal/--sar` (lines 11–14):** keep for now —
-  components may reference them. The DS adds `--safe-top/-bottom/-left/-right` (same
-  `env()` values). **Do not rename component usages in this pass.** Treat the two sets
-  as aliases; we converge them in cleanup.
-- **`body { background-color: #000000 }` (line 29):** **remove** this rule. The DS sets
-  `background: var(--bg)` = `#08090B`. Pure black is explicitly rejected by Clear Signal
-  (halation under clinical light). Same for any other `#000`/`bg-black` you control at
-  the root — but **leave Tailwind `bg-black` classes inside components alone for now**;
-  they get swapped per-screen in Section 2.
-- **`color: white` (line 30):** remove; DS sets `color: var(--text-1)` (`#F7F8FA`).
-- **Keep:** `overscroll-behavior`, `-webkit-overflow-scrolling`, the
-  `input/select/textarea/button { font-size:16px }` rule (matches DS anti-zoom),
-  `touch-action: manipulation`, the desktop scrollbar block, and the
-  `display-mode: standalone` padding.
-- **Animations (`pulse-cpr`, `fade-up`):** the app defines `pulse-cpr` (0.5s) and
-  `fade-up` (0.25s); the DS defines `resus-pulse-cpr` (0.545s, tied to 110 BPM) and
-  `resus-fade-up` (260ms). **Keep the app's existing classes for now** so nothing
-  breaks; CPR Mode (Section 2.3) will migrate to the DS 110-BPM timing as part of its
-  restyle. Do not delete the app keyframes in this pass.
-- **`.touch-target` / `.tabular-nums` / `.no-select`:** keep. They coexist with the DS
-  `.resus-tnum` / `.resus-no-select`. No change.
-
-### 1.4 Update the meta theme-color to the new base
-Two places still say `#000000`:
-- `index.html` `<meta name="theme-color">` (verify/insert) → set to `#08090B`.
-- `vite.config.ts` manifest `theme_color` and `background_color` → `#08090B`.
-
-This keeps the iOS status bar / splash from flashing pure black against the
-`--bg #08090B` app. **Low risk, do it in the foundation pass.** (Manifest change =
-new SW precache; acceptable.)
-
-### 1.5 Tailwind ↔ token strategy (READ — this governs every per-screen spec)
-We are **not** rewriting Tailwind config to remap its palette. Tailwind 4 here is
-CSS-first (`@import "tailwindcss"`, no JS theme). The chosen approach:
-
-> **Tokens are the source of truth; per-screen we replace ad-hoc Tailwind color/
-> radius/spacing utilities with token-driven inline styles or small utility classes.**
-
-Concretely, for each screen in Section 2:
-- **Surfaces/borders/text/semantic colours →** use the DS tokens via `style={{…}}` or
-  `var(--token)` (e.g. `style={{ background: 'var(--surface-1)', border: '1px solid
-  var(--border)' }}`). Replace `bg-zinc-900`, `bg-black`, `border-white/10`,
-  `text-white`, `text-zinc-400`, `bg-red-600`, etc.
-- **Layout utilities (flex, grid, gap, padding, w/h, rounded) →** **keep Tailwind**
-  where the value already matches a token (e.g. `rounded-2xl` ≈ `--radius-2xl 24px`,
-  `p-4` = 16px = `--card-pad`, `p-5` = 20px = `--card-pad-lg`, `gap-3` = 12px =
-  `--stack-gap`). The 4px grids align, so most spacing utilities are already on-token.
-- **Do NOT** introduce a parallel hand-rolled spacing scale. Use Tailwind for box
-  layout, tokens for *appearance*. This keeps diffs small and reviewable.
-- A handful of repeated appearance patterns (DS card, step-card left accent, eyebrow
-  label, hero button) should become **named utility classes** added once to
-  `index.css` so screens stay terse. Provide these now (Section 1.6) so per-screen
-  specs can reference them by name.
-
-### 1.6 Shared utility classes to add to `src/index.css` (after the imports)
-Add these once; per-screen specs reference them. (Class names are new; they do not
-collide with Tailwind.)
-
-```css
-/* ── Clear Signal shared primitives ─────────────────────────── */
-.cs-card {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--elev-1);
-}
-.cs-eyebrow {                 /* STEP 4 OF 9 · ADULT DOSE · CYCLE 2 */
-  font-family: var(--font-mono);
-  font-size: var(--fs-eyebrow);
-  letter-spacing: var(--ls-eyebrow);
-  text-transform: uppercase;
-  color: var(--text-3);
-}
-.cs-instruction {             /* the primary protocol step — largest body element */
-  font: var(--text-instruction);
-  color: var(--text-1);
-}
-.cs-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-/* Step-type left accent: set --step-accent per type, then add .cs-step-card */
-.cs-step-card { border-left: 4px solid var(--step-accent, var(--instruction)); }
-```
-
-Step-accent values (fixed meaning — never swap): instruction `var(--instruction)`,
-drug `var(--drug)`, decision `var(--decision)`, timed `var(--timed)`, roles
-`var(--roles)`, confirm `var(--green)`.
-
-### 1.7 Definition of done for the foundation pass
-- App boots; background is `#08090B`; all text renders in IBM Plex Sans (verify in
-  devtools computed `font-family`); numerics/eyebrows can opt into Plex Mono.
-- Keyboard `Tab` shows the DS double focus ring (`--focus-ring`) on buttons/links.
-- `prefers-reduced-motion: reduce` flattens animations (DS `motion.css` handles globally).
-- Safe-area helpers still pad the notch/home-indicator (unchanged behaviour).
-- No screen is broken/unreadable — only recoloured to the dark base. Per-screen
-  refinement happens next.
-
-**Send me a screenshot of the Dashboard + Runner after the foundation pass and I'll
-confirm before we start Section 2.**
+### 1.6 Shared `.cs-*` primitives added to `src/index.css`  ✅
+`.cs-card` (surface-1 + border + radius-lg + elev-1), `.cs-eyebrow` (mono uppercase
+tracked `--text-3`), `.cs-instruction` (`var(--text-instruction)` = 26/600), `.cs-numeric`
+(mono tabular), `.cs-step-card` (4px left accent from `--step-accent`).
+Accent values (fixed, never swap): instruction `--instruction`, drug `--drug`, decision
+`--decision`, timed `--timed`, roles `--roles`, confirm `--green`.
 
 ---
 
@@ -176,8 +62,8 @@ confirm before we start Section 2.**
 
 Priority order: Protocol Runner → Emergency Dashboard → CPR Mode → Drug Card → the
 remaining 8. Each spec maps DS tokens/components to the existing markup, gives the
-exact treatment, and lists what must NOT change. Implement one screen, screenshot it,
-ping me to diff against the DS reference.
+exact treatment, and lists what must NOT change. Implement one screen, report the
+rendered result (or screenshot), ping me to diff against the DS reference.
 
 ### 2.1 PROTOCOL RUNNER  — `src/components/ProtocolRunner.tsx`  *(top priority, the core screen)*
 
@@ -320,14 +206,146 @@ equal columns. DS = **secondary Back/Repeat row ABOVE a full-width hero Next**:
 - Header chips 36→**44px**. Decision options ≥56px. Footer Back/Repeat ≥44px, Next ≥64px. Call 999
   ≥44px. Progress segments are display-only. All hard constraints.
 
-When implemented, send me instruction/roles/decision/drug screenshots; I'll diff against DS reference.
+When implemented, report instruction/roles/decision/drug rendered states; I'll diff against DS reference.
 
 ---
 
-### 2.2 EMERGENCY DASHBOARD — _spec pending (next)._
-### 2.3 CPR MODE — _spec pending._
-### 2.4 DRUG CARD — _spec pending._
-### 2.5 CHILD DOSE BANDS · 2.6 TRIAGE WIZARD · 2.7 AI ASSISTANT · 2.8 PROTOCOL LIBRARY · 2.9 CALL 999 SCRIPT · 2.10 SBAR HANDOVER · 2.11 EVENT REPORTS · 2.12 TRAINING MODE · 2.13 PRACTICE SETUP — _specs pending._
+### 2.2 EMERGENCY DASHBOARD — `src/components/EmergencyDashboard.tsx`  *(home / launchpad)*
+
+Reference: DS screenshot `01-dashboard`; DS components `ConditionTile`, `IconButton`, `Button`;
+UI-kit `ui_kits/resusiq-app/Dashboard.jsx`. **The biggest visual change in the whole app is here:**
+the current dashboard uses fully-saturated gradient condition tiles; Clear Signal makes condition
+tiles **dark `surface-1` cards with a subtle corner hue-wash + a tinted icon chip + a mono rank
+number** (hue is decorative; the title + icon carry meaning). Only Call 999 (red) and Voice AI
+(violet→fuchsia) stay saturated heroes.
+
+#### Layout map (top → bottom)
+
+**1. Root** (`line 63`): `min-h-screen bg-black text-white … safe-area-top`
+- Drop `bg-black`/`text-white` → `style={{ background: 'var(--bg)' }}`. Keep flex + `safe-area-top`.
+
+**2. App-bar / header** (`lines 65–93`) — below the notch (top ~56px clear).
+- **Brand lockup** (lines 66–69): replace the red-gradient HeartPulse chip with the DS brand mark
+  `src/design-system/assets/logo-mark.svg` (32px). Wordmark "ResusIQ" → render `Resus` in
+  `--text-1`/500 + `IQ` in `--brand`/700 (DS lockup), `--fs-h3`-ish, `letter-spacing: -.02em`. The
+  mode line ("Emergency Protocols" / "Training Mode") → `.cs-eyebrow` (`--text-3`). Keep both
+  strings verbatim, including the training-mode swap.
+- **Mute + Settings** (lines 78–91): DS `IconButton` treatment — 44px chip (**bump from 36px**),
+  `surface-2` / `border` / `radius-md`, icon `--text-2`. Mute-on → `aria-pressed` teal
+  (`--brand-tint` fill, `--brand` icon) — currently it only swaps the icon; add the pressed fill.
+  Settings = ghost variant (no fill). Keep `aria-label`s and the `setScreen('setup')` handler.
+
+**3. Hero row — Call 999 + Voice AI** (`lines 96–116`) — 2-col grid, gap 10px.
+- **Call 999** (lines 99–106): keep `<a href="tel:999">`. Make it the DS critical hero:
+  `background: var(--red-strong)` (#E11D2E, a SOLID fill, not a gradient), `box-shadow:
+  var(--glow-red)`, `radius-lg`, min-height 92px, text/icon `#fff`. Left-aligned column: phone
+  icon 26px, then "Call 999" (17px/700) + subtitle "Ambulance" (12px, 85% opacity). The red glow
+  is one of the two reserved glows — appropriate here. Keep `active:scale-[0.97]`. Drop the inner
+  radial-white overlay (DS uses a flat solid + glow).
+- **Voice AI** (lines 108–115): keep `onClick={() => setScreen('ai_assistant')}`. `background:
+  linear-gradient(140deg, var(--ai-from), var(--ai-to))` (violet→fuchsia — the only content
+  gradient allowed, it signals AI mode), `radius-lg`, same 92px column. Mic icon + "Voice AI"
+  (17px/700) + subtitle "Hands-free" (the current build has no subtitle — add "Hands-free" to
+  match DS; non-clinical copy). Drop the inner radial overlay.
+- Note: DS labels are "Call 999" / "Voice AI" in the kit; the current build uses uppercase. Either
+  is acceptable (non-clinical) — **recommend keeping the app's uppercase** for stress-legibility
+  consistency with the Runner's `CALL 999`.
+
+**4. Practice address badge** (`lines 119–126`) — keep the conditional + the `name/address/postcode`
+composition verbatim.
+- Restyle: `background: var(--surface-1)`, `border: 1px solid var(--border)`, `radius-md`, ~10–14px
+  padding. Map-pin icon `--brand` (DS uses `map-pin`; the app uses `Stethoscope` — **swap to
+  `MapPin`**, it reads as "location" not "clinic"). Text `--text-2` at `--fs-meta`. Keep truncation.
+
+**5. "Select Emergency" section label** (`lines 131–133`) — `.cs-eyebrow` (mono, `.14em`,
+`--text-3`). Keep the text. (Current uses `.2em`/`zinc-600`; align to the eyebrow token.)
+
+**6. Condition tiles grid** (`lines 134–160`) — the headline change. Map each tile to DS
+`ConditionTile`. **Drop the `from-*/to-*/ring-*` gradient classes** from `emergencyTiles`
+(lines 50–59) and replace `color`/`ring` with a single `--cond-*` hue token per condition:
+
+| tile id          | current gradient    | DS hue token        |
+|------------------|---------------------|---------------------|
+| `cardiac_arrest` | red-600→800         | `--cond-cardiac`    |
+| `anaphylaxis`    | orange-500→700      | `--cond-anaphyl`    |
+| `choking`        | amber-500→700       | `--cond-choking`    |
+| `asthma`         | blue-500→700        | `--cond-asthma`     |
+| `chest_pain`     | rose-600→800        | `--cond-chest`      |
+| `hypoglycaemia`  | purple-500→700      | `--cond-hypo`       |
+| `seizure`        | violet-500→700      | `--cond-seizure`    |
+| `syncope`        | slate-500→700       | `--cond-faint`      |
+| `stroke`         | cyan-600→800        | `--cond-stroke`     |
+| `adrenal_crisis` | amber-600→800       | `--cond-adrenal`    |
+
+Per-tile structure (per `ConditionTile`):
+- Card: `surface-1`, `1px var(--border)`, `radius-lg`, **min-height 116px**, `--card-pad` (16px),
+  `active:scale(var(--press-scale))`, hover → `border-strong`, focus → `--focus-ring`.
+- **Corner hue-wash:** absolutely-positioned layer, `opacity: 0.16`, `background:
+  radial-gradient(120% 90% at 0% 0%, var(--cond-X), transparent 70%)`, `pointer-events:none`,
+  `aria-hidden`. This is the only decorative colour on the tile.
+- **Icon chip** (top-left, 40px, `radius-md`): `background: color-mix(in srgb, var(--cond-X) 22%,
+  transparent)`, icon 24px in `var(--cond-X)`. Keep the existing `iconMap`/`protocol.icon` lookup.
+- **Rank** (top-right): the `priority` number in mono `.cs-eyebrow`-ish, `--text-3`. (New element —
+  DS shows the priority rank; the app already has `priority` in the data, just surface it.)
+- **Title + subtitle** (bottom): title `--fs-lead`/600 `--text-1`; subtitle `--fs-meta` `--text-2`.
+  Keep `tile.title` / `tile.subtitle` verbatim. Titles stay as the app has them (`HYPO`, `FAINT`,
+  etc.) — condition labels border on clinical; **do NOT rename without the clinical reviewer**.
+- Keep `onClick={() => startEmergency(tile.id)}` exactly.
+
+**7. Bottom tab bar** (`lines 164–183`) — glass floating bar (DS).
+- Container: floating with `left/right ~14px`, sit above the home-indicator (`safe-area-bottom`
+  present — keep + ~8px), `background: var(--glass-bg)`, `backdrop-filter: var(--blur-bar)`,
+  `border: 1px solid var(--border)`, `radius-xl`, `box-shadow: var(--elev-2)`. (App currently uses
+  `bg-zinc-900/90 backdrop-blur-xl` — swap to the glass tokens.)
+- Tabs: each ≥56px wide, icon 22px + label 10px. Inactive `--text-3`. **Active tab → `--brand`**
+  (icon + label teal) when its screen is showing. On the dashboard none is active. Keep all 5
+  `setScreen` handlers and labels (Triage/Library/SBAR/Reports/Training).
+- Icon note: keep the app's existing tab icons (low stakes); the important change is the
+  active-teal + glass treatment.
+
+**8. Disclaimer** (`lines 186–190`) — keep verbatim ("Supports trained teams · Resuscitation
+Council UK · SDCEP"). Style `--text-3` at ~11px, centered; fold into the end of the scroll area.
+
+#### Must NOT change (Dashboard)
+- `startEmergency(tile.id)`, `setScreen(...)`, `toggleMute`, the `tel:999` href, the training-mode
+  conditional, the practice-address conditional + composition.
+- Condition titles/subtitles — clinical-adjacent; verbatim unless the clinical reviewer signs off.
+- The disclaimer text. The 10-condition set and their priority order.
+
+#### Touch targets
+- Mute/Settings 36→**44px**. Tiles ≥116px. Heroes ≥92px. Tab buttons ≥44px tall within the bar.
+
+---
+
+### 2.3 CPR MODE · 2.4 DRUG CARD
+Full specs are in the companion file **`docs/design-handoff/redesign-implementation-2.3-2.4.md`**
+(split out only to keep this file manageable; same rules apply). Headlines:
+- **§2.3 CPR Mode** — red mode-wash background; 220px ring pulsing on the DS `resus-pulse-cpr`
+  0.545s (110 BPM); compression count at **92px** mono `tone="critical"`; cycle+shock folded into
+  one mono line; breath cue "2 RESCUE BREATHS" → **amber** + `wind` icon (was blue — flagged);
+  integrity stats (30:2 / 100–120 / 5–6cm) untouched; AED modal → real `Sheet` dialog with a
+  `Callout tone="contra"` for "Stand clear" (closes task #16). Never touch metronome/handlers/
+  spoken strings.
+- **§2.4 Drug Card** — modal → real `Sheet` dialog (task #16); subtle drug-tinted header (not the
+  saturated purple gradient); adult dose green / child dose blue, **doses rendered in mono** so
+  `1:1000`/`micrograms` stay unambiguous; warnings → `Callout tone="warn"`, contraindications →
+  `Callout tone="contra"` (escalated red, emoji removed). Every clinical value verbatim.
+
+### 2.5–2.13 — THE REMAINING NINE SCREENS
+Full specs are in the companion file **`docs/design-handoff/redesign-implementation-2.5-2.13.md`**.
+Covers: §2.5 Child Dose Bands, §2.6 Triage Wizard, §2.7 AI Voice Assistant, §2.8 Protocol Library,
+§2.9 Call 999 Script, §2.10 SBAR Handover, §2.11 Event Reports, §2.12 Training Mode, §2.13 Practice
+Setup — plus a shared **"Common patterns"** preamble (C1–C7) since most of these screens still use
+the older `gray/blue-800/purple-700` palette and need full token migration, DS app-bar headers, and
+token form inputs. Headlines:
+- **Child Dose Bands** — keep the dose-with-concentration framing; mono doses; blue (`--roles`).
+- **Triage / Call 999 / SBAR** — emergency-path utilities; YES/NO big binary fills, the verbatim
+  999 script + SBAR template, postcode emphasis. Three more `Sheet` dialogs land in this group
+  (AI settings, etc.) — all roll up under task #16.
+- **AI Assistant** — violet→fuchsia mic + AI mood-wash + `ping` listening rings; teal "Open full
+  protocol guide" hero; the system-instruction CLINICAL RULES block is safety content (verbatim).
+- **Library / Reports / Training / Setup** — token migration; Training carries a persistent amber
+  "TRAINING MODE" marker so a drill is never mistaken for a live emergency.
 
 ---
 
@@ -336,3 +354,10 @@ When implemented, send me instruction/roles/decision/drug screenshots; I'll diff
    Recommend amber (keeps GREEN exclusively = GO/advance). Confirm before shipping §2.1.8.
 2. **Decision step-type icon:** `AlertTriangle` → `GitBranch` (DS). Semantic improvement; confirm.
 3. **"Next" → "Next step" label:** non-clinical; DS prefers "Next step". Confirm preference.
+4. **Dashboard tile saturation (§2.2.6):** vivid gradients → dark hue-wash tiles. Correct Clear
+   Signal direction; worth a user gut-check since it's the first screen seen.
+5. **CPR breath-cue colour (§2.3.5):** current blue → DS amber (`--decision`). Recommend amber
+   (blue is the roles hue; amber = attention/transition is correct and avoids a hue collision).
+   It's a safety "shout" — confirm before shipping.
+6. **AED modal + Drug Card + AI settings → `Sheet` (§2.3.9, §2.4.1, §2.7):** overlaps open task #16
+   (dialog a11y). Coordinate so the dialog-trap work is done once with one shared `Sheet`.
