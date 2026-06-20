@@ -58,14 +58,17 @@ export default defineConfig({
         // precached preserves full offline use of the emergency path.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // genai (Gemini Live SDK) and AIAssistant both require network to do
-        // anything (Live API), and emergency narration falls back to browser
-        // TTS when offline — so precaching them only bloats the offline cache.
-        // They are cached at runtime instead (NetworkFirst) when first used.
+        // anything (Live API), so precaching them only bloats the offline
+        // cache. They are cached at runtime instead, StaleWhileRevalidate so a
+        // returning user gets the cached chunk IMMEDIATELY (no network round-
+        // trip) — important because when a Gemini key is present speak() always
+        // routes to Gemini (sync isAvailable check, no browser-TTS fast path),
+        // so NetworkFirst would delay first narration on flaky wifi mid-resus.
         globIgnores: ['**/genai-*.js', '**/AIAssistant-*.js'],
         runtimeCaching: [
           {
             urlPattern: /\/assets\/(genai|AIAssistant)-[^/]*\.js$/,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'resusiq-lazy-chunks',
               expiration: {
