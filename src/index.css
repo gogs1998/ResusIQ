@@ -166,3 +166,20 @@ input, select, textarea, button {
 .cs-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Step-type left accent: set --step-accent per type, then add .cs-step-card */
 .cs-step-card { border-left: 4px solid var(--step-accent, var(--instruction)); }
+/* Token form input (SBAR, Practice Setup, Library search) */
+.cs-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  padding: 0.625rem 0.75rem;
+  min-height: var(--touch-min);
+  font-size: 16px;
+}
+.cs-input::placeholder { color: var(--text-3); }
+.cs-input:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: var(--focus-ring);
+}

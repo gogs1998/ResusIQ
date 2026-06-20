@@ -101,35 +101,35 @@ export function SBARHandover() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
-      <header className="bg-blue-800 p-4 flex items-center gap-3">
-        <button onClick={() => setScreen('home')} className="p-2 -ml-2 rounded-lg hover:bg-blue-900">
-          <ArrowLeft className="w-5 h-5" />
+      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
+        <button onClick={() => setScreen('home')} aria-label="Back" className="w-11 h-11 -ml-1 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
         </button>
-        <ClipboardList className="w-6 h-6" />
-        <h1 className="text-xl font-bold flex-1">SBAR Handover</h1>
+        <ClipboardList className="w-5 h-5" style={{ color: 'var(--brand)' }} />
+        <h1 className="text-lg font-bold flex-1" style={{ color: 'var(--text-1)' }}>SBAR Handover</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* What is SBAR */}
-        <div className="bg-blue-900/30 border border-blue-700 rounded-xl p-3">
-          <p className="text-sm text-blue-300">
-            <strong>SBAR</strong> = Situation, Background, Assessment, Recommendation.
+        <div className="rounded-xl p-3" style={{ background: 'var(--brand-tint)', border: '1px solid color-mix(in srgb, var(--brand) 30%, transparent)' }}>
+          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
+            <strong style={{ color: 'var(--brand)' }}>SBAR</strong> = Situation, Background, Assessment, Recommendation.
             Use this to hand over to the ambulance crew.
           </p>
         </div>
 
         {/* Patient Details */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Patient Details</h2>
+          <h2 className="cs-eyebrow mb-2">Patient Details</h2>
           <div className="space-y-2">
             <input
               type="text"
               placeholder="Patient name (if known)"
               value={patientName}
               onChange={e => setPatientName(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="cs-input"
             />
             <div className="grid grid-cols-2 gap-2">
               <input
@@ -137,12 +137,12 @@ export function SBARHandover() {
                 placeholder="Age"
                 value={patientAge}
                 onChange={e => setPatientAge(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="cs-input"
               />
               <select
                 value={patientGender}
                 onChange={e => setPatientGender(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-blue-500"
+                className="cs-input"
               >
                 <option value="">Gender</option>
                 <option value="male">Male</option>
@@ -154,94 +154,96 @@ export function SBARHandover() {
 
         {/* Background */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Background</h2>
+          <h2 className="cs-eyebrow mb-2">Background</h2>
           <div className="space-y-2">
             <textarea
               placeholder="Medical history (e.g., diabetes, asthma, heart disease)"
               value={medicalHistory}
               onChange={e => setMedicalHistory(e.target.value)}
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+              className="cs-input resize-none"
             />
             <textarea
               placeholder="Current medications"
               value={medications}
               onChange={e => setMedications(e.target.value)}
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+              className="cs-input resize-none"
             />
             <input
               type="text"
               placeholder="Allergies (NKDA if none known)"
               value={allergies}
               onChange={e => setAllergies(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="cs-input"
             />
           </div>
         </section>
 
         {/* Auto-populated Assessment */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Assessment (auto-filled)</h2>
-          <div className="bg-gray-800 rounded-xl p-3 space-y-2">
+          <h2 className="cs-eyebrow mb-2">Assessment (auto-filled)</h2>
+          <div className="cs-card p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">Emergency:</span>
-              <span className="font-semibold text-orange-300">{emergencyType}</span>
+              <span className="text-sm" style={{ color: 'var(--text-3)' }}>Emergency:</span>
+              <span className="font-semibold" style={{ color: 'var(--cond-anaphyl)' }}>{emergencyType}</span>
             </div>
             {logEntries.length > 0 && (
               <div>
-                <p className="text-sm text-gray-400 mb-1">Actions taken:</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-3)' }}>Actions taken:</p>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {logEntries.map((entry, i) => (
                     <div key={i} className="text-sm flex items-start gap-2">
-                      <span className="text-gray-500 font-mono text-xs mt-0.5">
+                      <span className="cs-numeric text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
                         {format(new Date(entry.timestamp), 'HH:mm:ss')}
                       </span>
-                      <span className="text-gray-300">{entry.label}</span>
+                      <span style={{ color: 'var(--text-2)' }}>{entry.label}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             {logEntries.length === 0 && (
-              <p className="text-sm text-gray-500 italic">No logged actions yet</p>
+              <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>No logged actions yet</p>
             )}
           </div>
         </section>
 
         {/* Recommendation */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Additional Information</h2>
+          <h2 className="cs-eyebrow mb-2">Additional Information</h2>
           <textarea
             placeholder="Any other information for the ambulance crew"
             value={additionalInfo}
             onChange={e => setAdditionalInfo(e.target.value)}
             rows={2}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+            className="cs-input resize-none"
           />
         </section>
 
         {/* Preview */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Handover Preview</h2>
-          <pre className="bg-gray-950 rounded-xl p-4 text-sm text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+          <h2 className="cs-eyebrow mb-2">Handover Preview</h2>
+          <pre className="rounded-xl p-4 text-sm whitespace-pre-wrap font-mono overflow-x-auto" style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
             {sbarText}
           </pre>
         </section>
       </div>
 
       {/* Action buttons */}
-      <div className="p-4 bg-gray-800 grid grid-cols-2 gap-3">
+      <div className="p-4 grid grid-cols-2 gap-3 safe-area-bottom">
         <button
           onClick={handleCopy}
-          className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+          className="font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
         >
-          {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
+          {copied ? <Check className="w-5 h-5" style={{ color: 'var(--green)' }} /> : <Copy className="w-5 h-5" />}
           {copied ? 'Copied!' : 'Copy'}
         </button>
         <button
           onClick={handleShare}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+          className="font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+          style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
         >
           <Share2 className="w-5 h-5" />
           Share
