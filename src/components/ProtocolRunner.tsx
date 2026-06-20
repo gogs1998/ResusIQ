@@ -1,20 +1,22 @@
 import { useEffect, useCallback, useState } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Phone, 
-  Volume2, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Volume2,
   VolumeX,
   RotateCcw,
   X,
   Check,
+  CheckCheck,
   Timer,
   Pill,
   Users,
-  AlertTriangle,
-  Mic,
-  CircleDot
+  GitBranch,
+  CircleArrowRight,
+  Mic
 } from 'lucide-react';
+import type { CSSProperties, ComponentType } from 'react';
 import { useAppStore } from '../store/appStore';
 import { voiceCommandsSupported } from '../lib/platform';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
@@ -22,6 +24,21 @@ import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
 import { DrugCard } from './DrugCard';
 import { ChildDoseBands } from './ChildDoseBands';
+
+// Fixed step-type → Clear Signal token mapping. Meanings never swap.
+const STEP_TYPES: Record<string, { accent: string; tint: string; label: string; Icon: ComponentType<{ className?: string; style?: CSSProperties }> }> = {
+  instruction: { accent: 'var(--instruction)', tint: 'var(--surface-2)', label: 'ACTION', Icon: CircleArrowRight },
+  drug: { accent: 'var(--drug)', tint: 'var(--drug-tint)', label: 'DRUG', Icon: Pill },
+  decision: { accent: 'var(--decision)', tint: 'var(--decision-tint)', label: 'DECISION', Icon: GitBranch },
+  timer_block: { accent: 'var(--timed)', tint: 'var(--timed-tint)', label: 'TIMED', Icon: Timer },
+  role_assignment: { accent: 'var(--roles)', tint: 'var(--roles-tint)', label: 'ROLES', Icon: Users },
+};
+
+// Reusable header-chip style (44px touch floor, surface-2 + border).
+const chip: CSSProperties = {
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border)',
+};
 import { CPRMode } from './CPRMode';
 
 export function ProtocolRunner() {
@@ -163,30 +180,26 @@ export function ProtocolRunner() {
   const drug = currentStep.drug_id ? getDrugById(currentStep.drug_id) : null;
   const totalSteps = activeProtocol.steps.length;
 
-  // Step type styling
-  const stepTypeConfig = {
-    drug: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', label: 'DRUG', icon: Pill, color: 'text-purple-400' },
-    decision: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'DECISION', icon: AlertTriangle, color: 'text-amber-400' },
-    role_assignment: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'ROLES', icon: Users, color: 'text-blue-400' },
-    timer_block: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', label: 'TIMED', icon: Timer, color: 'text-cyan-400' },
-  };
-  const stepConfig = stepTypeConfig[currentStep.type as keyof typeof stepTypeConfig];
+  // Clear Signal step-type tokens — fixed meaning, never swap. Plain steps
+  // fall back to `instruction` (ACTION) so a badge always renders.
+  const stepType = STEP_TYPES[currentStep.type] ?? STEP_TYPES.instruction;
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col safe-area-top">
+    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <button
             onClick={endEmergency}
             aria-label="End emergency"
-            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center active:bg-zinc-800"
+            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+            style={chip}
           >
-            <X className="w-4 h-4 text-zinc-400" />
+            <X className="w-4 h-4" style={{ color: 'var(--text-2)' }} />
           </button>
           <div>
-            <h1 className="font-bold text-sm tracking-tight">{activeProtocol.title}</h1>
-            <p className="text-[10px] text-zinc-500 font-medium">
+            <h1 className="font-semibold text-[15px] tracking-tight" style={{ color: 'var(--text-1)' }}>{activeProtocol.title}</h1>
+            <p className="cs-eyebrow mt-0.5">
               Step {currentStepIndex + 1} of {totalSteps}
             </p>
           </div>
@@ -196,11 +209,10 @@ export function ProtocolRunner() {
             onClick={toggleMute}
             aria-label={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
             aria-pressed={isMuted}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-              isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-zinc-900 border border-zinc-800'
-            } active:opacity-80`}
+            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+            style={isMuted ? { background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)' } : chip}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-zinc-400" />}
+            {isMuted ? <VolumeX className="w-4 h-4" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-4 h-4" style={{ color: 'var(--text-2)' }} />}
           </button>
           {/* Voice commands rely on Web Speech STT, which is silently
               non-functional in an installed iOS PWA. Only show the mic where
@@ -210,24 +222,28 @@ export function ProtocolRunner() {
               onClick={isListening ? stopListening : startListening}
               aria-label={isListening ? 'Stop voice commands' : 'Start voice commands'}
               aria-pressed={isListening}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                isListening ? 'bg-green-500/20 border border-green-500/40 animate-pulse' : 'bg-zinc-900 border border-zinc-800'
-              } active:opacity-80`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity ${isListening ? 'animate-pulse' : ''}`}
+              style={isListening ? { background: 'var(--brand-tint)', border: '1px solid color-mix(in srgb, var(--brand) 30%, transparent)' } : chip}
             >
-              <Mic className={`w-4 h-4 ${isListening ? 'text-green-400' : 'text-zinc-400'}`} />
+              <Mic className="w-4 h-4" style={{ color: isListening ? 'var(--brand)' : 'var(--text-2)' }} />
             </button>
           )}
         </div>
       </header>
 
       {/* Progress Bar — segmented */}
-      <div className="px-4 pb-2 flex gap-0.5">
+      <div className="px-4 pb-2 flex gap-1">
         {Array.from({ length: totalSteps }, (_, i) => (
           <div
             key={i}
-            className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
-              i < currentStepIndex ? 'bg-green-500' : i === currentStepIndex ? 'bg-white' : 'bg-zinc-800'
-            }`}
+            className="h-[5px] flex-1 rounded-full transition-colors duration-300"
+            style={
+              i < currentStepIndex
+                ? { background: 'var(--green)' }
+                : i === currentStepIndex
+                ? { background: 'var(--text-1)', boxShadow: '0 0 8px rgba(247,248,250,0.5)' }
+                : { background: 'var(--surface-3)' }
+            }
           />
         ))}
       </div>
@@ -237,12 +253,13 @@ export function ProtocolRunner() {
         <a
           href="tel:999"
           onClick={() => { addEventLog('999_called', '999 called'); }}
-          className="flex items-center justify-center gap-2 bg-red-600/15 border border-red-500/25 rounded-xl py-2.5 px-4 active:bg-red-600/25 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 active:opacity-80 transition-opacity"
+          style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 25%, transparent)' }}
         >
-          <Phone className="w-4 h-4 text-red-400" />
-          <span className="text-sm font-bold text-red-400">CALL 999</span>
+          <Phone className="w-4 h-4" style={{ color: 'var(--red)' }} />
+          <span className="text-sm font-bold" style={{ color: 'var(--red)' }}>CALL 999</span>
           {practiceSetup?.postcode && (
-            <span className="text-xs text-red-400/60 ml-1">· {practiceSetup.postcode}</span>
+            <span className="text-xs ml-1" style={{ color: 'color-mix(in srgb, var(--red) 60%, transparent)' }}>· {practiceSetup.postcode}</span>
           )}
         </a>
       </div>
@@ -254,32 +271,33 @@ export function ProtocolRunner() {
           {`Step ${currentStepIndex + 1} of ${totalSteps}. ${currentStep.show}`}
         </div>
 
-        {/* Step Type Badge */}
-        {stepConfig && (
-          <div className={`inline-flex items-center gap-1.5 ${stepConfig.bg} border ${stepConfig.border} rounded-lg px-2.5 py-1 mb-3`}>
-            <stepConfig.icon className={`w-3 h-3 ${stepConfig.color}`} />
-            <span className={`text-[10px] font-bold tracking-wider ${stepConfig.color}`}>{stepConfig.label}</span>
-          </div>
-        )}
+        {/* Step Type Badge — always rendered */}
+        <div
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 mb-3"
+          style={{ background: stepType.tint, border: `1px solid color-mix(in srgb, ${stepType.accent} 45%, transparent)` }}
+        >
+          <stepType.Icon className="w-3.5 h-3.5" style={{ color: stepType.accent }} />
+          <span className="cs-eyebrow" style={{ color: stepType.accent }}>{stepType.label}</span>
+        </div>
 
         {/* Step Content Card */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-4">
-          <p className="text-[17px] font-semibold leading-relaxed whitespace-pre-line text-zinc-100">
+        <div className="cs-card cs-step-card p-5 mb-4" style={{ ['--step-accent' as string]: stepType.accent } as CSSProperties}>
+          <p className="cs-instruction whitespace-pre-line">
             {currentStep.show}
           </p>
         </div>
 
         {/* Role Assignments */}
         {currentStep.roles && currentStep.roles.length > 0 && (
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 mb-4">
-            <h3 className="font-bold mb-2.5 text-blue-400 text-xs tracking-wider uppercase flex items-center gap-1.5">
+          <div className="cs-card cs-step-card p-4 mb-4" style={{ ['--step-accent' as string]: 'var(--roles)' } as CSSProperties}>
+            <h3 className="cs-eyebrow mb-2.5 flex items-center gap-1.5" style={{ color: 'var(--roles)' }}>
               <Users className="w-3.5 h-3.5" /> Assign Roles
             </h3>
             <div className="space-y-2">
               {currentStep.roles.map((role, idx) => (
                 <div key={idx} className="flex items-center gap-2.5 text-sm">
-                  <span className="bg-blue-500/20 border border-blue-500/30 text-blue-300 px-2.5 py-1 rounded-lg text-xs font-bold">{role.role}</span>
-                  <span className="text-zinc-300">{role.task}</span>
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: 'var(--roles-tint)', border: '1px solid color-mix(in srgb, var(--roles) 30%, transparent)', color: 'var(--roles)' }}>{role.role}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{role.task}</span>
                 </div>
               ))}
             </div>
@@ -288,33 +306,39 @@ export function ProtocolRunner() {
 
         {/* Decision Options */}
         {currentStep.type === 'decision' && currentStep.answers && (
-          <div
-            className="space-y-2 mb-4"
-            role="radiogroup"
-            aria-label={currentStep.question || 'Select an option'}
-          >
-            {currentStep.answers.map((answer, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedAnswer(answer.label)}
-                role="radio"
-                aria-checked={selectedAnswer === answer.label}
-                className={`w-full p-4 rounded-2xl text-left transition-all border ${
-                  selectedAnswer === answer.label
-                    ? 'bg-green-500/15 border-green-500/40 ring-1 ring-green-500/20'
-                    : 'bg-zinc-900 border-zinc-800 active:bg-zinc-800'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    selectedAnswer === answer.label ? 'border-green-500 bg-green-500' : 'border-zinc-600'
-                  }`}>
-                    {selectedAnswer === answer.label && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <span className="font-medium text-[15px]">{answer.label}</span>
-                </div>
-              </button>
-            ))}
+          <div className="mb-4">
+            {currentStep.question && (
+              <p className="text-[18px] font-semibold mb-2.5" style={{ color: 'var(--text-1)' }}>{currentStep.question}</p>
+            )}
+            <div
+              className="space-y-2"
+              role="radiogroup"
+              aria-label={currentStep.question || 'Select an option'}
+            >
+              {currentStep.answers.map((answer, idx) => {
+                const selected = selectedAnswer === answer.label;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedAnswer(answer.label)}
+                    role="radio"
+                    aria-checked={selected}
+                    className="w-full p-4 rounded-2xl text-left transition-all active:opacity-90"
+                    style={{ minHeight: 'var(--touch-comfort)', background: selected ? 'var(--decision-tint)' : 'var(--surface-2)', border: `1.5px solid ${selected ? 'var(--decision)' : 'var(--border)'}` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ border: `2px solid ${selected ? 'var(--decision)' : 'var(--text-3)'}`, background: selected ? 'var(--decision)' : 'transparent' }}
+                      >
+                        {selected && <Check className="w-3 h-3" style={{ color: 'var(--text-on-light)' }} />}
+                      </div>
+                      <span className="font-medium text-[15px]" style={{ color: 'var(--text-1)' }}>{answer.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -322,18 +346,21 @@ export function ProtocolRunner() {
         {currentStep.type === 'drug' && drug && (
           <button
             onClick={() => setShowDrugCard(true)}
-            className="w-full bg-purple-500/10 border border-purple-500/25 rounded-2xl p-4 mb-4 text-left active:bg-purple-500/15 transition-colors"
+            className="w-full rounded-2xl p-4 mb-4 text-left active:opacity-90 transition-opacity"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-purple-300">{drug.name}</p>
-                <p className="text-sm text-zinc-400 mt-0.5">{drug.adult_dose_text}</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold" style={{ color: 'var(--text-1)' }}>{drug.name}</p>
+                <p className="cs-numeric text-[13px] mt-0.5" style={{ color: 'var(--text-2)' }}>{drug.adult_dose_text}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Pill className="w-5 h-5 text-purple-400" />
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--drug-tint)' }}>
+                  <Pill className="w-5 h-5" style={{ color: 'var(--drug)' }} />
+                </div>
+                <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
               </div>
             </div>
-            <p className="text-[11px] mt-2 text-purple-400/60 font-medium">Tap for full drug card →</p>
           </button>
         )}
 
@@ -355,13 +382,14 @@ export function ProtocolRunner() {
 
         {/* Confirmation Dialog */}
         {confirmationRequired && currentStep.require_confirm && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-4">
-            <p className="font-bold text-amber-400 text-sm mb-3 flex items-center gap-2">
-              <CircleDot className="w-4 h-4" /> Confirm when completed
+          <div className="cs-card cs-step-card p-4 mb-4" style={{ ['--step-accent' as string]: 'var(--green)' } as CSSProperties}>
+            <p className="cs-eyebrow mb-3 flex items-center gap-2" style={{ color: 'var(--green)' }}>
+              <CheckCheck className="w-4 h-4" /> Confirm when completed
             </p>
             <button
               onClick={handleConfirm}
-              className="w-full bg-green-600 active:bg-green-700 py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 transition-colors"
+              className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+              style={{ background: 'var(--green)', color: 'var(--text-on-light)', boxShadow: 'var(--glow-green)' }}
             >
               <Check className="w-5 h-5" />
               CONFIRM DONE
@@ -370,33 +398,36 @@ export function ProtocolRunner() {
         )}
       </main>
 
-      {/* Navigation Footer */}
+      {/* Navigation Footer — secondary Back/Repeat row above a full-width hero Next */}
       <footer className="px-4 pb-3 safe-area-bottom">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <button
             onClick={prevStep}
             disabled={currentStepIndex === 0}
-            className="bg-zinc-900 border border-zinc-800 disabled:opacity-30 py-4 rounded-2xl flex items-center justify-center gap-1 active:bg-zinc-800 transition-colors"
+            className="py-3.5 rounded-2xl flex items-center justify-center gap-1 active:opacity-80 transition-opacity disabled:opacity-40"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', minHeight: 'var(--touch-min)' }}
           >
-            <ChevronLeft className="w-5 h-5 text-zinc-400" />
-            <span className="text-sm text-zinc-400 font-medium">Back</span>
+            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>Back</span>
           </button>
           <button
             onClick={handleRepeat}
-            className="bg-zinc-900 border border-zinc-800 py-4 rounded-2xl flex items-center justify-center gap-1 active:bg-zinc-800 transition-colors"
+            className="py-3.5 rounded-2xl flex items-center justify-center gap-1 active:opacity-80 transition-opacity"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', minHeight: 'var(--touch-min)' }}
           >
-            <RotateCcw className="w-4 h-4 text-zinc-400" />
-            <span className="text-sm text-zinc-400 font-medium">Repeat</span>
-          </button>
-          <button
-            onClick={handleNext}
-            disabled={currentStep.type === 'decision' && !selectedAnswer}
-            className="bg-green-600 disabled:opacity-30 py-4 rounded-2xl flex items-center justify-center gap-1 font-bold active:bg-green-700 shadow-lg shadow-green-600/20 transition-colors"
-          >
-            <span className="text-sm">Next</span>
-            <ChevronRight className="w-5 h-5" />
+            <RotateCcw className="w-4 h-4" style={{ color: 'var(--text-2)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>Repeat</span>
           </button>
         </div>
+        <button
+          onClick={handleNext}
+          disabled={currentStep.type === 'decision' && !selectedAnswer}
+          className="w-full rounded-2xl flex items-center justify-center gap-1.5 font-bold active:opacity-90 transition-opacity disabled:opacity-40"
+          style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-hero)', boxShadow: 'var(--glow-green)' }}
+        >
+          <span className="text-base">Next step</span>
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </footer>
 
       {/* Drug Card Modal */}
@@ -416,13 +447,16 @@ function TimerDisplay({ seconds, onComplete }: { seconds: number; onComplete: ()
   });
 
   return (
-    <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-2xl p-5 mb-4 text-center">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/70 mb-2">⏱ Reassess Timer</p>
-      <p className="text-5xl font-mono font-bold text-cyan-300">{formattedTime}</p>
+    <div className="cs-card cs-step-card p-5 mb-4 text-center" style={{ ['--step-accent' as string]: 'var(--timed)' } as CSSProperties}>
+      <p className="cs-eyebrow mb-2 flex items-center justify-center gap-1.5" style={{ color: 'var(--timed)' }}>
+        <Timer className="w-3.5 h-3.5" /> Reassess Timer
+      </p>
+      <p className="cs-numeric text-[64px] leading-none font-bold" style={{ color: 'var(--timed)' }}>{formattedTime}</p>
       <div className="mt-3">
         <button
           onClick={isRunning ? pause : start}
-          className="bg-cyan-500/20 border border-cyan-500/30 px-6 py-2 rounded-xl text-sm font-medium text-cyan-300 active:bg-cyan-500/30"
+          className="px-6 py-2 rounded-xl text-sm font-medium active:opacity-80 transition-opacity"
+          style={{ background: 'var(--timed-tint)', border: '1px solid color-mix(in srgb, var(--timed) 30%, transparent)', color: 'var(--timed)', minHeight: 'var(--touch-min)' }}
         >
           {isRunning ? 'Pause' : 'Resume'}
         </button>
