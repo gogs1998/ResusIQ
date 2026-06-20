@@ -35,6 +35,15 @@ export function EventReports() {
     return protocols.find(p => p.id === protocolId)?.title || protocolId;
   };
 
+  // Semantic colour per event type (colour + label, never colour alone).
+  const eventColor = (type: string) =>
+    type === 'drug_given' ? 'var(--drug)' :
+    type === '999_called' ? 'var(--red)' :
+    type === 'shock_delivered' ? 'var(--decision)' :
+    type === 'step_completed' ? 'var(--green)' :
+    type === 'rosc' ? 'var(--brand)' :
+    'var(--roles)';
+
   const generateReport = (event: EmergencyEvent) => {
     const protocol = protocols.find(p => p.id === event.protocol_id);
     
@@ -100,70 +109,67 @@ For audit and training purposes only.
 
   if (selectedEvent) {
     const protocol = protocols.find(p => p.id === selectedEvent.protocol_id);
-    
+
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-        <header className="bg-gray-800 p-4 flex items-center gap-3">
+      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
           <button
             onClick={() => setSelectedEvent(null)}
-            className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"
+            aria-label="Back"
+            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
           </button>
           <div className="flex-1">
-            <h1 className="font-bold">{protocol?.title}</h1>
-            <p className="text-sm text-gray-400">{formatDate(selectedEvent.timestamp)}</p>
+            <h1 className="font-bold" style={{ color: 'var(--text-1)' }}>{protocol?.title}</h1>
+            <p className="cs-eyebrow mt-0.5">{formatDate(selectedEvent.timestamp)}</p>
           </div>
         </header>
 
         <main className="flex-1 p-4 overflow-y-auto">
           {/* Summary */}
-          <div className="bg-gray-800 rounded-xl p-4 mb-4">
-            <h2 className="font-bold mb-3">Summary</h2>
+          <div className="cs-card p-4 mb-4">
+            <h2 className="cs-eyebrow mb-3">Summary</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-gray-400">Duration</p>
-                <p className="font-medium">{formatDuration(selectedEvent.timestamp, selectedEvent.events)}</p>
+                <p style={{ color: 'var(--text-3)' }}>Duration</p>
+                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{formatDuration(selectedEvent.timestamp, selectedEvent.events)}</p>
               </div>
               <div>
-                <p className="text-gray-400">Events Logged</p>
-                <p className="font-medium">{selectedEvent.events.length}</p>
+                <p style={{ color: 'var(--text-3)' }}>Events Logged</p>
+                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.events.length}</p>
               </div>
               <div>
-                <p className="text-gray-400">Outcome</p>
-                <p className="font-medium">{selectedEvent.outcome || 'Not recorded'}</p>
+                <p style={{ color: 'var(--text-3)' }}>Outcome</p>
+                <p className="font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.outcome || 'Not recorded'}</p>
               </div>
               <div>
-                <p className="text-gray-400">Protocol Version</p>
-                <p className="font-medium">{selectedEvent.protocol_version}</p>
+                <p style={{ color: 'var(--text-3)' }}>Protocol Version</p>
+                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.protocol_version}</p>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="bg-gray-800 rounded-xl p-4 mb-4">
-            <h2 className="font-bold mb-3">Event Timeline</h2>
+          <div className="cs-card p-4 mb-4">
+            <h2 className="cs-eyebrow mb-3">Event Timeline</h2>
             <div className="space-y-3">
               {selectedEvent.events.map((event, idx) => (
                 <div key={event.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full ${
-                      event.type === 'drug_given' ? 'bg-purple-500' :
-                      event.type === '999_called' ? 'bg-red-500' :
-                      event.type === 'shock_delivered' ? 'bg-yellow-500' :
-                      'bg-blue-500'
-                    }`} />
+                    <div className="w-3 h-3 rounded-full" style={{ background: eventColor(event.type) }} />
                     {idx < selectedEvent.events.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-gray-600 my-1" />
+                      <div className="w-0.5 flex-1 my-1" style={{ background: 'var(--surface-3)' }} />
                     )}
                   </div>
                   <div className="flex-1 pb-3">
-                    <p className="font-medium">{event.label}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="font-medium" style={{ color: 'var(--text-1)' }}>{event.label}</p>
+                    <p className="cs-numeric text-xs" style={{ color: 'var(--text-3)' }}>
                       {format(new Date(event.timestamp), 'HH:mm:ss')}
                     </p>
                     {event.details && (
-                      <p className="text-sm text-gray-500">{event.details}</p>
+                      <p className="text-sm" style={{ color: 'var(--text-3)' }}>{event.details}</p>
                     )}
                   </div>
                 </div>
@@ -173,26 +179,28 @@ For audit and training purposes only.
 
           {/* Notes */}
           {selectedEvent.notes && (
-            <div className="bg-gray-800 rounded-xl p-4 mb-4">
-              <h2 className="font-bold mb-2">Notes</h2>
-              <p className="text-gray-300">{selectedEvent.notes}</p>
+            <div className="cs-card p-4 mb-4">
+              <h2 className="cs-eyebrow mb-2">Notes</h2>
+              <p style={{ color: 'var(--text-2)' }}>{selectedEvent.notes}</p>
             </div>
           )}
         </main>
 
         {/* Footer */}
-        <footer className="bg-gray-800 p-4">
+        <footer className="p-4 safe-area-bottom">
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => handleExport(selectedEvent)}
-              className="bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold flex items-center justify-center gap-2"
+              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
             >
               <Download className="w-5 h-5" />
               Export
             </button>
             <button
               onClick={() => handleShare(selectedEvent)}
-              className="bg-gray-700 hover:bg-gray-600 p-3 rounded-xl font-bold flex items-center justify-center gap-2"
+              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
             >
               <Share2 className="w-5 h-5" />
               Share
@@ -204,23 +212,25 @@ For audit and training purposes only.
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <header className="bg-gray-800 p-4 flex items-center gap-3">
+    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
         <button
           onClick={() => setScreen('home')}
-          className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"
+          aria-label="Back"
+          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Event Reports</h1>
-          <p className="text-sm text-gray-400">{eventHistory.length} incidents recorded</p>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>Event Reports</h1>
+          <p className="cs-eyebrow mt-0.5">{eventHistory.length} incidents recorded</p>
         </div>
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto">
         {eventHistory.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-64" style={{ color: 'var(--text-3)' }}>
             <FileText className="w-16 h-16 mb-4 opacity-50" />
             <p className="text-lg">No incidents recorded yet</p>
             <p className="text-sm">Events will appear here after emergencies</p>
@@ -231,30 +241,30 @@ For audit and training purposes only.
               <button
                 key={event.id}
                 onClick={() => setSelectedEvent(event)}
-                className="w-full bg-gray-800 rounded-xl p-4 text-left hover:bg-gray-750 transition-colors"
+                className="w-full cs-card p-4 text-left active:opacity-90 transition-opacity"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h3 className="font-bold">{getProtocolTitle(event.protocol_id)}</h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                    <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>{getProtocolTitle(event.protocol_id)}</h3>
+                    <div className="flex items-center gap-4 text-sm mt-1" style={{ color: 'var(--text-3)' }}>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {format(new Date(event.timestamp), 'dd MMM yyyy')}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="cs-numeric flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         {format(new Date(event.timestamp), 'HH:mm')}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                  <ChevronRight className="w-5 h-5" style={{ color: 'var(--text-3)' }} />
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <span className="bg-gray-700 px-2 py-1 rounded text-xs">
+                  <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}>
                     {event.events.length} events
                   </span>
                   {event.completed && (
-                    <span className="bg-green-900/50 text-green-400 px-2 py-1 rounded text-xs">
+                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--green-tint)', color: 'var(--green)' }}>
                       Completed
                     </span>
                   )}

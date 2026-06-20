@@ -141,52 +141,48 @@ export function TrainingMode() {
     const score = getScore();
     
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-        <header className="bg-gray-800 p-4">
-          <h1 className="text-xl font-bold text-center">Drill Complete</h1>
+      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <header className="px-4 flex flex-col items-center justify-center" style={{ height: 'var(--appbar-h)' }}>
+          <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Mode</p>
+          <h1 className="text-lg font-bold" style={{ color: 'var(--text-1)' }}>Drill Complete</h1>
         </header>
 
         <main className="flex-1 p-4 flex flex-col items-center justify-center">
-          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md text-center">
-            <Trophy className={`w-20 h-20 mx-auto mb-4 ${
-              score >= 80 ? 'text-yellow-400' :
-              score >= 60 ? 'text-gray-400' :
-              'text-amber-700'
-            }`} />
-            
-            <h2 className="text-4xl font-bold mb-2">{score}%</h2>
-            <p className="text-gray-400 mb-6">
+          <div className="cs-card p-6 w-full max-w-md text-center">
+            <Trophy className="w-20 h-20 mx-auto mb-4" style={{ color: score >= 80 ? 'var(--decision)' : score >= 60 ? 'var(--text-2)' : 'var(--text-3)' }} />
+
+            <h2 className="cs-numeric text-4xl font-bold mb-2" style={{ color: 'var(--text-1)' }}>{score}%</h2>
+            <p className="mb-6" style={{ color: 'var(--text-3)' }}>
               {score >= 80 ? 'Excellent!' :
                score >= 60 ? 'Good effort!' :
                'Keep practising!'}
             </p>
 
-            <div className="bg-gray-700 rounded-xl p-4 mb-4 text-left">
+            <div className="rounded-xl p-4 mb-4 text-left" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Time taken:</span>
-                <span className="font-mono">{formattedTime}</span>
+                <span style={{ color: 'var(--text-3)' }}>Time taken:</span>
+                <span className="cs-numeric" style={{ color: 'var(--text-1)' }}>{formattedTime}</span>
               </div>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Target time:</span>
-                <span className="font-mono">
+                <span style={{ color: 'var(--text-3)' }}>Target time:</span>
+                <span className="cs-numeric" style={{ color: 'var(--text-1)' }}>
                   {Math.floor(selectedScenario.time_target_seconds / 60)}:{(selectedScenario.time_target_seconds % 60).toString().padStart(2, '0')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Key actions:</span>
-                <span>{checkedActions.length} / {selectedScenario.key_actions.length}</span>
+                <span style={{ color: 'var(--text-3)' }}>Key actions:</span>
+                <span style={{ color: 'var(--text-1)' }}>{checkedActions.length} / {selectedScenario.key_actions.length}</span>
               </div>
             </div>
 
             {/* Actions checklist */}
             <div className="text-left mb-4">
-              <p className="text-sm text-gray-400 mb-2">Key actions review:</p>
+              <p className="cs-eyebrow mb-2">Key actions review:</p>
               {selectedScenario.key_actions.map((action, idx) => (
-                <div 
+                <div
                   key={idx}
-                  className={`flex items-center gap-2 p-2 rounded ${
-                    checkedActions.includes(action) ? 'text-green-400' : 'text-red-400'
-                  }`}
+                  className="flex items-center gap-2 p-2 rounded"
+                  style={{ color: checkedActions.includes(action) ? 'var(--green)' : 'var(--red)' }}
                 >
                   {checkedActions.includes(action) ? (
                     <CheckCircle className="w-4 h-4" />
@@ -200,17 +196,19 @@ export function TrainingMode() {
           </div>
         </main>
 
-        <footer className="bg-gray-800 p-4">
+        <footer className="p-4 safe-area-bottom">
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => handleStartDrill(selectedScenario)}
-              className="bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold"
+              className="p-3 rounded-xl font-bold active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
             >
               Try Again
             </button>
             <button
               onClick={handleBackToList}
-              className="bg-gray-700 hover:bg-gray-600 p-3 rounded-xl font-bold"
+              className="p-3 rounded-xl font-bold active:opacity-80 transition-opacity"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
             >
               Back to Drills
             </button>
@@ -223,18 +221,18 @@ export function TrainingMode() {
   // Active Drill Screen
   if (selectedScenario) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-        <header className="bg-amber-900/50 p-4 flex items-center justify-between">
+      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <header className="p-4 flex items-center justify-between" style={{ background: 'var(--decision-tint)', borderBottom: '1px solid color-mix(in srgb, var(--decision) 30%, transparent)' }}>
           <div className="flex items-center gap-2">
-            <GraduationCap className="w-6 h-6 text-amber-400" />
+            <GraduationCap className="w-6 h-6" style={{ color: 'var(--decision)' }} />
             <div>
-              <h1 className="font-bold">Training Drill</h1>
-              <p className="text-sm text-amber-300">{selectedScenario.title}</p>
+              <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Drill</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{selectedScenario.title}</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-mono font-bold">{formattedTime}</p>
-            <p className="text-xs text-amber-300">
+            <p className="cs-numeric text-2xl font-bold" style={{ color: 'var(--text-1)' }}>{formattedTime}</p>
+            <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>
               Target: {Math.floor(selectedScenario.time_target_seconds / 60)}m
             </p>
           </div>
@@ -242,74 +240,74 @@ export function TrainingMode() {
 
         <main className="flex-1 p-4 overflow-y-auto">
           {/* Scenario */}
-          <div className="bg-gray-800 rounded-xl p-4 mb-4">
-            <h2 className="font-bold mb-2">📋 Scenario</h2>
-            <p className="text-gray-300">{selectedScenario.description}</p>
+          <div className="cs-card p-4 mb-4">
+            <h2 className="cs-eyebrow mb-2">Scenario</h2>
+            <p style={{ color: 'var(--text-2)' }}>{selectedScenario.description}</p>
           </div>
 
           {/* Key Actions Checklist */}
-          <div className="bg-gray-800 rounded-xl p-4 mb-4">
-            <h2 className="font-bold mb-3">✓ Key Actions (check as completed)</h2>
+          <div className="cs-card p-4 mb-4">
+            <h2 className="cs-eyebrow mb-3">Key Actions (check as completed)</h2>
             <div className="space-y-2">
-              {selectedScenario.key_actions.map((action, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => toggleAction(action)}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 text-left transition-colors ${
-                    checkedActions.includes(action)
-                      ? 'bg-green-900/30 border border-green-600'
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                    checkedActions.includes(action)
-                      ? 'border-green-500 bg-green-500'
-                      : 'border-gray-500'
-                  }`}>
-                    {checkedActions.includes(action) && (
-                      <CheckCircle className="w-4 h-4" />
-                    )}
-                  </div>
-                  <span>{action}</span>
-                </button>
-              ))}
+              {selectedScenario.key_actions.map((action, idx) => {
+                const done = checkedActions.includes(action);
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => toggleAction(action)}
+                    className="w-full p-3 rounded-lg flex items-center gap-3 text-left transition-opacity active:opacity-90"
+                    style={{ background: done ? 'var(--green-tint)' : 'var(--surface-2)', border: `1px solid ${done ? 'color-mix(in srgb, var(--green) 40%, transparent)' : 'var(--border)'}` }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{ border: `2px solid ${done ? 'var(--green)' : 'var(--text-3)'}`, background: done ? 'var(--green)' : 'transparent' }}
+                    >
+                      {done && <CheckCircle className="w-4 h-4" style={{ color: 'var(--text-on-light)' }} />}
+                    </div>
+                    <span style={{ color: 'var(--text-1)' }}>{action}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Progress */}
-          <div className="bg-gray-800 rounded-xl p-4">
-            <div className="flex justify-between text-sm mb-2">
+          <div className="cs-card p-4">
+            <div className="flex justify-between text-sm mb-2" style={{ color: 'var(--text-2)' }}>
               <span>Progress</span>
-              <span>{checkedActions.length} / {selectedScenario.key_actions.length}</span>
+              <span className="cs-numeric">{checkedActions.length} / {selectedScenario.key_actions.length}</span>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full">
-              <div 
-                className="h-full bg-green-500 rounded-full transition-all"
-                style={{ width: `${(checkedActions.length / selectedScenario.key_actions.length) * 100}%` }}
+            <div className="h-2 rounded-full" style={{ background: 'var(--surface-3)' }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${(checkedActions.length / selectedScenario.key_actions.length) * 100}%`, background: 'var(--green)' }}
               />
             </div>
           </div>
         </main>
 
-        <footer className="bg-gray-800 p-4">
+        <footer className="p-4 safe-area-bottom">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={handleRunProtocol}
-              className="bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold flex items-center justify-center gap-2"
+              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
             >
               <Play className="w-5 h-5" />
               Run Protocol
             </button>
             <button
               onClick={handleEndDrill}
-              className="bg-green-600 hover:bg-green-700 p-3 rounded-xl font-bold"
+              className="p-3 rounded-xl font-bold active:opacity-90 transition-opacity"
+              style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
             >
               End Drill
             </button>
           </div>
           <button
             onClick={handleBackToList}
-            className="w-full bg-gray-700 hover:bg-gray-600 p-2 rounded-xl text-sm"
+            className="w-full p-2 rounded-xl text-sm active:opacity-80 transition-opacity"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
           >
             Cancel Drill
           </button>
@@ -320,17 +318,19 @@ export function TrainingMode() {
 
   // Drill Selection Screen
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <header className="bg-gray-800 p-4 flex items-center gap-3">
+    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
         <button
           onClick={() => setScreen('home')}
-          className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"
+          aria-label="Back"
+          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Training Drills</h1>
-          <p className="text-sm text-gray-400">Practice emergency scenarios</p>
+          <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Mode</p>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>Training Drills</h1>
         </div>
       </header>
 
@@ -338,7 +338,8 @@ export function TrainingMode() {
         {/* Random Drill Button */}
         <button
           onClick={handleRandomScenario}
-          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 p-4 rounded-xl mb-4 flex items-center justify-center gap-3"
+          className="w-full p-4 rounded-xl mb-4 flex items-center justify-center gap-3 active:opacity-90 transition-opacity"
+          style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-comfort)' }}
         >
           <Shuffle className="w-6 h-6" />
           <span className="font-bold text-lg">Random Scenario</span>
@@ -347,24 +348,21 @@ export function TrainingMode() {
         {/* Scenario List */}
         <div className="space-y-3">
           {trainingScenarios.map((scenario) => {
+            const diff = scenario.difficulty === 'beginner' ? 'var(--green)' : scenario.difficulty === 'intermediate' ? 'var(--decision)' : 'var(--red)';
             return (
               <button
                 key={scenario.id}
                 onClick={() => handleStartDrill(scenario)}
-                className="w-full bg-gray-800 hover:bg-gray-750 rounded-xl p-4 text-left transition-colors"
+                className="w-full cs-card p-4 text-left active:opacity-90 transition-opacity"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold">{scenario.title}</h3>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    scenario.difficulty === 'beginner' ? 'bg-green-900 text-green-400' :
-                    scenario.difficulty === 'intermediate' ? 'bg-amber-900 text-amber-400' :
-                    'bg-red-900 text-red-400'
-                  }`}>
+                <div className="flex justify-between items-start mb-2 gap-2">
+                  <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>{scenario.title}</h3>
+                  <span className="text-xs px-2 py-1 rounded flex-shrink-0" style={{ background: `color-mix(in srgb, ${diff} 15%, transparent)`, color: diff }}>
                     {scenario.difficulty}
                   </span>
                 </div>
-                <p className="text-sm text-gray-400 mb-3">{scenario.description}</p>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <p className="text-sm mb-3" style={{ color: 'var(--text-3)' }}>{scenario.description}</p>
+                <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
                   <span className="flex items-center gap-1">
                     <Target className="w-4 h-4" />
                     {scenario.key_actions.length} key actions
@@ -381,7 +379,7 @@ export function TrainingMode() {
       </main>
 
       {/* Training info */}
-      <div className="bg-gray-800 p-4 text-center text-sm text-gray-400">
+      <div className="p-4 text-center text-sm safe-area-bottom" style={{ color: 'var(--text-3)' }}>
         <p>Training drills help maintain emergency readiness.</p>
         <p>GDC expects ongoing capability maintenance.</p>
       </div>
