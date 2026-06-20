@@ -73,14 +73,11 @@ export function EmergencyDashboard() {
       {/* Status Bar / Header */}
       <header className="px-5 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-strong))', boxShadow: 'var(--glow-brand)' }}
-          >
-            <HeartPulse className="w-5 h-5" style={{ color: 'var(--text-on-color)' }} />
-          </div>
+          <img src="/logo-mark.svg" alt="ResusIQ" className="w-9 h-9 rounded-xl" />
           <div>
-            <h1 className="text-lg font-bold tracking-tight">ResusIQ</h1>
+            <h1 className="text-lg font-bold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              <span style={{ color: 'var(--text-1)' }}>Resus</span><span style={{ color: 'var(--brand)' }}>IQ</span>
+            </h1>
             <p className="cs-eyebrow mt-0.5">
               {isTrainingMode ? 'Training Mode' : 'Emergency Protocols'}
             </p>
