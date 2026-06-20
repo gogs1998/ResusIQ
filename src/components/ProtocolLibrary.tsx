@@ -20,10 +20,11 @@ import { useAppStore } from '../store/appStore';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import type { Protocol, Drug } from '../types';
+import type { CSSProperties } from 'react';
 import { ChildDoseBands } from './ChildDoseBands';
 import { Callout } from './Callout';
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string; style?: CSSProperties }>> = {
   Heart,
   AlertTriangle,
   Wind,
