@@ -1,6 +1,8 @@
-import { X, ExternalLink, AlertTriangle } from 'lucide-react';
+import { ExternalLink, Pill } from 'lucide-react';
 import type { Drug } from '../types';
 import { ChildDoseBands } from './ChildDoseBands';
+import { Sheet } from './Sheet';
+import { Callout } from './Callout';
 
 interface DrugCardProps {
   drug: Drug;
@@ -9,127 +11,96 @@ interface DrugCardProps {
 
 export function DrugCard({ drug, onClose }: DrugCardProps) {
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto sm:mx-4 safe-area-bottom">
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-br from-purple-600 to-purple-800 p-4 rounded-t-3xl flex items-center justify-between shadow-lg shadow-purple-600/20">
-          <h2 className="text-lg font-bold tracking-tight">{drug.name}</h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center active:bg-white/25"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <Sheet
+      open
+      onClose={onClose}
+      title={drug.name}
+      accent="var(--drug)"
+      icon={<Pill className="w-6 h-6" />}
+      footer={
+        <button
+          onClick={onClose}
+          className="w-full py-3.5 rounded-2xl font-bold text-sm active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+        >
+          Close
+        </button>
+      }
+    >
+      <div className="space-y-3">
+        {/* Indication */}
+        <p className="text-[15px]">
+          <span className="font-bold" style={{ color: 'var(--text-1)' }}>Indication: </span>
+          <span style={{ color: 'var(--text-2)' }}>{drug.indication}</span>
+        </p>
+
+        {/* Adult Dose — doses in mono so 1:1000 / micrograms stay unambiguous */}
+        <div className="rounded-2xl p-4" style={{ background: 'var(--green-tint)', border: '1px solid color-mix(in srgb, var(--green) 40%, transparent)' }}>
+          <p className="cs-eyebrow mb-1" style={{ color: 'var(--green)' }}>Adult Dose</p>
+          <p className="cs-numeric text-[22px] font-bold" style={{ color: 'var(--green)' }}>{drug.adult_dose}</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{drug.adult_dose_text}</p>
         </div>
 
-        <div className="p-4 space-y-3">
-          {/* Indication */}
-          <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Indication</p>
-            <p className="font-medium text-sm text-zinc-200">{drug.indication}</p>
+        {/* Child Dose — structured bands when available, else free text (blue) */}
+        {drug.child_dose_bands && drug.child_dose_bands.length > 0 ? (
+          <ChildDoseBands drug={drug} />
+        ) : drug.child_dose ? (
+          <div className="rounded-2xl p-4" style={{ background: 'var(--roles-tint)', border: '1px solid color-mix(in srgb, var(--roles) 40%, transparent)' }}>
+            <p className="cs-eyebrow mb-1" style={{ color: 'var(--roles)' }}>Child Dose</p>
+            <p className="cs-numeric text-[17px] font-bold" style={{ color: 'var(--roles)' }}>{drug.child_dose}</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{drug.child_dose_text}</p>
           </div>
+        ) : null}
 
-          {/* Adult Dose */}
-          <div className="bg-green-500/8 border border-green-500/20 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-green-400/70 mb-1">Adult Dose</p>
-            <p className="text-2xl font-bold text-green-300">{drug.adult_dose}</p>
-            <p className="text-sm mt-1 text-zinc-400">{drug.adult_dose_text}</p>
-          </div>
-
-          {/* Child Dose — structured bands when available, else free text */}
-          {drug.child_dose_bands && drug.child_dose_bands.length > 0 ? (
-            <ChildDoseBands drug={drug} />
-          ) : drug.child_dose ? (
-            <div className="bg-blue-500/8 border border-blue-500/20 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400/70 mb-1">Child Dose</p>
-              <p className="text-lg font-bold text-blue-300">{drug.child_dose}</p>
-              <p className="text-sm mt-1 text-zinc-400">{drug.child_dose_text}</p>
-            </div>
-          ) : null}
-
-          {/* Route */}
-          <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Route</p>
-            <p className="font-bold text-base text-zinc-200">{drug.route}</p>
-            {drug.site && <p className="text-sm text-zinc-500 mt-0.5">Site: {drug.site}</p>}
-          </div>
-
-          {/* How to Give */}
-          <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">How to Give</p>
-            <p className="whitespace-pre-line text-sm text-zinc-300 leading-relaxed">{drug.how_to_give}</p>
-          </div>
-
-          {/* Repeat Interval */}
-          {drug.repeat_interval_min && (
-            <div className="bg-amber-500/8 border border-amber-500/20 rounded-2xl p-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70 mb-1">Repeat Interval</p>
-              <p className="font-bold text-sm text-amber-300">
-                Every {drug.repeat_interval_min} minutes
-                {drug.max_doses && ` · max ${drug.max_doses} doses`}
-              </p>
-            </div>
-          )}
-
-          {/* Warnings */}
-          {drug.warnings.length > 0 && (
-            <div className="bg-red-500/8 border border-red-500/20 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-red-400/70 mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="w-3 h-3" /> Warnings
-              </p>
-              <ul className="space-y-1.5">
-                {drug.warnings.map((warning, idx) => (
-                  <li key={idx} className="text-sm flex items-start gap-2 text-zinc-300">
-                    <span className="text-red-400 mt-1">•</span>
-                    {warning}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Contraindications */}
-          {drug.contraindications && drug.contraindications.length > 0 && (
-            <div className="bg-red-500/12 border border-red-500/30 rounded-2xl p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-2">⛔ Contraindications</p>
-              <ul className="space-y-1.5">
-                {drug.contraindications.map((c, idx) => (
-                  <li key={idx} className="text-sm flex items-start gap-2 text-zinc-300">
-                    <span className="text-red-400 mt-1">•</span>
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* References */}
-          <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">References</p>
-            <div className="flex flex-wrap gap-1.5">
-              {drug.references.map((ref, idx) => (
-                <span
-                  key={idx}
-                  className="bg-zinc-700/80 border border-zinc-600/50 px-2 py-1 rounded-lg text-[11px] flex items-center gap-1 text-zinc-400"
-                >
-                  {ref}
-                  <ExternalLink className="w-2.5 h-2.5" />
-                </span>
-              ))}
-            </div>
-          </div>
+        {/* Route & Site */}
+        <div className="rounded-2xl p-3.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <p className="cs-eyebrow mb-1">Route &amp; Site</p>
+          <p className="font-bold text-base" style={{ color: 'var(--text-1)' }}>{drug.route}</p>
+          {drug.site && <p className="text-sm mt-0.5" style={{ color: 'var(--text-3)' }}>Site: {drug.site}</p>}
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur-sm p-4 border-t border-zinc-800">
-          <button
-            onClick={onClose}
-            className="w-full bg-zinc-800 border border-zinc-700 py-3.5 rounded-2xl font-bold text-sm text-zinc-300 active:bg-zinc-700 transition-colors"
-          >
-            Close
-          </button>
+        {/* How to Give */}
+        <div className="rounded-2xl p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <p className="cs-eyebrow mb-2">How to Give</p>
+          <p className="whitespace-pre-line text-sm" style={{ color: 'var(--text-2)', lineHeight: 'var(--lh-relaxed)' }}>{drug.how_to_give}</p>
+        </div>
+
+        {/* Repeat Interval — render exactly what the data provides (no invented max) */}
+        {drug.repeat_interval_min && (
+          <div className="rounded-2xl p-3.5" style={{ background: 'var(--decision-tint)', border: '1px solid color-mix(in srgb, var(--decision) 40%, transparent)' }}>
+            <p className="cs-eyebrow mb-1" style={{ color: 'var(--decision)' }}>Repeat Interval</p>
+            <p className="font-bold text-sm" style={{ color: 'var(--decision)' }}>
+              Every {drug.repeat_interval_min} minutes
+              {drug.max_doses && ` · max ${drug.max_doses} doses`}
+            </p>
+          </div>
+        )}
+
+        {/* Warnings */}
+        {drug.warnings.length > 0 && <Callout tone="warn" title="Warning" items={drug.warnings} />}
+
+        {/* Contraindications — escalated red, stronger than warnings */}
+        {drug.contraindications && drug.contraindications.length > 0 && (
+          <Callout tone="contra" title="Contraindication" items={drug.contraindications} />
+        )}
+
+        {/* References */}
+        <div className="rounded-2xl p-3.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <p className="cs-eyebrow mb-2">References</p>
+          <div className="flex flex-wrap gap-1.5">
+            {drug.references.map((ref, idx) => (
+              <span
+                key={idx}
+                className="px-2 py-1 rounded-full text-[11px] flex items-center gap-1"
+                style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', color: 'var(--text-3)' }}
+              >
+                {ref}
+                <ExternalLink className="w-2.5 h-2.5" />
+              </span>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </Sheet>
   );
 }

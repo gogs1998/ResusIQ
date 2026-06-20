@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
-import { 
-  Phone, 
-  X, 
-  Zap, 
-  Heart,
+import {
+  Phone,
+  X,
+  Zap,
   Volume2,
   VolumeX,
-  Activity
+  Wind,
+  Play,
+  Pause,
+  HeartPulse
 } from 'lucide-react';
 import type { ProtocolStep } from '../types';
+import { Sheet } from './Sheet';
+import { Callout } from './Callout';
 import { useMetronome, useStopwatch } from '../hooks/useTimer';
 import { useSpeech } from '../hooks/useSpeech';
 import { useAppStore } from '../store/appStore';
@@ -84,28 +88,37 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
   const pulseActive = isPlaying;
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col safe-area-top">
+    <div
+      className="min-h-screen flex flex-col safe-area-top"
+      style={{ background: 'radial-gradient(120% 60% at 50% 30%, #160a0c, var(--bg))', color: 'var(--text-1)' }}
+    >
       {/* Header */}
       <header className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <button
             onClick={onEnd}
-            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center active:bg-zinc-800"
+            aria-label="End emergency"
+            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+            style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 40%, transparent)' }}
           >
-            <X className="w-4 h-4 text-zinc-400" />
+            <X className="w-4 h-4" style={{ color: 'var(--red)' }} />
           </button>
           <div>
-            <h1 className="font-bold text-sm text-red-400 tracking-tight">CPR IN PROGRESS</h1>
-            <p className="text-[10px] text-zinc-500 font-medium">{formattedTime} elapsed</p>
+            <h1 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--red)', fontFamily: 'var(--font-mono)', letterSpacing: '0.16em' }}>
+              <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--red)' }} aria-hidden />
+              CPR IN PROGRESS
+            </h1>
+            <p className="cs-numeric text-[11px] mt-0.5" style={{ color: 'var(--text-2)' }}>{formattedTime} elapsed</p>
           </div>
         </div>
         <button
           onClick={toggleMute}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-            isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-zinc-900 border border-zinc-800'
-          }`}
+          aria-label={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+          aria-pressed={isMuted}
+          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+          style={isMuted ? { background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)' } : { background: 'var(--surface-2)', border: '1px solid var(--border)' }}
         >
-          {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-zinc-400" />}
+          {isMuted ? <VolumeX className="w-4 h-4" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-4 h-4" style={{ color: 'var(--text-2)' }} />}
         </button>
       </header>
 
@@ -114,12 +127,13 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
         <a
           href="tel:999"
           onClick={() => { addEventLog('999_called', '999 called'); }}
-          className="flex items-center justify-center gap-2 bg-red-600/15 border border-red-500/25 rounded-xl py-2.5 px-4 active:bg-red-600/25 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 active:opacity-80 transition-opacity"
+          style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 40%, transparent)' }}
         >
-          <Phone className="w-4 h-4 text-red-400" />
-          <span className="text-sm font-bold text-red-400">CALL 999</span>
+          <Phone className="w-4 h-4" style={{ color: 'var(--red)' }} />
+          <span className="text-sm font-bold" style={{ color: 'var(--red)' }}>CALL 999</span>
           {practiceSetup?.postcode && (
-            <span className="text-xs text-red-400/60 ml-1">· {practiceSetup.postcode}</span>
+            <span className="text-xs ml-1" style={{ color: 'color-mix(in srgb, var(--red) 60%, transparent)' }}>· {practiceSetup.postcode}</span>
           )}
         </a>
       </div>
@@ -128,125 +142,112 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
       <main className="flex-1 px-4 flex flex-col">
         {/* Compression Counter — centrepiece */}
         <div className="flex-1 flex flex-col items-center justify-center -mt-4">
-          {/* Pulsing rings */}
-          <div className="relative w-52 h-52 flex items-center justify-center">
-            {pulseActive && (
-              <>
-                <div className="absolute inset-0 rounded-full bg-red-500/10 animate-ping" style={{ animationDuration: `${60 / (step.metronome_bpm || 110)}s` }} />
-                <div className="absolute inset-3 rounded-full bg-red-500/15" />
-              </>
-            )}
+          {/* Pulsing ring — DS resus-pulse-cpr (0.545s / 110 BPM) */}
+          <div className="relative w-56 h-56 flex items-center justify-center">
             <div
-              className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all ${
-                pulseActive
-                  ? 'bg-gradient-to-br from-red-600 to-red-800 shadow-[0_0_40px_rgba(239,68,68,0.3)]'
-                  : 'bg-zinc-900 border border-zinc-800'
-              }`}
+              className={`relative w-[220px] h-[220px] rounded-full flex items-center justify-center ${pulseActive ? 'animate-pulse-cpr' : ''}`}
+              style={{ border: '3px solid color-mix(in srgb, var(--red) 50%, transparent)', boxShadow: 'inset 0 0 0 10px var(--red-tint)' }}
             >
               <div className="text-center">
-                <Heart className={`w-8 h-8 mx-auto mb-1 ${pulseActive ? 'text-white/80' : 'text-zinc-600'}`} />
-                <p className="text-5xl font-bold tabular-nums">{compressionNumber}</p>
-                <p className="text-[11px] text-white/50 font-medium">of 30</p>
+                <p className="cs-numeric font-bold leading-none" style={{ fontSize: 'var(--fs-numeric-xl)', color: 'var(--red)' }}>{compressionNumber}</p>
+                <p className="cs-eyebrow mt-1">of 30</p>
               </div>
             </div>
           </div>
 
-          {/* Cycle counter */}
-          <p className="mt-3 text-sm text-zinc-500 font-medium">Cycle <span className="text-zinc-300 font-bold">{cycleNumber}</span></p>
+          {/* Cycle + shock counter */}
+          <p className="mt-3 text-sm font-semibold" style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+            CYCLE {cycleNumber}{shockCount > 0 && ` · ${shockCount} SHOCK${shockCount > 1 ? 'S' : ''}`}
+          </p>
 
-          {/* Breath Warning */}
+          {/* Breath Warning — amber safety shout */}
           {breathWarning && (
-            <div className="mt-3 bg-blue-500/15 border border-blue-500/30 rounded-xl px-5 py-2.5 animate-pulse">
-              <p className="font-bold text-blue-300 text-sm tracking-wide">2 RESCUE BREATHS</p>
+            <div className="mt-3 rounded-xl px-5 py-2.5 flex items-center gap-2 animate-pulse" style={{ background: 'var(--decision-tint)', border: '1px solid color-mix(in srgb, var(--decision) 40%, transparent)' }}>
+              <Wind className="w-4 h-4" style={{ color: 'var(--decision)' }} />
+              <p className="font-bold text-sm tracking-wide" style={{ color: 'var(--decision)' }}>2 RESCUE BREATHS</p>
             </div>
           )}
         </div>
 
         {/* Stats bar */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-3.5 mb-3">
+        <div className="cs-card p-3.5 mb-3">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-xl font-bold text-white tabular-nums">30:2</p>
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">Ratio</p>
+              <p className="cs-numeric text-xl font-bold" style={{ color: 'var(--text-1)' }}>30:2</p>
+              <p className="cs-eyebrow mt-0.5">Ratio</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-white tabular-nums">100–120</p>
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">Rate /min</p>
+              <p className="cs-numeric text-xl font-bold" style={{ color: 'var(--text-1)' }}>100–120</p>
+              <p className="cs-eyebrow mt-0.5">Rate /min</p>
             </div>
             <div>
-              <p className="text-xl font-bold text-white tabular-nums">5–6cm</p>
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">Depth</p>
+              <p className="cs-numeric text-xl font-bold" style={{ color: 'var(--text-1)' }}>5–6cm</p>
+              <p className="cs-eyebrow mt-0.5">Depth</p>
             </div>
           </div>
         </div>
 
-        {/* Metronome toggle */}
+        {/* Metronome toggle — neutral secondary */}
         <button
           onClick={toggleMetronome}
-          className={`w-full py-3.5 rounded-2xl font-bold text-sm mb-3 flex items-center justify-center gap-2 transition-colors ${
-            isPlaying
-              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 active:bg-amber-500/25'
-              : 'bg-green-500/15 border border-green-500/30 text-green-400 active:bg-green-500/25'
-          }`}
+          className="w-full py-3.5 rounded-2xl font-bold text-sm mb-3 flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-1)', minHeight: 'var(--touch-comfort)' }}
         >
-          <Activity className="w-4 h-4" />
-          {isPlaying ? 'Pause Metronome' : 'Start Metronome'}
+          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          {isPlaying ? 'Pause metronome' : 'Resume metronome'}
         </button>
       </main>
 
       {/* AED + ROSC Footer */}
-      <div className="px-4 pb-3 safe-area-bottom space-y-2">
+      <div className="px-4 pb-3 safe-area-bottom">
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setShowAEDPrompt(true)}
-            className="relative overflow-hidden bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 active:scale-[0.97] transition-transform"
+            className="rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+            style={{ background: 'var(--red-strong)', color: 'var(--text-on-color)', minHeight: 'var(--touch-comfort)', boxShadow: 'var(--glow-red)' }}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.15),transparent_60%)]" />
             <Zap className="w-5 h-5" />
             AED Ready
           </button>
           <button
             onClick={handleROSC}
-            className="relative overflow-hidden bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 active:scale-[0.97] transition-transform"
+            className="rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+            style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-comfort)', boxShadow: 'var(--glow-green)' }}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.15),transparent_60%)]" />
+            <HeartPulse className="w-5 h-5" />
             Signs of Life?
           </button>
         </div>
-
-        {shockCount > 0 && (
-          <p className="text-center text-xs text-zinc-500">
-            Shocks delivered: <span className="text-amber-400 font-bold">{shockCount}</span>
-          </p>
-        )}
       </div>
 
-      {/* AED Shock Modal */}
-      {showAEDPrompt && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-zinc-900 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/15 flex items-center justify-center">
-              <Zap className="w-10 h-10 text-amber-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-1">AED READY</h2>
-            <p className="text-zinc-400 text-sm mb-6">Stand clear before delivering shock</p>
-            
-            <button
-              onClick={handleShockDelivered}
-              className="w-full bg-gradient-to-br from-red-500 to-red-700 py-4 rounded-2xl font-bold text-lg mb-3 shadow-lg shadow-red-600/20 active:scale-[0.97] transition-transform"
-            >
-              ⚡ SHOCK DELIVERED
-            </button>
-            
+      {/* AED Shock dialog */}
+      <Sheet
+        open={showAEDPrompt}
+        onClose={() => setShowAEDPrompt(false)}
+        title="AED Ready"
+        accent="var(--red)"
+        icon={<Zap className="w-6 h-6" />}
+        footer={
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setShowAEDPrompt(false)}
-              className="w-full bg-zinc-800 border border-zinc-700 py-3 rounded-2xl text-sm font-medium text-zinc-400 active:bg-zinc-700"
+              className="py-3 rounded-xl text-sm font-medium active:opacity-80 transition-opacity"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
             >
               No Shock Advised
             </button>
+            <button
+              onClick={handleShockDelivered}
+              className="py-3 rounded-xl font-bold active:opacity-90 transition-opacity"
+              style={{ background: 'var(--red-strong)', color: 'var(--text-on-color)', minHeight: 'var(--touch-min)', boxShadow: 'var(--glow-red)' }}
+            >
+              SHOCK DELIVERED
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <Callout tone="contra" title="Stand clear" items={['Stand clear before delivering shock']} />
+      </Sheet>
     </div>
   );
 }
