@@ -161,6 +161,15 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
 
+  // Always invoke the latest command handler without rebuilding the
+  // recognition instance. The handler closes over step/answer state that
+  // changes often; rebinding via a ref avoids tearing down (and aborting)
+  // active recognition every render, while never calling a stale closure.
+  const onCommandRef = useRef(onCommand);
+  useEffect(() => {
+    onCommandRef.current = onCommand;
+  }, [onCommand]);
+
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       setError('Speech recognition not supported in this browser');
@@ -169,7 +178,7 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    
+
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = 'en-GB';
@@ -183,7 +192,7 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript.toLowerCase().trim();
-      onCommand(transcript);
+      onCommandRef.current(transcript);
     };
 
     recognitionRef.current = recognition;
@@ -191,7 +200,7 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
     return () => {
       recognition.abort();
     };
-  }, [onCommand]);
+  }, []);
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {

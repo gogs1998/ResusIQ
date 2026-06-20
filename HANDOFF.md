@@ -14,7 +14,7 @@ It provides:
 - Gemini-backed TTS for existing protocol narration (with browser TTS fallback)
 
 ## Current Runtime Status
-- Type check: passing (`npx tsc --noEmit`)
+- Type check: passing (`npx tsc -b` — the real gate; `tsc --noEmit` checks zero files here)
 - Production build: passing (`npx vite build`)
 - Dev server command: `npx vite --host`
 - Latest LAN URL seen: `http://192.168.50.85:5173/` (varies by machine/network)
@@ -127,7 +127,7 @@ npm run dev
 
 ### Type-check and build
 ```bash
-npx tsc --noEmit
+npx tsc -b   # NOT `tsc --noEmit` — root tsconfig is files:[]+references, so --noEmit checks zero files
 npm run build
 ```
 

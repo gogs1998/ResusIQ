@@ -9,10 +9,7 @@ import type {
   EventType
 } from '../types';
 import { protocols } from '../data/protocols';
-import { requestWakeLock } from '../main';
-
-// Wake lock handle (keep screen on during emergencies)
-let wakeLockHandle: any = null;
+import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
 
 interface AppState {
   // Navigation
@@ -39,7 +36,7 @@ interface AppState {
   activeEvent: EmergencyEvent | null;
   eventHistory: EmergencyEvent[];
   createEvent: (protocolId: string) => void;
-  addEventLog: (type: EventType, label: string, details?: string) => void;
+  addEventLog: (type: EventType, label: string, details?: string, drugId?: string) => void;
   endEvent: (outcome?: string, notes?: string) => void;
   
   // Voice
@@ -93,8 +90,8 @@ export const useAppStore = create<AppState>()(
             currentScreen: 'protocol',
             activeEvent: event
           });
-          // Keep screen awake during emergency
-          requestWakeLock().then(lock => { wakeLockHandle = lock; });
+          // Keep screen awake during emergency (re-acquires on foreground)
+          enableWakeLock();
         }
       },
       
@@ -120,11 +117,8 @@ export const useAppStore = create<AppState>()(
       
       endEmergency: () => {
         const { activeEvent, eventHistory } = get();
-        // Release wake lock
-        if (wakeLockHandle) {
-          try { wakeLockHandle.release(); } catch { /* ignore */ }
-          wakeLockHandle = null;
-        }
+        // Release wake lock (also stops the foreground re-acquire)
+        disableWakeLock();
         if (activeEvent) {
           const completedEvent = { ...activeEvent, completed: true };
           set({ 
@@ -169,7 +163,7 @@ export const useAppStore = create<AppState>()(
         set({ activeEvent: event });
       },
       
-      addEventLog: (type, label, details) => {
+      addEventLog: (type, label, details, drugId) => {
         const { activeEvent } = get();
         if (activeEvent) {
           const entry: EventLogEntry = {
@@ -177,7 +171,8 @@ export const useAppStore = create<AppState>()(
             timestamp: new Date().toISOString(),
             type,
             label,
-            details
+            details,
+            drug_id: drugId
           };
           set({
             activeEvent: {
@@ -220,11 +215,28 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'resusiq-storage',
+      // Bump `version` whenever the persisted shape below changes, and handle
+      // the upgrade in `migrate`. Without this, a schema change silently
+      // corrupts rehydrated eventHistory / practiceSetup from older installs.
+      version: 1,
       partialize: (state) => ({
         practiceSetup: state.practiceSetup,
         eventHistory: state.eventHistory,
         isVoiceEnabled: state.isVoiceEnabled
-      })
+      }),
+      migrate: (persistedState) => {
+        // v0 (unversioned) -> v1: shapes are compatible; guard against a
+        // partially-written or corrupt blob so the app still boots cleanly.
+        const state = (persistedState ?? {}) as Partial<{
+          practiceSetup: PracticeSetup | null;
+          eventHistory: EmergencyEvent[];
+          isVoiceEnabled: boolean;
+        }>;
+        if (!Array.isArray(state.eventHistory)) {
+          state.eventHistory = [];
+        }
+        return state;
+      }
     }
   )
 );

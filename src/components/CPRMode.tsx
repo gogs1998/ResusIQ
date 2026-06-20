@@ -70,11 +70,6 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
     onNext();
   };
 
-  const handleCall999 = () => {
-    addEventLog('999_called', '999 called');
-    window.location.href = 'tel:999';
-  };
-
   const toggleMetronome = () => {
     if (isPlaying) {
       stopMetronome();

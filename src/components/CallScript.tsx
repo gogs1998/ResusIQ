@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import { useState, useEffect } from 'react';
 
 export function CallScript() {
-  const { practiceSetup, setScreen, activeProtocol } = useAppStore();
+  const { practiceSetup, setScreen, activeProtocol, activeEvent } = useAppStore();
   const [copied, setCopied] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -36,15 +36,31 @@ export function CallScript() {
     { label: 'State', text: getPatientState() },
   ];
 
+  // Only assert a drug was administered when it was actually confirmed in-flow.
+  // Reading from the event log (as SBARHandover does) prevents the 999 script
+  // from telling a dispatcher a drug was given when the step was skipped.
+  function drugGiven(match: string): boolean {
+    return (activeEvent?.events ?? []).some(
+      (e) =>
+        e.type === 'drug_given' &&
+        (e.drug_id?.toLowerCase().includes(match) ||
+          e.label.toLowerCase().includes(match))
+    );
+  }
+
   function getPatientState(): string {
     if (!activeProtocol) return 'Unwell — requires emergency assessment';
     switch (activeProtocol.id) {
       case 'cardiac_arrest':
         return 'Unconscious and not breathing. CPR in progress.';
       case 'anaphylaxis':
-        return 'Suspected anaphylaxis. Adrenaline has been given IM.';
+        return drugGiven('adrenaline')
+          ? 'Suspected anaphylaxis. Adrenaline given IM.'
+          : 'Suspected anaphylaxis — adrenaline not yet given.';
       case 'asthma':
-        return 'Severe asthma attack. Salbutamol given via spacer.';
+        return drugGiven('salbutamol')
+          ? 'Severe asthma. Salbutamol given.'
+          : 'Severe asthma — salbutamol not yet given.';
       case 'hypoglycaemia':
         return 'Hypoglycaemia. Known diabetic.';
       case 'syncope':
@@ -52,7 +68,9 @@ export function CallScript() {
       case 'seizure':
         return 'Having a seizure / post-seizure.';
       case 'chest_pain':
-        return 'Chest pain. Suspected heart attack. Aspirin given.';
+        return drugGiven('aspirin')
+          ? 'Chest pain, suspected heart attack. Aspirin given.'
+          : 'Chest pain, suspected heart attack — aspirin not yet given.';
       case 'choking':
         return 'Choking. Back blows and abdominal thrusts being given.';
       case 'stroke':

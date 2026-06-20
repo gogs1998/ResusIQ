@@ -1,5 +1,6 @@
 import { X, ExternalLink, AlertTriangle } from 'lucide-react';
 import type { Drug } from '../types';
+import { ChildDoseBands } from './ChildDoseBands';
 
 interface DrugCardProps {
   drug: Drug;
@@ -35,14 +36,16 @@ export function DrugCard({ drug, onClose }: DrugCardProps) {
             <p className="text-sm mt-1 text-zinc-400">{drug.adult_dose_text}</p>
           </div>
 
-          {/* Child Dose */}
-          {drug.child_dose && (
+          {/* Child Dose — structured bands when available, else free text */}
+          {drug.child_dose_bands && drug.child_dose_bands.length > 0 ? (
+            <ChildDoseBands drug={drug} />
+          ) : drug.child_dose ? (
             <div className="bg-blue-500/8 border border-blue-500/20 rounded-2xl p-4">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400/70 mb-1">Child Dose</p>
               <p className="text-lg font-bold text-blue-300">{drug.child_dose}</p>
               <p className="text-sm mt-1 text-zinc-400">{drug.child_dose_text}</p>
             </div>
-          )}
+          ) : null}
 
           {/* Route */}
           <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl p-3.5">

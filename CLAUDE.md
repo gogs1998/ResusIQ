@@ -37,7 +37,7 @@ Drop messages in `.claude/comms/inbox/<name>.md` and `.claude/comms/outbox/<name
 ## Commands
 - `npm run dev` — local dev (`npx vite --host` for LAN/phone testing).
 - `npm run build` — production build (also runs `tsc -b`).
-- `npx tsc --noEmit` — type-check only.
+- `npx tsc -b` — type-check only. (Do NOT use `tsc --noEmit`: the root `tsconfig.json` is `files: []` + references, so `--noEmit` checks zero files and always reports clean. `tsc -b` is the real gate, same as `npm run build`.)
 - `node scripts/generate-icons.mjs` — regenerate iOS/PWA PNG icons.
 
 ## Out of scope here

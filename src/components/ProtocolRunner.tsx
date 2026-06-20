@@ -16,10 +16,12 @@ import {
   CircleDot
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { voiceCommandsSupported } from '../lib/platform';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
 import { DrugCard } from './DrugCard';
+import { ChildDoseBands } from './ChildDoseBands';
 import { CPRMode } from './CPRMode';
 
 export function ProtocolRunner() {
@@ -50,40 +52,17 @@ export function ProtocolRunner() {
     }
   }, [currentStep, isMuted, speak]);
 
-  // Voice command handler
-  const handleVoiceCommand = useCallback((command: string) => {
-    const lowerCommand = command.toLowerCase();
-    
-    if (lowerCommand.includes('next') || lowerCommand.includes('continue')) {
-      if (!confirmationRequired) {
-        handleNext();
-      }
-    } else if (lowerCommand.includes('back') || lowerCommand.includes('previous')) {
-      prevStep();
-    } else if (lowerCommand.includes('repeat')) {
-      if (currentStep) {
-        speak(currentStep.say);
-      }
-    } else if (lowerCommand.includes('confirm') || lowerCommand.includes('yes') || lowerCommand.includes('given')) {
-      if (confirmationRequired) {
-        handleConfirm();
-      }
-    } else if (lowerCommand.includes('mute') || lowerCommand.includes('quiet')) {
-      toggleMute();
-    } else if (lowerCommand.includes('999') || lowerCommand.includes('emergency')) {
-      window.location.href = 'tel:999';
-    }
-  }, [confirmationRequired, currentStep, prevStep, speak, toggleMute]);
-
-  const { isListening, startListening, stopListening } = useVoiceCommands(handleVoiceCommand);
-
-  const handleNext = () => {
+  // NOTE: handleNext/handleConfirm are memoized and declared BEFORE
+  // handleVoiceCommand so the voice handler can list them as deps. Without
+  // this, the recognition instance binds once to a stale closure and spoken
+  // "next"/"confirm"/"given" act on an outdated step/answer mid-emergency.
+  const handleNext = useCallback(() => {
     if (currentStep?.require_confirm && !confirmationRequired) {
       setConfirmationRequired(true);
       speak('Confirm when done. Say confirm or press the confirm button.');
       return;
     }
-    
+
     if (currentStep?.type === 'decision' && !selectedAnswer) {
       speak('Please select an answer.');
       return;
@@ -116,22 +95,45 @@ export function ProtocolRunner() {
     } else {
       nextStep();
     }
-    
-    setConfirmationRequired(false);
-  };
 
-  const handleConfirm = () => {
+    setConfirmationRequired(false);
+  }, [currentStep, confirmationRequired, selectedAnswer, addEventLog, activeProtocol, goToStep, nextStep, speak]);
+
+  const handleConfirm = useCallback(() => {
     if (currentStep?.type === 'drug' && currentStep.drug_id) {
-      addEventLog('drug_given', `Drug: ${currentStep.drug_id}`);
+      addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
     }
     setConfirmationRequired(false);
     handleNext();
-  };
+  }, [currentStep, addEventLog, handleNext]);
 
-  const handleCall999 = () => {
-    addEventLog('999_called', '999 called');
-    window.location.href = 'tel:999';
-  };
+  // Voice command handler — depends on the memoized handlers above so it is
+  // recreated whenever step/answer/confirmation state changes.
+  const handleVoiceCommand = useCallback((command: string) => {
+    const lowerCommand = command.toLowerCase();
+
+    if (lowerCommand.includes('next') || lowerCommand.includes('continue')) {
+      if (!confirmationRequired) {
+        handleNext();
+      }
+    } else if (lowerCommand.includes('back') || lowerCommand.includes('previous')) {
+      prevStep();
+    } else if (lowerCommand.includes('repeat')) {
+      if (currentStep) {
+        speak(currentStep.say);
+      }
+    } else if (lowerCommand.includes('confirm') || lowerCommand.includes('yes') || lowerCommand.includes('given')) {
+      if (confirmationRequired) {
+        handleConfirm();
+      }
+    } else if (lowerCommand.includes('mute') || lowerCommand.includes('quiet')) {
+      toggleMute();
+    } else if (lowerCommand.includes('999') || lowerCommand.includes('emergency')) {
+      window.location.href = 'tel:999';
+    }
+  }, [confirmationRequired, currentStep, prevStep, speak, toggleMute, handleNext, handleConfirm]);
+
+  const { isListening, startListening, stopListening } = useVoiceCommands(handleVoiceCommand);
 
   const handleRepeat = () => {
     if (currentStep) {
@@ -159,7 +161,6 @@ export function ProtocolRunner() {
   }
 
   const drug = currentStep.drug_id ? getDrugById(currentStep.drug_id) : null;
-  const progress = ((currentStepIndex + 1) / activeProtocol.steps.length) * 100;
   const totalSteps = activeProtocol.steps.length;
 
   // Step type styling
@@ -178,6 +179,7 @@ export function ProtocolRunner() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={endEmergency}
+            aria-label="End emergency"
             className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center active:bg-zinc-800"
           >
             <X className="w-4 h-4 text-zinc-400" />
@@ -192,20 +194,29 @@ export function ProtocolRunner() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+            aria-pressed={isMuted}
             className={`w-9 h-9 rounded-xl flex items-center justify-center ${
               isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-zinc-900 border border-zinc-800'
             } active:opacity-80`}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-zinc-400" />}
           </button>
-          <button
-            onClick={isListening ? stopListening : startListening}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-              isListening ? 'bg-green-500/20 border border-green-500/40 animate-pulse' : 'bg-zinc-900 border border-zinc-800'
-            } active:opacity-80`}
-          >
-            <Mic className={`w-4 h-4 ${isListening ? 'text-green-400' : 'text-zinc-400'}`} />
-          </button>
+          {/* Voice commands rely on Web Speech STT, which is silently
+              non-functional in an installed iOS PWA. Only show the mic where
+              it actually works so users never trust a dead button. */}
+          {voiceCommandsSupported && (
+            <button
+              onClick={isListening ? stopListening : startListening}
+              aria-label={isListening ? 'Stop voice commands' : 'Start voice commands'}
+              aria-pressed={isListening}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                isListening ? 'bg-green-500/20 border border-green-500/40 animate-pulse' : 'bg-zinc-900 border border-zinc-800'
+              } active:opacity-80`}
+            >
+              <Mic className={`w-4 h-4 ${isListening ? 'text-green-400' : 'text-zinc-400'}`} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -238,6 +249,11 @@ export function ProtocolRunner() {
 
       {/* Main Content */}
       <main className="flex-1 px-4 overflow-y-auto pb-4">
+        {/* Screen-reader announcement of the current step */}
+        <div aria-live="assertive" role="status" className="sr-only">
+          {`Step ${currentStepIndex + 1} of ${totalSteps}. ${currentStep.show}`}
+        </div>
+
         {/* Step Type Badge */}
         {stepConfig && (
           <div className={`inline-flex items-center gap-1.5 ${stepConfig.bg} border ${stepConfig.border} rounded-lg px-2.5 py-1 mb-3`}>
@@ -272,11 +288,17 @@ export function ProtocolRunner() {
 
         {/* Decision Options */}
         {currentStep.type === 'decision' && currentStep.answers && (
-          <div className="space-y-2 mb-4">
+          <div
+            className="space-y-2 mb-4"
+            role="radiogroup"
+            aria-label={currentStep.question || 'Select an option'}
+          >
             {currentStep.answers.map((answer, idx) => (
               <button
                 key={idx}
                 onClick={() => setSelectedAnswer(answer.label)}
+                role="radio"
+                aria-checked={selectedAnswer === answer.label}
                 className={`w-full p-4 rounded-2xl text-left transition-all border ${
                   selectedAnswer === answer.label
                     ? 'bg-green-500/15 border-green-500/40 ring-1 ring-green-500/20'
@@ -313,6 +335,14 @@ export function ProtocolRunner() {
             </div>
             <p className="text-[11px] mt-2 text-purple-400/60 font-medium">Tap for full drug card →</p>
           </button>
+        )}
+
+        {/* Paediatric dose bands — rendered from the drug object so they
+            stay in sync with the drug card (single source of truth) */}
+        {currentStep.type === 'drug' && drug?.child_dose_bands && (
+          <div className="mb-4">
+            <ChildDoseBands drug={drug} />
+          </div>
         )}
 
         {/* Timer Display for timed steps */}

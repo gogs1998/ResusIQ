@@ -35,6 +35,13 @@ export const drugs: Drug[] = [
     child_dose_text:
       'Child 6–12 years: 300 micrograms (0.3 ml of 1:1000) IM\n' +
       'Child under 6 years: 150 micrograms (0.15 ml of 1:1000) IM',
+    // RCUK 2021 Emergency Treatment of Anaphylaxis — IM adrenaline 1:1000 by age.
+    child_dose_bands: [
+      { label: 'Adult / over 12 years', dose: '500 micrograms', volume_ml: '0.5 ml', min_age_months: 144 },
+      { label: '6–12 years', dose: '300 micrograms', volume_ml: '0.3 ml', min_age_months: 72, max_age_months: 144 },
+      { label: '6 months – 6 years', dose: '150 micrograms', volume_ml: '0.15 ml', min_age_months: 6, max_age_months: 72 },
+      { label: 'Under 6 months', dose: '100–150 micrograms', volume_ml: '0.1–0.15 ml', max_age_months: 6 },
+    ],
     route: 'IM',
     site: 'Anterolateral mid-thigh (outer thigh)',
     how_to_give:

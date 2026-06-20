@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Modality, Type } from '@google/genai';
+// @google/genai is imported dynamically inside startSession() to keep it out
+// of the initial bundle; the type-only import is erased at build time.
 import type { LiveServerMessage } from '@google/genai';
 import { AudioStreamer } from '../lib/audio';
 import { useAppStore } from '../store/appStore';
@@ -66,7 +67,7 @@ If the user asks a non-emergency question about dental emergencies, equipment, o
 }
 
 // ── Map our protocol IDs to the tool's enum values ────────────────────
-const PROTOCOL_MAP: Record<string, string> = {
+export const PROTOCOL_MAP: Record<string, string> = {
   ANAPHYLAXIS: 'anaphylaxis',
   ASTHMA: 'asthma',
   CARDIAC_ARREST: 'cardiac_arrest',
@@ -126,6 +127,41 @@ export function AIAssistant() {
 
   const streamerRef = useRef<AudioStreamer | null>(null);
   const sessionRef = useRef<any>(null);
+  const apiKeyDialogRef = useRef<HTMLDivElement>(null);
+
+  const closeApiKeyInput = useCallback(() => {
+    setShowApiKeyInput(false);
+    setApiKeyInput('');
+  }, []);
+
+  // While the API-key modal is open: close on Escape and trap Tab focus inside
+  // it so keyboard/screen-reader users cannot tab out to the page behind.
+  useEffect(() => {
+    if (!showApiKeyInput) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeApiKeyInput();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const focusables = apiKeyDialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showApiKeyInput, closeApiKeyInput]);
 
   // Load API key from localStorage
   const getApiKey = (): string | null => {
@@ -158,6 +194,7 @@ export function AIAssistant() {
     setStatusText('Connecting...');
 
     try {
+      const { GoogleGenAI, Modality, Type } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey });
       const streamer = new AudioStreamer();
       streamerRef.current = streamer;
@@ -537,11 +574,21 @@ export function AIAssistant() {
 
       {/* API Key Modal */}
       {showApiKeyInput && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700">
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
+          onClick={closeApiKeyInput}
+        >
+          <div
+            ref={apiKeyDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apikey-modal-title"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700"
+          >
             <div className="flex items-center gap-3 mb-4">
               <Key className="w-6 h-6 text-amber-400" />
-              <h3 className="text-lg font-bold">Gemini API Key</h3>
+              <h3 id="apikey-modal-title" className="text-lg font-bold">Gemini API Key</h3>
             </div>
             <p className="text-sm text-zinc-400 mb-4">
               The AI voice assistant requires a Google Gemini API key. Get one free at{' '}
@@ -564,7 +611,7 @@ export function AIAssistant() {
             />
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowApiKeyInput(false); setApiKeyInput(''); }}
+                onClick={closeApiKeyInput}
                 className="flex-1 bg-zinc-700 hover:bg-zinc-600 py-2.5 rounded-lg font-medium text-sm"
               >
                 Cancel

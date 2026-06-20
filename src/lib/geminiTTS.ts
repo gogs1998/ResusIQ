@@ -1,4 +1,6 @@
-import { GoogleGenAI, Modality } from '@google/genai';
+// NOTE: @google/genai (~266 KB) is imported dynamically inside connect() so it
+// stays OUT of the cold-start/emergency bundle. The type-only import below is
+// erased at build time and adds nothing to the bundle.
 import type { LiveServerMessage } from '@google/genai';
 import { AudioStreamer } from './audio';
 
@@ -12,7 +14,6 @@ class GeminiTTSService {
   private streamer: AudioStreamer | null = null;
   private connecting = false;
   private connected = false;
-  private apiKey: string | null = null;
   private speakQueue: string[] = [];
   private isSpeaking = false;
   private onSpeakingChange?: (speaking: boolean) => void;
@@ -43,10 +44,10 @@ class GeminiTTSService {
     if (!apiKey) return false;
     if (this.connected || this.connecting) return this.connected;
 
-    this.apiKey = apiKey;
     this.connecting = true;
 
     try {
+      const { GoogleGenAI, Modality } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey });
       const streamer = new AudioStreamer();
       this.streamer = streamer;

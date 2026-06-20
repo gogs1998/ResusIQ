@@ -53,8 +53,30 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Precache everything EXCEPT the network-only lazy chunks below.
+        // Keeping the emergency shell, protocols, drugs, dashboard and runner
+        // precached preserves full offline use of the emergency path.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // genai (Gemini Live SDK) and AIAssistant both require network to do
+        // anything (Live API), and emergency narration falls back to browser
+        // TTS when offline — so precaching them only bloats the offline cache.
+        // They are cached at runtime instead (NetworkFirst) when first used.
+        globIgnores: ['**/genai-*.js', '**/AIAssistant-*.js'],
         runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(genai|AIAssistant)-[^/]*\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'resusiq-lazy-chunks',
+              expiration: {
+                maxEntries: 12,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
@@ -73,6 +95,16 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Force the Gemini SDK into a stably-named chunk so the service worker
+        // can reliably exclude it from the offline precache (see globIgnores).
+        manualChunks: (id: string) =>
+          id.includes('node_modules/@google/genai') ? 'genai' : undefined
+      }
+    }
+  },
   server: {
     watch: {
       usePolling: true

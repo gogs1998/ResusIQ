@@ -1,25 +1,41 @@
+import { lazy, Suspense } from 'react';
 import { useAppStore } from './store/appStore';
 import { EmergencyDashboard } from './components/EmergencyDashboard';
 import { ProtocolRunner } from './components/ProtocolRunner';
 import { TriageWizard } from './components/TriageWizard';
-import { PracticeSetupWizard } from './components/PracticeSetup';
-import { EventReports } from './components/EventReports';
-import { TrainingMode } from './components/TrainingMode';
-import { ProtocolLibrary } from './components/ProtocolLibrary';
 import { CallScript } from './components/CallScript';
 import { SBARHandover } from './components/SBARHandover';
-import { AIAssistant } from './components/AIAssistant';
 import './index.css';
 
-function App() {
-  const { currentScreen, isEmergencyActive, activeProtocol } = useAppStore();
+// Non-emergency routes are code-split so they (and heavy deps like `motion`)
+// stay out of the initial/emergency bundle. Emergency-path screens — dashboard,
+// runner, triage, 999 call script, SBAR handover — stay EAGER so they never
+// show a loading state mid-emergency.
+const PracticeSetupWizard = lazy(() =>
+  import('./components/PracticeSetup').then((m) => ({ default: m.PracticeSetupWizard }))
+);
+const EventReports = lazy(() =>
+  import('./components/EventReports').then((m) => ({ default: m.EventReports }))
+);
+const TrainingMode = lazy(() =>
+  import('./components/TrainingMode').then((m) => ({ default: m.TrainingMode }))
+);
+const ProtocolLibrary = lazy(() =>
+  import('./components/ProtocolLibrary').then((m) => ({ default: m.ProtocolLibrary }))
+);
+const AIAssistant = lazy(() =>
+  import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant }))
+);
 
-  // If emergency is active and we have a protocol, show the protocol runner
-  if (isEmergencyActive && activeProtocol) {
-    return <ProtocolRunner />;
-  }
+function ScreenLoading() {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <p className="text-zinc-500 text-sm">Loading…</p>
+    </div>
+  );
+}
 
-  // Route based on current screen
+function renderScreen(currentScreen: ReturnType<typeof useAppStore.getState>['currentScreen']) {
   switch (currentScreen) {
     case 'home':
     case 'emergency':
@@ -45,6 +61,17 @@ function App() {
     default:
       return <EmergencyDashboard />;
   }
+}
+
+function App() {
+  const { currentScreen, isEmergencyActive, activeProtocol } = useAppStore();
+
+  // If emergency is active and we have a protocol, show the protocol runner.
+  if (isEmergencyActive && activeProtocol) {
+    return <ProtocolRunner />;
+  }
+
+  return <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>;
 }
 
 export default App

@@ -12,33 +12,40 @@ export function useTimer(options: UseTimerOptions = {}) {
   const [isRunning, setIsRunning] = useState(autoStart);
   const intervalRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onComplete);
+  const secondsRef = useRef(seconds);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
   useEffect(() => {
-    if (isRunning && seconds > 0) {
-      intervalRef.current = window.setInterval(() => {
-        setSeconds((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false);
-            if (onCompleteRef.current) {
-              onCompleteRef.current();
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    secondsRef.current = seconds;
+  }, [seconds]);
+
+  // Only (re)create the interval when the running state flips — NOT every
+  // tick. The functional setSeconds already sees the latest value, so seconds
+  // must stay out of the deps or the interval is rebuilt once per second.
+  useEffect(() => {
+    if (!isRunning || secondsRef.current <= 0) return;
+
+    intervalRef.current = window.setInterval(() => {
+      setSeconds((prev) => {
+        if (prev <= 1) {
+          setIsRunning(false);
+          onCompleteRef.current?.();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isRunning, seconds]);
+  }, [isRunning]);
 
   const start = useCallback(() => setIsRunning(true), []);
   const pause = useCallback(() => setIsRunning(false), []);

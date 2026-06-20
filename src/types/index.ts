@@ -60,6 +60,17 @@ export interface Protocol {
   references: string[];
 }
 
+// A single age-banded paediatric dose. dose/volume_ml are strings because
+// guidance gives ranges for some bands (e.g. <6 months = 100–150 micrograms);
+// never coerce these to a single number or strip the dash.
+export interface ChildDoseBand {
+  label: string;        // e.g. "6 months – 6 years"
+  dose: string;         // e.g. "150 micrograms"
+  volume_ml?: string;   // e.g. "0.15 ml"
+  min_age_months?: number;
+  max_age_months?: number;
+}
+
 export interface Drug {
   id: string;
   name: string;
@@ -68,6 +79,9 @@ export interface Drug {
   adult_dose_text: string;
   child_dose?: string;
   child_dose_text?: string;
+  // Structured age bands; when present, UI renders these instead of the
+  // free-text child_dose/child_dose_text (kept as fallback for other drugs).
+  child_dose_bands?: ChildDoseBand[];
   route: 'IM' | 'IV' | 'SL' | 'INH' | 'ORAL' | 'BUCCAL';
   site?: string;
   how_to_give: string;

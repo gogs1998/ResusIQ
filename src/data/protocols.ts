@@ -224,7 +224,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'adrenaline_im_adult',
         say: 'Give adrenaline intramuscular now. Adult dose: 500 micrograms. That is 0.5ml of 1 in 1000. Inject into outer thigh.',
-        show: 'ADRENALINE IM NOW\n\nAdult: 500 micrograms (0.5ml of 1:1000)\nChild 6-12: 300 micrograms (0.3ml)\nChild <6: 150 micrograms (0.15ml)\n\nSite: Outer mid-thigh',
+        show: 'ADRENALINE IM NOW\n\nAdult: 500 micrograms (0.5ml of 1:1000)\n\nSite: Outer mid-thigh\n\nPaediatric doses by age shown below',
         require_confirm: true,
         next: 'oxygen'
       },
