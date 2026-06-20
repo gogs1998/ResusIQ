@@ -1,1 +1,135 @@
 @import "tailwindcss";
+
+/* ── Base ─────────────────────────────────────────────────────── */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  /* iOS safe area CSS env vars */
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+html {
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #000000;
+  color: white;
+  /* iOS: smooth momentum scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── iOS PWA: prevent zoom on double-tap / input ──────────── */
+input, select, textarea, button {
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+* {
+  /* Prevent callout on long-press */
+  -webkit-touch-callout: none;
+}
+
+/* ── Safe areas ───────────────────────────────────────────── */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ── Scrollbar (desktop) ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes pulse-cpr {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-cpr {
+  animation: pulse-cpr 0.5s ease-in-out infinite;
+}
+
+/* Subtle fade-in for screens */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.25s ease-out;
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* iOS standalone: fill status bar area */
+@media all and (display-mode: standalone) {
+  body {
+    /* Extra safety for standalone mode */
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Tabular numbers for timers/counters */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

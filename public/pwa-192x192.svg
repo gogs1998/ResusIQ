@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="24" fill="#DC2626"/>
+  <g fill="white">
+    <!-- Heart/Plus medical symbol -->
+    <path d="M96 40c-20 0-36 16-36 36 0 35 36 60 36 76 0-16 36-41 36-76 0-20-16-36-36-36z" opacity="0.9"/>
+    <!-- Plus sign -->
+    <rect x="84" y="56" width="24" height="52" rx="4"/>
+    <rect x="72" y="68" width="48" height="24" rx="4"/>
+  </g>
+  <!-- Text -->
+  <text x="96" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="24" fill="white">ResusIQ</text>
+</svg>

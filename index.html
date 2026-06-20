@@ -2,12 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/pwa-192x192.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+
+    <!-- Viewport: iOS safe-area, no zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: light)" />
+
+    <!-- PWA -->
+    <meta name="description" content="Voice-guided medical emergency protocols for UK dental practices" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ResusIQ" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS splash screens (generic) -->
+    <meta name="apple-mobile-web-app-orientations" content="portrait" />
+
+    <title>ResusIQ</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
