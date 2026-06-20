@@ -10,7 +10,6 @@ import {
   Mic,
   Square,
   Activity,
-  AlertTriangle,
   HeartPulse,
   Pill,
   Info,
@@ -20,6 +19,7 @@ import {
   Key,
   Settings,
 } from 'lucide-react';
+import { Sheet } from './Sheet';
 import { motion, AnimatePresence } from 'motion/react';
 
 // ── Build system instruction with our FULL clinical data ──────────────
@@ -127,41 +127,12 @@ export function AIAssistant() {
 
   const streamerRef = useRef<AudioStreamer | null>(null);
   const sessionRef = useRef<any>(null);
-  const apiKeyDialogRef = useRef<HTMLDivElement>(null);
 
+  // Dialog a11y (focus trap, Escape, scroll-lock) is handled by the shared Sheet.
   const closeApiKeyInput = useCallback(() => {
     setShowApiKeyInput(false);
     setApiKeyInput('');
   }, []);
-
-  // While the API-key modal is open: close on Escape and trap Tab focus inside
-  // it so keyboard/screen-reader users cannot tab out to the page behind.
-  useEffect(() => {
-    if (!showApiKeyInput) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeApiKeyInput();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const focusables = apiKeyDialogRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
-      );
-      if (!focusables || focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showApiKeyInput, closeApiKeyInput]);
 
   // Load API key from localStorage
   const getApiKey = (): string | null => {
@@ -367,39 +338,39 @@ export function AIAssistant() {
   const protocolDisplay = activeProtocol ? getProtocolDisplay(activeProtocol) : null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50 flex flex-col">
+    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'radial-gradient(120% 60% at 50% 35%, rgba(139,92,246,0.18), var(--bg))', color: 'var(--text-1)' }}>
       {/* Header */}
-      <header className="bg-zinc-900 p-4 flex items-center justify-between border-b border-zinc-800">
+      <header className="flex items-center justify-between px-4" style={{ height: 'var(--appbar-h)' }}>
         <div className="flex items-center gap-3">
           <button
             onClick={() => { stopSession(); setScreen('home'); }}
-            className="p-2 rounded-lg hover:bg-zinc-800"
+            aria-label="Back"
+            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
           </button>
-          <div>
-            <h1 className="font-bold text-lg flex items-center gap-2">
-              <HeartPulse className="w-5 h-5 text-red-500" />
-              AI Voice Assistant
-            </h1>
-          </div>
+          <h1 className="font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-1)' }}>
+            <Mic className="w-5 h-5" style={{ color: 'var(--ai-from)' }} />
+            AI Voice Assistant
+          </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowApiKeyInput(true)}
-            className="p-2 rounded-lg hover:bg-zinc-800"
-            title="API Key Settings"
-          >
-            <Settings className="w-5 h-5 text-zinc-400" />
-          </button>
-        </div>
+        <button
+          onClick={() => setShowApiKeyInput(true)}
+          aria-label="API key settings"
+          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+        >
+          <Settings className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+        </button>
       </header>
 
       {/* Call 999 bar */}
-      <div className="p-2 bg-red-900/40">
+      <div className="px-4 pb-2">
         <a
           href="tel:999"
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 block text-center"
+          className="w-full font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-center active:opacity-90 transition-opacity"
+          style={{ background: 'var(--red-strong)', color: 'var(--text-on-color)', boxShadow: 'var(--glow-red)', minHeight: 'var(--touch-min)' }}
         >
           <Phone className="w-5 h-5" />
           CALL 999
@@ -412,18 +383,18 @@ export function AIAssistant() {
         <div className="flex flex-col items-center space-y-8">
           {!isActive && !isConnecting && (
             <div className="text-center space-y-3">
-              <div className="inline-flex items-center justify-center p-4 bg-red-500/10 rounded-full">
-                <AlertTriangle className="w-10 h-10 text-red-500" />
+              <div className="inline-flex items-center justify-center p-4 rounded-full" style={{ background: 'var(--ai-tint)' }}>
+                <Mic className="w-10 h-10" style={{ color: 'var(--ai-from)' }} />
               </div>
-              <h2 className="text-2xl font-bold">Voice Emergency Mode</h2>
-              <p className="text-zinc-400 text-sm max-w-xs mx-auto">
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Voice Emergency Mode</h2>
+              <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-3)' }}>
                 Describe the emergency. The AI will diagnose, display protocols, and guide you step-by-step.
               </p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl w-full max-w-sm text-center text-sm">
+            <div className="px-4 py-3 rounded-xl w-full max-w-sm text-center text-sm" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 25%, transparent)', color: 'var(--red)' }}>
               {error}
             </div>
           )}
@@ -435,12 +406,14 @@ export function AIAssistant() {
                 <motion.div
                   animate={{ scale: 1 + volume * 1.5, opacity: 0.5 + volume * 0.5 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-                  className="absolute inset-0 bg-red-500/20 rounded-full"
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: 'var(--ai-tint)' }}
                 />
                 <motion.div
                   animate={{ scale: 1 + volume * 0.8, opacity: 0.8 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-                  className="absolute inset-4 bg-red-500/20 rounded-full"
+                  className="absolute inset-4 rounded-full"
+                  style={{ background: 'var(--ai-tint)' }}
                 />
               </>
             )}
@@ -448,25 +421,24 @@ export function AIAssistant() {
             <button
               onClick={isActive ? stopSession : startSession}
               disabled={isConnecting}
-              className={`relative z-10 flex flex-col items-center justify-center w-44 h-44 rounded-full shadow-2xl transition-all duration-300 ${
-                isActive
-                  ? 'bg-zinc-900 border-4 border-red-500 hover:bg-zinc-800'
-                  : 'bg-red-600 hover:bg-red-500 hover:scale-105 active:scale-95'
-              } ${isConnecting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`relative z-10 flex flex-col items-center justify-center w-44 h-44 rounded-full transition-all duration-300 ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+              style={isActive
+                ? { background: 'var(--surface-1)', border: '4px solid var(--ai-from)' }
+                : { background: 'linear-gradient(140deg, var(--ai-from), var(--ai-to))', boxShadow: 'var(--glow-ai)' }}
             >
               {isConnecting ? (
-                <Activity className="w-14 h-14 animate-pulse text-white" />
+                <Activity className="w-14 h-14 animate-pulse" style={{ color: 'var(--ai-from)' }} />
               ) : isActive ? (
                 <>
-                  <Square className="w-10 h-10 text-red-500 mb-2" fill="currentColor" />
-                  <span className="text-red-500 font-bold tracking-widest uppercase text-xs">
+                  <Square className="w-10 h-10 mb-2" style={{ color: 'var(--ai-from)' }} fill="currentColor" />
+                  <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--ai-from)' }}>
                     Stop
                   </span>
                 </>
               ) : (
                 <>
-                  <Mic className="w-14 h-14 text-white mb-2" />
-                  <span className="text-white font-bold tracking-widest uppercase text-xs">
+                  <Mic className="w-14 h-14 mb-2" style={{ color: 'var(--text-on-color)' }} />
+                  <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--text-on-color)' }}>
                     Activate
                   </span>
                 </>
@@ -475,9 +447,8 @@ export function AIAssistant() {
           </div>
 
           <p
-            className={`text-sm font-medium uppercase tracking-widest transition-colors duration-300 ${
-              isActive ? 'text-red-500 animate-pulse' : 'text-zinc-600'
-            }`}
+            className={`text-sm font-medium uppercase tracking-widest transition-colors duration-300 ${isActive ? 'animate-pulse' : ''}`}
+            style={{ color: isActive ? 'var(--ai-from)' : 'var(--text-3)' }}
           >
             {statusText}
           </p>
@@ -490,33 +461,34 @@ export function AIAssistant() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-2xl"
+              className="max-w-md w-full cs-card p-5"
             >
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
+              <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg" style={{ backgroundColor: `${protocolDisplay.color}30` }}>
+                  <div className="p-2 rounded-lg" style={{ background: `color-mix(in srgb, ${protocolDisplay.color} 18%, transparent)` }}>
                     <HeartPulse className="w-5 h-5" style={{ color: protocolDisplay.color }} />
                   </div>
-                  <h2 className="text-xl font-bold text-white">{protocolDisplay.title}</h2>
+                  <h2 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>{protocolDisplay.title}</h2>
                 </div>
                 <button
                   onClick={() => setActiveProtocol(null)}
-                  className="p-1 hover:bg-zinc-800 rounded"
+                  aria-label="Dismiss protocol"
+                  className="p-1 rounded active:opacity-70"
                 >
-                  <X className="w-4 h-4 text-zinc-500" />
+                  <X className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
                 </button>
               </div>
 
               <div className="space-y-5">
                 {/* Steps */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-2">
+                  <h3 className="cs-eyebrow mb-2 flex items-center gap-2">
                     <Info className="w-3 h-3" /> Immediate Actions
                   </h3>
                   <ul className="space-y-2">
                     {protocolDisplay.steps.map((step, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-zinc-300">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 mt-0.5">
+                      <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                        <span className="cs-numeric flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5" style={{ background: 'var(--surface-2)', color: 'var(--text-3)' }}>
                           {idx + 1}
                         </span>
                         <span className="leading-relaxed">{step}</span>
@@ -527,13 +499,13 @@ export function AIAssistant() {
 
                 {/* Drugs */}
                 {protocolDisplay.drugs && (
-                  <div className="bg-zinc-950 rounded-xl p-3 border border-zinc-800">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-2">
+                  <div className="rounded-xl p-3" style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)' }}>
+                    <h3 className="cs-eyebrow mb-2 flex items-center gap-2" style={{ color: 'var(--drug)' }}>
                       <Pill className="w-3 h-3" /> Emergency Drugs
                     </h3>
                     <ul className="space-y-1">
                       {protocolDisplay.drugs.map((drug, idx) => (
-                        <li key={idx} className="text-red-400 font-medium text-sm">
+                        <li key={idx} className="font-medium text-sm" style={{ color: 'var(--drug)' }}>
                           • {drug}
                         </li>
                       ))}
@@ -543,16 +515,17 @@ export function AIAssistant() {
 
                 {/* CPR Metronome */}
                 {protocolDisplay.isCPR && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex flex-col items-center">
-                    <h3 className="text-red-400 font-bold mb-3 uppercase tracking-widest text-xs">
+                  <div className="p-4 rounded-xl flex flex-col items-center" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)' }}>
+                    <h3 className="cs-eyebrow mb-3" style={{ color: 'var(--red)' }}>
                       CPR Metronome (110 BPM)
                     </h3>
                     <motion.div
                       animate={{ scale: [1, 1.3, 1] }}
                       transition={{ duration: 60 / 110, repeat: Infinity, ease: 'linear' }}
-                      className="w-14 h-14 bg-red-500 rounded-full shadow-[0_0_20px_rgba(239,68,68,0.6)] flex items-center justify-center"
+                      className="w-14 h-14 rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--red)', boxShadow: 'var(--glow-red)' }}
                     >
-                      <HeartPulse className="w-7 h-7 text-white" />
+                      <HeartPulse className="w-7 h-7" style={{ color: 'var(--text-on-color)' }} />
                     </motion.div>
                   </div>
                 )}
@@ -561,7 +534,8 @@ export function AIAssistant() {
                 {protocolDisplay.id && (
                   <button
                     onClick={() => launchFullProtocol(protocolDisplay.id)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors"
+                    className="w-full font-bold py-3 px-4 rounded-xl text-sm active:opacity-90 transition-opacity"
+                    style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
                   >
                     Open Full Protocol Guide →
                   </button>
@@ -572,76 +546,57 @@ export function AIAssistant() {
         </AnimatePresence>
       </div>
 
-      {/* API Key Modal */}
-      {showApiKeyInput && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
-          onClick={closeApiKeyInput}
-        >
-          <div
-            ref={apiKeyDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="apikey-modal-title"
-            onClick={(e) => e.stopPropagation()}
-            className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <Key className="w-6 h-6 text-amber-400" />
-              <h3 id="apikey-modal-title" className="text-lg font-bold">Gemini API Key</h3>
-            </div>
-            <p className="text-sm text-zinc-400 mb-4">
-              The AI voice assistant requires a Google Gemini API key. Get one free at{' '}
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 underline"
-              >
-                aistudio.google.com
-              </a>
-            </p>
-            <input
-              type="password"
-              placeholder="Paste your API key here"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 mb-4 font-mono text-sm"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={closeApiKeyInput}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 py-2.5 rounded-lg font-medium text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (apiKeyInput.trim()) {
-                    saveApiKey(apiKeyInput.trim());
-                  }
-                }}
-                disabled={!apiKeyInput.trim()}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 py-2.5 rounded-lg font-medium text-sm"
-              >
-                Save & Connect
-              </button>
-            </div>
-            {getApiKey() && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('resusiq-gemini-key');
-                  setApiKeyInput('');
-                }}
-                className="w-full text-xs text-red-400 mt-3 hover:text-red-300"
-              >
-                Remove saved key
-              </button>
-            )}
+      {/* API Key dialog */}
+      <Sheet
+        open={showApiKeyInput}
+        onClose={closeApiKeyInput}
+        title="Gemini API Key"
+        accent="var(--decision)"
+        icon={<Key className="w-6 h-6" />}
+        footer={
+          <div className="flex gap-2">
+            <button
+              onClick={closeApiKeyInput}
+              className="flex-1 py-2.5 rounded-lg font-medium text-sm active:opacity-80 transition-opacity"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { if (apiKeyInput.trim()) saveApiKey(apiKeyInput.trim()); }}
+              disabled={!apiKeyInput.trim()}
+              className="flex-1 py-2.5 rounded-lg font-medium text-sm disabled:opacity-50 active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+            >
+              Save &amp; Connect
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className="text-sm mb-4" style={{ color: 'var(--text-2)' }}>
+          The AI voice assistant requires a Google Gemini API key. Get one free at{' '}
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--roles)' }}>
+            aistudio.google.com
+          </a>
+        </p>
+        <input
+          type="password"
+          placeholder="Paste your API key here"
+          value={apiKeyInput}
+          onChange={(e) => setApiKeyInput(e.target.value)}
+          className="cs-input font-mono text-sm"
+          autoFocus
+        />
+        {getApiKey() && (
+          <button
+            onClick={() => { localStorage.removeItem('resusiq-gemini-key'); setApiKeyInput(''); }}
+            className="w-full text-xs mt-3 active:opacity-70"
+            style={{ color: 'var(--red)' }}
+          >
+            Remove saved key
+          </button>
+        )}
+      </Sheet>
     </div>
   );
 }
