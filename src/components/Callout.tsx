@@ -7,9 +7,12 @@ interface CalloutProps {
   items: string[];
 }
 
+// Static rgba borders (NOT color-mix) so the warning/contraindication affordance
+// never silently drops on a browser without color-mix support — these are safety
+// cues, not decoration. Values are --warn #FFB020 @30% and --red #FF4D4D @50%.
 const TONES = {
-  warn: { color: 'var(--warn)', bg: 'var(--warn-tint)', border: 'color-mix(in srgb, var(--warn) 30%, transparent)' },
-  contra: { color: 'var(--red)', bg: 'var(--red-tint-2)', border: 'color-mix(in srgb, var(--red) 50%, transparent)' },
+  warn: { color: 'var(--warn)', bg: 'var(--warn-tint)', border: 'rgba(255, 176, 32, 0.30)' },
+  contra: { color: 'var(--red)', bg: 'var(--red-tint-2)', border: 'rgba(255, 77, 77, 0.50)' },
 } as const;
 
 /**

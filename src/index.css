@@ -102,7 +102,8 @@ input, select, textarea, button {
 }
 
 .animate-pulse-cpr {
-  animation: pulse-cpr 0.5s ease-in-out infinite;
+  /* 0.545s = 60/110s, one pulse per compression at 110 BPM (RCUK rate) */
+  animation: pulse-cpr 0.545s ease-in-out infinite;
 }
 
 /* Subtle fade-in for screens */
