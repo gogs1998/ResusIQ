@@ -458,6 +458,9 @@ export function AIAssistant() {
         <AnimatePresence>
           {protocolDisplay && (
             <motion.div
+              role="region"
+              aria-live="polite"
+              aria-label={`${protocolDisplay.title} protocol`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
