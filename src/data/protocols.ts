@@ -107,7 +107,7 @@ export const protocols: Protocol[] = [
         id: 'aed_attach',
         type: 'instruction',
         say: 'Attach AED pads. One below right collarbone, one on left side below armpit. Follow AED prompts.',
-        show: 'ATTACH AED PADS\n\nâ€¢ Right: Below collarbone\nâ€¢ Left: Side of chest, below armpit\n\nFollow AED voice prompts',
+        show: 'ATTACH AED PADS\n\n• Right: Below collarbone\n• Left: Side of chest, below armpit\n\nFollow AED voice prompts',
         actions: ['log:aed_attached'],
         next: 'aed_analyse'
       },
@@ -171,7 +171,7 @@ export const protocols: Protocol[] = [
         id: 'recognition',
         type: 'instruction',
         say: 'Recognise anaphylaxis. Look for: Sudden onset. Airway swelling. Breathing difficulty. Circulation problems. Skin changes.',
-        show: 'RECOGNISE ANAPHYLAXIS\n\nâ€¢ Sudden onset\nâ€¢ Airway: swelling, hoarse voice\nâ€¢ Breathing: wheeze, stridor\nâ€¢ Circulation: pale, clammy, low BP\nâ€¢ Skin: itchy rash, flushing',
+        show: 'RECOGNISE ANAPHYLAXIS\n\n• Sudden onset\n• Airway: swelling, hoarse voice\n• Breathing: wheeze, stridor\n• Circulation: pale, clammy, low BP\n• Skin: itchy rash, flushing',
         next: 'stop_trigger'
       },
       {
@@ -216,7 +216,7 @@ export const protocols: Protocol[] = [
         id: 'position_flat',
         type: 'instruction',
         say: 'Lie flat with legs raised. Do not sit up if low blood pressure.',
-        show: 'LIE FLAT - Legs raised\n\nâš ï¸ Do NOT sit up if hypotensive',
+        show: 'LIE FLAT - Legs raised\n\nDo NOT sit up if hypotensive',
         next: 'adrenaline'
       },
       {
@@ -271,7 +271,7 @@ export const protocols: Protocol[] = [
         id: 'continue_monitor',
         type: 'instruction',
         say: 'Continue monitoring. Keep oxygen on. Watch for deterioration. Be ready to start CPR if they become unresponsive.',
-        show: 'CONTINUE MONITORING\n\nâ€¢ Keep oxygen on\nâ€¢ Watch for deterioration\nâ€¢ Prepare for CPR if needed\nâ€¢ Wait for ambulance'
+        show: 'CONTINUE MONITORING\n\n• Keep oxygen on\n• Watch for deterioration\n• Prepare for CPR if needed\n• Wait for ambulance'
       },
       {
         id: 'cardiac_arrest_check',
@@ -311,7 +311,7 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         type: 'instruction',
         say: 'Recognise asthma attack. Wheeze. Shortness of breath. Tight chest. Difficulty speaking.',
-        show: 'RECOGNISE ASTHMA ATTACK\n\nâ€¢ Wheeze\nâ€¢ Shortness of breath\nâ€¢ Chest tightness\nâ€¢ Difficulty speaking\nâ€¢ Using accessory muscles',
+        show: 'RECOGNISE ASTHMA ATTACK\n\n• Wheeze\n• Shortness of breath\n• Chest tightness\n• Difficulty speaking\n• Using accessory muscles',
         next: 'assess_severity'
       },
       {
@@ -329,14 +329,14 @@ export const protocols: Protocol[] = [
         id: 'moderate_asthma',
         type: 'instruction',
         say: 'Moderate attack. Keep calm. Sit patient upright.',
-        show: 'MODERATE ATTACK\n\nâ€¢ Stay calm\nâ€¢ Sit upright\nâ€¢ Loosen tight clothing',
+        show: 'MODERATE ATTACK\n\n• Stay calm\n• Sit upright\n• Loosen tight clothing',
         next: 'salbutamol'
       },
       {
         id: 'severe_asthma',
         type: 'instruction',
         say: 'Severe attack. Call 999 now. This is a life-threatening emergency.',
-        show: 'âš ï¸ SEVERE/LIFE-THREATENING\n\nCALL 999 IMMEDIATELY',
+        show: 'SEVERE/LIFE-THREATENING\n\nCALL 999 IMMEDIATELY',
         actions: ['suggest:call_999'],
         next: 'salbutamol_severe'
       },
@@ -345,7 +345,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'salbutamol_inhaled',
         say: 'Give salbutamol inhaler. 4 puffs via spacer. One puff at a time. 5 breaths per puff.',
-        show: 'SALBUTAMOL via SPACER\n\n4 puffs initially\nâ€¢ One puff at a time\nâ€¢ 5 breaths per puff\nâ€¢ Wait 30 seconds between puffs',
+        show: 'SALBUTAMOL via SPACER\n\n4 puffs initially\n• One puff at a time\n• 5 breaths per puff\n• Wait 30 seconds between puffs',
         require_confirm: true,
         next: 'reassess_moderate'
       },
@@ -354,7 +354,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'salbutamol_inhaled',
         say: 'Give salbutamol inhaler via spacer. Up to 10 puffs. One puff at a time.',
-        show: 'SALBUTAMOL via SPACER\n\nUp to 10 puffs\nâ€¢ One puff at a time\nâ€¢ 5 breaths per puff',
+        show: 'SALBUTAMOL via SPACER\n\nUp to 10 puffs\n• One puff at a time\n• 5 breaths per puff',
         require_confirm: true,
         next: 'oxygen_severe'
       },
@@ -404,7 +404,7 @@ export const protocols: Protocol[] = [
         id: 'reassess_severe',
         type: 'instruction',
         say: 'Continue monitoring. Prepare for deterioration. If they become unresponsive, start CPR.',
-        show: 'MONITOR CONTINUOUSLY\n\nâ€¢ Repeat salbutamol every 10 mins\nâ€¢ Keep oxygen flowing\nâ€¢ Prepare for CPR if deteriorates\nâ€¢ Wait for ambulance'
+        show: 'MONITOR CONTINUOUSLY\n\n• Repeat salbutamol every 10 mins\n• Keep oxygen flowing\n• Prepare for CPR if deteriorates\n• Wait for ambulance'
       }
     ]
   },
@@ -425,7 +425,7 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         type: 'instruction',
         say: 'Recognise hypoglycaemia. Sweating. Shaking. Confusion. Aggression. Pallor. Weakness.',
-        show: 'RECOGNISE HYPOGLYCAEMIA\n\nâ€¢ Sweating, trembling\nâ€¢ Confusion, irritability\nâ€¢ Pallor, weakness\nâ€¢ Hunger\nâ€¢ Drowsiness\nâ€¢ Known diabetic',
+        show: 'RECOGNISE HYPOGLYCAEMIA\n\n• Sweating, trembling\n• Confusion, irritability\n• Pallor, weakness\n• Hunger\n• Drowsiness\n• Known diabetic',
         next: 'conscious_check'
       },
       {
@@ -444,7 +444,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'glucose_oral',
         say: 'Give oral glucose now. Glucose gel, glucose tablets, or sugary drink. 15 to 20 grams.',
-        show: 'GIVE ORAL GLUCOSE\n\nâ€¢ GlucoGel: 1-2 tubes\nâ€¢ Glucose tablets: 4-5 tablets\nâ€¢ Sugary drink: 150-200ml\nâ€¢ NOT diet drinks',
+        show: 'GIVE ORAL GLUCOSE\n\n• GlucoGel: 1-2 tubes\n• Glucose tablets: 4-5 tablets\n• Sugary drink: 150-200ml\n• NOT diet drinks',
         require_confirm: true,
         next: 'wait_response'
       },
@@ -472,7 +472,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'glucose_oral',
         say: 'Repeat oral glucose. If no improvement after 3 treatments, call 999.',
-        show: 'REPEAT ORAL GLUCOSE\n\nâš ï¸ If no improvement after 3 treatments - CALL 999',
+        show: 'REPEAT ORAL GLUCOSE\n\nIf no improvement after 3 treatments - CALL 999',
         require_confirm: true,
         next: 'third_check'
       },
@@ -499,13 +499,13 @@ export const protocols: Protocol[] = [
         id: 'recovery_hypo',
         type: 'instruction',
         say: 'Patient improving. Give longer acting carbohydrate when fully recovered. Biscuits, sandwich, or their next meal.',
-        show: 'RECOVERY\n\nGive longer-acting carbs:\nâ€¢ Biscuits\nâ€¢ Sandwich\nâ€¢ Next meal\n\nDiscuss with patient'
+        show: 'RECOVERY\n\nGive longer-acting carbs:\n• Biscuits\n• Sandwich\n• Next meal\n\nDiscuss with patient'
       },
       {
         id: 'unconscious_hypo',
         type: 'instruction',
         say: 'Patient unconscious. Call 999 immediately. Do not give anything by mouth.',
-        show: 'âš ï¸ UNCONSCIOUS - CALL 999\n\nDO NOT give anything by mouth',
+        show: 'UNCONSCIOUS - CALL 999\n\nDO NOT give anything by mouth',
         actions: ['suggest:call_999'],
         next: 'recovery_position_hypo'
       },
@@ -540,7 +540,7 @@ export const protocols: Protocol[] = [
         id: 'monitor_hypo',
         type: 'instruction',
         say: 'Monitor continuously. Give oral glucose when conscious and able to swallow. Wait for ambulance.',
-        show: 'MONITOR\n\nâ€¢ Recovery position\nâ€¢ Give oral glucose when conscious\nâ€¢ Wait for ambulance'
+        show: 'MONITOR\n\n• Recovery position\n• Give oral glucose when conscious\n• Wait for ambulance'
       }
     ]
   },
@@ -559,7 +559,7 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         type: 'instruction',
         say: 'Recognise faint. Feeling hot and sweaty. Nausea. Going pale. Lightheadedness. Loss of consciousness.',
-        show: 'RECOGNISE FAINT\n\nâ€¢ Feeling faint/lightheaded\nâ€¢ Nausea\nâ€¢ Vision going dark\nâ€¢ Sweating\nâ€¢ Pallor',
+        show: 'RECOGNISE FAINT\n\n• Feeling faint/lightheaded\n• Nausea\n• Vision going dark\n• Sweating\n• Pallor',
         next: 'position'
       },
       {
@@ -584,14 +584,14 @@ export const protocols: Protocol[] = [
         id: 'recovery',
         type: 'instruction',
         say: 'Keep lying flat until fully recovered. Then sit up slowly. Offer water.',
-        show: 'RECOVERY\n\nâ€¢ Keep flat until fully recovered\nâ€¢ Sit up slowly\nâ€¢ Offer water\nâ€¢ Do not rush',
+        show: 'RECOVERY\n\n• Keep flat until fully recovered\n• Sit up slowly\n• Offer water\n• Do not rush',
         next: 'assess_cause'
       },
       {
         id: 'assess_cause',
         type: 'instruction',
         say: 'Simple vascular faint usually recovers quickly. Consider other causes if not recovering or if unusual features.',
-        show: 'ASSESS CAUSE\n\nSimple faint: Quick recovery\n\nâš ï¸ Consider other causes if:\nâ€¢ Not recovering quickly\nâ€¢ Chest pain\nâ€¢ Palpitations\nâ€¢ Pregnancy\nâ€¢ Prolonged unconsciousness'
+        show: 'ASSESS CAUSE\n\nSimple faint: Quick recovery\n\nConsider other causes if:\n• Not recovering quickly\n• Chest pain\n• Palpitations\n• Pregnancy\n• Prolonged unconsciousness'
       },
       {
         id: 'abcde',
@@ -678,7 +678,7 @@ export const protocols: Protocol[] = [
         id: 'call_999_seizure',
         type: 'instruction',
         say: 'Prolonged seizure. Call 999 now. This is status epilepticus.',
-        show: 'âš ï¸ PROLONGED SEIZURE\n\nCALL 999 IMMEDIATELY\nStatus epilepticus',
+        show: 'PROLONGED SEIZURE\n\nCALL 999 IMMEDIATELY\nStatus epilepticus',
         actions: ['suggest:call_999'],
         next: 'midazolam_check'
       },
@@ -706,7 +706,7 @@ export const protocols: Protocol[] = [
         id: 'monitor_seizure',
         type: 'instruction',
         say: 'Monitor continuously. Be ready to protect airway. Have suction ready.',
-        show: 'MONITOR\n\nâ€¢ Protect airway\nâ€¢ Have suction ready\nâ€¢ Wait for ambulance'
+        show: 'MONITOR\n\n• Protect airway\n• Have suction ready\n• Wait for ambulance'
       },
       {
         id: 'post_ictal',
@@ -758,7 +758,7 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         type: 'instruction',
         say: 'Recognise cardiac chest pain. Central crushing pain. May radiate to arm or jaw. Sweating. Nausea. Shortness of breath.',
-        show: 'RECOGNISE CARDIAC PAIN\n\nâ€¢ Central/left chest pain\nâ€¢ Crushing, heavy, tight\nâ€¢ May radiate to arm, jaw, back\nâ€¢ Sweating, pallor\nâ€¢ Nausea\nâ€¢ Shortness of breath',
+        show: 'RECOGNISE CARDIAC PAIN\n\n• Central/left chest pain\n• Crushing, heavy, tight\n• May radiate to arm, jaw, back\n• Sweating, pallor\n• Nausea\n• Shortness of breath',
         next: 'call_999_chest'
       },
       {
@@ -801,7 +801,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'aspirin_oral',
         say: 'Give aspirin 300 milligrams. Patient must CHEW, not swallow whole. Check no allergy first.',
-        show: 'ASPIRIN 300mg\n\nMust CHEW the tablet\n\nâš ï¸ Check:\nâ€¢ No aspirin allergy\nâ€¢ No active bleeding\nâ€¢ Not already taken today',
+        show: 'ASPIRIN 300mg\n\nMust CHEW the tablet\n\nCheck:\n• No aspirin allergy\n• No active bleeding\n• Not already taken today',
         require_confirm: true,
         next: 'oxygen_chest'
       },
@@ -828,7 +828,7 @@ export const protocols: Protocol[] = [
         id: 'monitor_chest',
         type: 'instruction',
         say: 'Monitor continuously. Prepare AED. Be ready to start CPR if they collapse.',
-        show: 'MONITOR CONTINUOUSLY\n\nâ€¢ Keep talking to patient\nâ€¢ Prepare AED\nâ€¢ Be ready for CPR\nâ€¢ Wait for ambulance',
+        show: 'MONITOR CONTINUOUSLY\n\n• Keep talking to patient\n• Prepare AED\n• Be ready for CPR\n• Wait for ambulance',
         next: 'deterioration_check'
       },
       {
@@ -879,7 +879,7 @@ export const protocols: Protocol[] = [
         id: 'mild_choking',
         type: 'instruction',
         say: 'Mild obstruction. Encourage coughing. Do not interfere. Monitor for deterioration.',
-        show: 'MILD OBSTRUCTION\n\nâ€¢ Encourage coughing\nâ€¢ Do not slap back yet\nâ€¢ Monitor for deterioration',
+        show: 'MILD OBSTRUCTION\n\n• Encourage coughing\n• Do not slap back yet\n• Monitor for deterioration',
         next: 'mild_resolved'
       },
       {
@@ -960,7 +960,7 @@ export const protocols: Protocol[] = [
         id: 'choking_resolved',
         type: 'instruction',
         say: 'Obstruction cleared. Monitor for deterioration. If abdominal thrusts were given, advise medical review.',
-        show: 'RESOLVED\n\nâ€¢ Monitor for deterioration\nâ€¢ If abdominal thrusts given, advise medical review\nâ€¢ Document incident'
+        show: 'RESOLVED\n\n• Monitor for deterioration\n• If abdominal thrusts given, advise medical review\n• Document incident'
       }
     ]
   },
@@ -1032,7 +1032,7 @@ export const protocols: Protocol[] = [
         id: 'time_call',
         type: 'instruction',
         say: 'Time to call 999. State suspected stroke. Note the time symptoms started.',
-        show: 'TIME - CALL 999 NOW\n\nState: SUSPECTED STROKE\n\nâš ï¸ NOTE TIME OF ONSET\nThis is critical for treatment',
+        show: 'TIME - CALL 999 NOW\n\nState: SUSPECTED STROKE\n\nNOTE TIME OF ONSET\nThis is critical for treatment',
         actions: ['suggest:call_999', 'log:999_called'],
         next: 'record_time'
       },
