@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { geminiTTS } from '../lib/geminiTTS';
+import { isNative } from '../lib/platform';
 
 // Web Speech API types for browsers
 interface SpeechRecognitionEvent extends Event {
@@ -171,6 +172,8 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
   }, [onCommand]);
 
   useEffect(() => {
+    // Native (Capacitor iOS/Android) uses the plugin path in start/stopListening.
+    if (isNative) return;
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       setError('Speech recognition not supported in this browser');
       return;
@@ -202,17 +205,54 @@ export function useVoiceCommands(onCommand: (command: string) => void) {
     };
   }, []);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
+    // ── Native (Capacitor) — SFSpeechRecognizer via plugin. Dynamically
+    //    imported so it never enters the web bundle. Needs on-device QA. ──
+    if (isNative) {
+      try {
+        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+        const perm = await SpeechRecognition.checkPermissions();
+        if (perm.speechRecognition !== 'granted') {
+          await SpeechRecognition.requestPermissions();
+        }
+        await SpeechRecognition.removeAllListeners();
+        await SpeechRecognition.addListener('partialResults', (data: { matches?: string[] }) => {
+          const phrase = data.matches?.[0];
+          if (phrase) onCommandRef.current(phrase.toLowerCase().trim());
+        });
+        await SpeechRecognition.addListener('listeningState', (data: { status: 'started' | 'stopped' }) => {
+          setIsListening(data.status === 'started');
+        });
+        await SpeechRecognition.start({ language: 'en-GB', maxResults: 1, partialResults: true, popup: false });
+      } catch {
+        setError('Native speech recognition unavailable');
+        setIsListening(false);
+      }
+      return;
+    }
+
+    // ── Web Speech ──
     if (recognitionRef.current && !isListening) {
       try {
         recognitionRef.current.start();
-      } catch (e) {
+      } catch {
         // Already started
       }
     }
   }, [isListening]);
 
-  const stopListening = useCallback(() => {
+  const stopListening = useCallback(async () => {
+    if (isNative) {
+      try {
+        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+        await SpeechRecognition.stop();
+        await SpeechRecognition.removeAllListeners();
+      } catch {
+        // ignore
+      }
+      setIsListening(false);
+      return;
+    }
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
