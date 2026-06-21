@@ -6,9 +6,13 @@ import { Capacitor } from '@capacitor/core';
 export const isNative = Capacitor.isNativePlatform();
 
 // Installed PWA (added to home screen) vs a normal browser tab.
+// Guard matchMedia/navigator so the module is import-safe under jsdom/SSR.
 export const isStandalone =
-  window.matchMedia('(display-mode: standalone)').matches ||
-  (window.navigator as { standalone?: boolean }).standalone === true;
+  (typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches) ||
+  (typeof navigator !== 'undefined' &&
+    (navigator as { standalone?: boolean }).standalone === true);
 
 // iOS / iPadOS. iPadOS 13+ reports as "MacIntel"; disambiguate via touch.
 export const isIOS =
