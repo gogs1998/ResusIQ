@@ -8,7 +8,6 @@ import {
   RotateCcw,
   X,
   Check,
-  CheckCheck,
   Timer,
   Pill,
   Users,
@@ -57,7 +56,6 @@ export function ProtocolRunner() {
 
   const { speak } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
-  const [confirmationRequired, setConfirmationRequired] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
@@ -69,86 +67,79 @@ export function ProtocolRunner() {
     }
   }, [currentStep, isMuted, speak]);
 
-  // NOTE: handleNext/handleConfirm are memoized and declared BEFORE
-  // handleVoiceCommand so the voice handler can list them as deps. Without
-  // this, the recognition instance binds once to a stale closure and spoken
-  // "next"/"confirm"/"given" act on an outdated step/answer mid-emergency.
-  const handleNext = useCallback(() => {
-    if (currentStep?.require_confirm && !confirmationRequired) {
-      setConfirmationRequired(true);
-      speak('Confirm when done. Say confirm or press the confirm button.');
-      return;
-    }
+  // NOTE: these handlers are memoized and declared BEFORE handleVoiceCommand
+  // so the voice handler can list them as deps. Without this, the recognition
+  // instance binds once to a stale closure and spoken commands act on an
+  // outdated step/answer mid-emergency.
 
+  // The actual step progression (decision branching / next pointer).
+  const advance = useCallback(() => {
     if (currentStep?.type === 'decision' && !selectedAnswer) {
       speak('Please select an answer.');
       return;
     }
-
-    // Log step completion
     if (currentStep) {
       addEventLog('step_completed', currentStep.show.split('\n')[0]);
     }
-
-    // Handle decision branching
     if (currentStep?.type === 'decision' && selectedAnswer) {
       const answer = currentStep.answers?.find(a => a.label === selectedAnswer);
       if (answer) {
         const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === answer.next);
-        if (nextStepIndex !== undefined && nextStepIndex >= 0) {
-          goToStep(nextStepIndex);
-        } else {
-          nextStep();
-        }
+        if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
+        else nextStep();
       }
       setSelectedAnswer(null);
     } else if (currentStep?.next) {
       const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === currentStep.next);
-      if (nextStepIndex !== undefined && nextStepIndex >= 0) {
-        goToStep(nextStepIndex);
-      } else {
-        nextStep();
-      }
+      if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
+      else nextStep();
     } else {
       nextStep();
     }
+  }, [currentStep, selectedAnswer, addEventLog, activeProtocol, goToStep, nextStep, speak]);
 
-    setConfirmationRequired(false);
-  }, [currentStep, confirmationRequired, selectedAnswer, addEventLog, activeProtocol, goToStep, nextStep, speak]);
-
+  // On a require_confirm (drug) step the primary button IS the confirmation:
+  // one press logs the drug as given and advances. Keeps the event log honest
+  // (only logs when explicitly confirmed) without the old two-tap dance.
   const handleConfirm = useCallback(() => {
     if (currentStep?.type === 'drug' && currentStep.drug_id) {
       addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
     }
-    setConfirmationRequired(false);
-    handleNext();
-  }, [currentStep, addEventLog, handleNext]);
+    advance();
+  }, [currentStep, addEventLog, advance]);
+
+  // Primary action: confirm-and-advance on require_confirm steps, else advance.
+  const handleNext = useCallback(() => {
+    if (currentStep?.require_confirm) {
+      handleConfirm();
+    } else {
+      advance();
+    }
+  }, [currentStep, handleConfirm, advance]);
 
   // Voice command handler — depends on the memoized handlers above so it is
-  // recreated whenever step/answer/confirmation state changes.
+  // recreated whenever step/answer state changes.
   const handleVoiceCommand = useCallback((command: string) => {
     const lowerCommand = command.toLowerCase();
 
-    if (lowerCommand.includes('next') || lowerCommand.includes('continue')) {
-      if (!confirmationRequired) {
-        handleNext();
-      }
+    if (
+      lowerCommand.includes('next') || lowerCommand.includes('continue') ||
+      lowerCommand.includes('done') || lowerCommand.includes('given') ||
+      lowerCommand.includes('confirm')
+    ) {
+      handleNext(); // confirm-and-advance on a drug step, else advance
     } else if (lowerCommand.includes('back') || lowerCommand.includes('previous')) {
       prevStep();
     } else if (lowerCommand.includes('repeat')) {
       if (currentStep) {
         speak(currentStep.say);
       }
-    } else if (lowerCommand.includes('confirm') || lowerCommand.includes('yes') || lowerCommand.includes('given')) {
-      if (confirmationRequired) {
-        handleConfirm();
-      }
     } else if (lowerCommand.includes('mute') || lowerCommand.includes('quiet')) {
       toggleMute();
     } else if (lowerCommand.includes('999') || lowerCommand.includes('emergency')) {
       window.location.href = 'tel:999';
     }
-  }, [confirmationRequired, currentStep, prevStep, speak, toggleMute, handleNext, handleConfirm]);
+  }, [currentStep, prevStep, speak, toggleMute, handleNext]);
 
   const { isListening, startListening, stopListening } = useVoiceCommands(handleVoiceCommand);
 
@@ -391,22 +382,6 @@ export function ProtocolRunner() {
           />
         )}
 
-        {/* Confirmation Dialog */}
-        {confirmationRequired && currentStep.require_confirm && (
-          <div className="cs-card cs-step-card p-4 mb-4" style={{ ['--step-accent' as string]: 'var(--green)' } as CSSProperties}>
-            <p className="cs-eyebrow mb-3 flex items-center gap-2" style={{ color: 'var(--green)' }}>
-              <CheckCheck className="w-4 h-4" /> Confirm when completed
-            </p>
-            <button
-              onClick={handleConfirm}
-              className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
-              style={{ background: 'var(--green)', color: 'var(--text-on-light)', boxShadow: 'var(--glow-green)' }}
-            >
-              <Check className="w-5 h-5" />
-              CONFIRM DONE
-            </button>
-          </div>
-        )}
       </main>
 
       {/* Navigation Footer — secondary Back/Repeat row above a full-width hero Next */}
@@ -436,8 +411,17 @@ export function ProtocolRunner() {
           className="w-full rounded-2xl flex items-center justify-center gap-1.5 font-bold active:opacity-90 transition-opacity disabled:opacity-40"
           style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-hero)', boxShadow: 'var(--glow-green)' }}
         >
-          <span className="text-base">Next step</span>
-          <ChevronRight className="w-5 h-5" />
+          {currentStep.require_confirm ? (
+            <>
+              <Check className="w-5 h-5" />
+              <span className="text-base">{currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done'}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-base">Next step</span>
+              <ChevronRight className="w-5 h-5" />
+            </>
+          )}
         </button>
       </footer>
 
