@@ -20,6 +20,9 @@ export interface ProtocolStep {
   actions?: string[];
   drug_id?: string;
   require_confirm?: boolean;
+  // Passive recognition/symptom step — skipped on decisive (tile) entry, kept
+  // when the user arrived via uncertain triage.
+  recognition?: boolean;
   duration_seconds?: number;
   on_timer_end_next?: string;
   question?: string;

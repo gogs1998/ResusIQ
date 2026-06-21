@@ -309,6 +309,7 @@ export const protocols: Protocol[] = [
     steps: [
       {
         id: 'recognise',
+        recognition: true,
         type: 'instruction',
         say: 'Recognise asthma attack. Wheeze. Shortness of breath. Tight chest. Difficulty speaking.',
         show: 'RECOGNISE ASTHMA ATTACK\n\n• Wheeze\n• Shortness of breath\n• Chest tightness\n• Difficulty speaking\n• Using accessory muscles',
@@ -423,6 +424,7 @@ export const protocols: Protocol[] = [
     steps: [
       {
         id: 'recognise',
+        recognition: true,
         type: 'instruction',
         say: 'Recognise hypoglycaemia. Sweating. Shaking. Confusion. Aggression. Pallor. Weakness.',
         show: 'RECOGNISE HYPOGLYCAEMIA\n\n• Sweating, trembling\n• Confusion, irritability\n• Pallor, weakness\n• Hunger\n• Drowsiness\n• Known diabetic',
@@ -557,6 +559,7 @@ export const protocols: Protocol[] = [
     steps: [
       {
         id: 'recognise',
+        recognition: true,
         type: 'instruction',
         say: 'Recognise faint. Feeling hot and sweaty. Nausea. Going pale. Lightheadedness. Loss of consciousness.',
         show: 'RECOGNISE FAINT\n\n• Feeling faint/lightheaded\n• Nausea\n• Vision going dark\n• Sweating\n• Pallor',
@@ -756,6 +759,7 @@ export const protocols: Protocol[] = [
     steps: [
       {
         id: 'recognise',
+        recognition: true,
         type: 'instruction',
         say: 'Recognise cardiac chest pain. Central crushing pain. May radiate to arm or jaw. Sweating. Nausea. Shortness of breath.',
         show: 'RECOGNISE CARDIAC PAIN\n\n• Central/left chest pain\n• Crushing, heavy, tight\n• May radiate to arm, jaw, back\n• Sweating, pallor\n• Nausea\n• Shortness of breath',

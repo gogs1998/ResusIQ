@@ -20,7 +20,7 @@ interface AppState {
   isEmergencyActive: boolean;
   activeProtocol: Protocol | null;
   currentStepIndex: number;
-  startEmergency: (protocolId: string) => void;
+  startEmergency: (protocolId: string, source?: 'tile' | 'triage' | 'library') => void;
   setProtocol: (protocol: Protocol | null) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -66,9 +66,22 @@ export const useAppStore = create<AppState>()(
       activeProtocol: null,
       currentStepIndex: 0,
       
-      startEmergency: (protocolId) => {
+      startEmergency: (protocolId, source) => {
         const protocol = protocols.find(p => p.id === protocolId);
         if (protocol) {
+          // Decisive entry (tile tap) skips leading recognition/symptom steps —
+          // the user already chose the condition, so lead with the action.
+          // Triage/library keep them (arrived via uncertainty). Steps are not
+          // deleted — Back still reaches them.
+          let startIndex = 0;
+          if (source === 'tile') {
+            while (
+              startIndex < protocol.steps.length - 1 &&
+              protocol.steps[startIndex].recognition
+            ) {
+              startIndex++;
+            }
+          }
           const event: EmergencyEvent = {
             id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
@@ -83,10 +96,10 @@ export const useAppStore = create<AppState>()(
             }],
             completed: false
           };
-          set({ 
+          set({
             isEmergencyActive: true,
             activeProtocol: protocol,
-            currentStepIndex: 0,
+            currentStepIndex: startIndex,
             currentScreen: 'protocol',
             activeEvent: event
           });

@@ -46,4 +46,25 @@ describe('appStore emergency lifecycle', () => {
     expect(s.eventHistory).toHaveLength(1);
     expect(s.eventHistory[0].completed).toBe(true);
   });
+
+  it('decisive tile entry skips a leading recognition step; triage keeps it', () => {
+    // chest_pain opens with a recognition step (clinically cleared to skip).
+    useAppStore.getState().startEmergency('chest_pain', 'tile');
+    const tile = useAppStore.getState();
+    expect(tile.currentStepIndex).toBeGreaterThan(0);
+    expect(tile.activeProtocol?.steps[tile.currentStepIndex].recognition).toBeFalsy();
+    expect(tile.activeProtocol?.steps[0].recognition).toBe(true); // step still exists
+
+    reset();
+    useAppStore.getState().startEmergency('chest_pain', 'triage');
+    expect(useAppStore.getState().currentStepIndex).toBe(0); // recognition shown
+  });
+
+  it('does NOT skip recognition where clinical kept it (anaphylaxis) even on tile entry', () => {
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    const s = useAppStore.getState();
+    // anaphylaxis recognition is intentionally NOT flagged — must still show first
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeProtocol?.steps[0].id).toBe('recognition');
+  });
 });

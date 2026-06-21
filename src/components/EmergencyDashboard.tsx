@@ -150,7 +150,7 @@ export function EmergencyDashboard() {
             return (
               <button
                 key={tile.id}
-                onClick={() => startEmergency(tile.id)}
+                onClick={() => startEmergency(tile.id, 'tile')}
                 className="relative overflow-hidden rounded-2xl p-3.5 text-left active:scale-[0.97] transition-transform"
                 style={{ ...surface, ['--accent' as string]: tile.accent } as CSSProperties}
               >
