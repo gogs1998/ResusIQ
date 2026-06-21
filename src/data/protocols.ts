@@ -170,8 +170,8 @@ export const protocols: Protocol[] = [
       {
         id: 'recognition',
         type: 'instruction',
-        say: 'Recognise anaphylaxis. Look for: Sudden onset. Airway swelling. Breathing difficulty. Circulation problems. Skin changes.',
-        show: 'RECOGNISE ANAPHYLAXIS\n\n• Sudden onset\n• Airway: swelling, hoarse voice\n• Breathing: wheeze, stridor\n• Circulation: pale, clammy, low BP\n• Skin: itchy rash, flushing',
+        say: 'Sudden onset, with an Airway, Breathing or Circulation problem, with or without skin changes? This is anaphylaxis - give adrenaline IM now.',
+        show: 'ANAPHYLAXIS?\n\nSudden onset + Airway/Breathing/Circulation problem\n(skin changes may or may not be present)\n\n-> Give adrenaline IM now',
         next: 'stop_trigger'
       },
       {
@@ -208,8 +208,8 @@ export const protocols: Protocol[] = [
       {
         id: 'position_sit',
         type: 'instruction',
-        say: 'Sit the patient upright to help breathing.',
-        show: 'SIT UPRIGHT - Easier to breathe',
+        say: 'Sit the patient upright to help breathing. Do not let them stand or walk. If they feel faint, lie them flat again straight away.',
+        show: 'SIT UPRIGHT - Easier to breathe\n\nDo NOT let them stand or walk\nIf they feel faint, lie flat again immediately',
         next: 'adrenaline'
       },
       {
@@ -647,7 +647,7 @@ export const protocols: Protocol[] = [
         id: 'protect',
         type: 'instruction',
         say: 'Protect from injury. Move objects away. Do NOT restrain. Do NOT put anything in mouth.',
-        show: 'PROTECT FROM INJURY\n\nâœ“ Move objects away\nâœ“ Protect head if possible\nâœ— Do NOT restrain\nâœ— Do NOT put anything in mouth',
+        show: 'PROTECT FROM INJURY\n\nMove objects away\nProtect head if possible\nDo NOT restrain\nDo NOT put anything in mouth',
         next: 'time_seizure'
       },
       {
@@ -795,8 +795,8 @@ export const protocols: Protocol[] = [
         id: 'give_patient_gtn',
         type: 'drug',
         drug_id: 'gtn_sublingual',
-        say: 'Give their GTN spray. One to two sprays under the tongue.',
-        show: 'GTN SPRAY\n\n1-2 sprays under tongue\nPatient must be seated\nCan repeat after 5 minutes\nMax 3 doses',
+        say: 'Give their GTN spray, only if their systolic blood pressure is above 100. One to two sprays under the tongue.',
+        show: 'GTN SPRAY\n\nOnly if systolic BP above 100 mmHg\n1-2 sprays under tongue\nPatient must be seated\nCan repeat after 5 minutes\nMax 3 doses',
         require_confirm: true,
         next: 'aspirin'
       },
@@ -938,7 +938,7 @@ export const protocols: Protocol[] = [
         id: 'alternate_cycle',
         type: 'instruction',
         say: 'Continue alternating 5 back blows and 5 abdominal thrusts. Call 999 if not done.',
-        show: 'ALTERNATE\n\n5 Back blows â†” 5 Abdominal thrusts\n\nCall 999 if not already done\nContinue until cleared or unconscious',
+        show: 'ALTERNATE\n\n5 Back blows then 5 Abdominal thrusts\n\nCall 999 if not already done\nContinue until cleared or unconscious',
         actions: ['suggest:call_999'],
         next: 'conscious_check_choking'
       },
@@ -983,6 +983,7 @@ export const protocols: Protocol[] = [
     steps: [
       {
         id: 'fast',
+        recognition: true,
         type: 'instruction',
         say: 'Use FAST. Face: has their face fallen on one side? Arms: can they raise both arms? Speech: is their speech slurred? Time: time to call 999.',
         show: 'FAST ASSESSMENT\n\nF - Face: Facial weakness?\nA - Arms: Arm weakness?\nS - Speech: Slurred speech?\nT - Time to call 999',
@@ -1058,7 +1059,7 @@ export const protocols: Protocol[] = [
         id: 'monitor_stroke',
         type: 'instruction',
         say: 'Monitor continuously. Do not give anything to eat or drink. Do NOT give aspirin. Aspirin is dangerous in stroke as it could be a bleed. Be ready for deterioration.',
-        show: 'MONITOR\n\nâœ— Nothing to eat or drink\nâœ— Do NOT give aspirin (could be haemorrhagic stroke)\nâœ“ Monitor ABCDE\nâœ“ Reassure patient\nâœ“ Note any changes\nâœ“ Wait for ambulance',
+        show: 'MONITOR\n\nNothing to eat or drink\nDo NOT give aspirin (could be haemorrhagic stroke)\nMonitor ABCDE\nReassure patient\nNote any changes\nWait for ambulance',
         next: 'deterioration_stroke'
       },
       {
