@@ -67,7 +67,16 @@ export default defineConfig({
         // trip) — important because when a Gemini key is present speak() always
         // routes to Gemini (sync isAvailable check, no browser-TTS fast path),
         // so NetworkFirst would delay first narration on flaky wifi mid-resus.
-        globIgnores: ['**/genai-*.js', '**/AIAssistant-*.js'],
+        // Keep network-only voice chunks AND non-English IBM Plex subsets out of
+        // the offline precache (UK app — latin only; halves the font payload).
+        globIgnores: [
+          '**/genai-*.js',
+          '**/AIAssistant-*.js',
+          '**/*cyrillic*',
+          '**/*greek*',
+          '**/*vietnamese*',
+          '**/*latin-ext*',
+        ],
         runtimeCaching: [
           {
             urlPattern: /\/assets\/(genai|AIAssistant)-[^/]*\.js$/,
