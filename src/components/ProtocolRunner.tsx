@@ -184,6 +184,12 @@ export function ProtocolRunner() {
   // fall back to `instruction` (ACTION) so a badge always renders.
   const stepType = STEP_TYPES[currentStep.type] ?? STEP_TYPES.instruction;
 
+  // Step hierarchy: `show` is "HERO\n\n<detail>". The hero (action/heading) is
+  // the 26px instruction; everything after the first blank line is demoted to
+  // secondary so a symptom list never competes with the action for attention.
+  const [stepHero, ...stepRest] = currentStep.show.split('\n\n');
+  const stepDetail = stepRest.join('\n\n');
+
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
@@ -280,11 +286,16 @@ export function ProtocolRunner() {
           <span className="cs-eyebrow" style={{ color: stepType.accent }}>{stepType.label}</span>
         </div>
 
-        {/* Step Content Card */}
+        {/* Step Content Card — hero action, demoted detail */}
         <div className="cs-card cs-step-card p-5 mb-4" style={{ ['--step-accent' as string]: stepType.accent } as CSSProperties}>
           <p className="cs-instruction whitespace-pre-line">
-            {currentStep.show}
+            {stepHero}
           </p>
+          {stepDetail && (
+            <div className="mt-3 whitespace-pre-line text-[13px]" style={{ color: 'var(--text-2)', lineHeight: 'var(--lh-relaxed)' }}>
+              {stepDetail}
+            </div>
+          )}
         </div>
 
         {/* Role Assignments */}
