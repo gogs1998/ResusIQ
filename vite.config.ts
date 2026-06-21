@@ -4,7 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+// base is '/' for local dev/preview and root hosts; the GitHub Pages workflow
+// sets PAGES_BASE='/ResusIQ/' so assets resolve under the project subpath.
 export default defineConfig({
+  base: process.env.PAGES_BASE || '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -25,8 +28,8 @@ export default defineConfig({
         background_color: '#08090B',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        id: '/',
+        start_url: '.',
+        scope: '.',
         categories: ['medical', 'health'],
         icons: [
           {
