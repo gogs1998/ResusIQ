@@ -55,3 +55,27 @@ users keep it): chest_pain → "Call 999, suspected heart attack" · asthma → 
 syncope → "Lay flat, raise legs" · anaphylaxis → reframed confirm → adrenaline · stroke → FAST
 assessment · hypoglycaemia → action. Kept as mandatory gates: cardiac_arrest safety, seizure
 protect, choking severity, adrenal steroid-history.
+
+## SDCEP + primary-source cross-check delta (2026-06-21)
+
+Followed the SDCEP hub → its 4 cited primaries (Scottish Govt 2024 drugs [fetched, full match];
+RCUK Primary Dental Care QS [fetched — ResusIQ implements the newer RCUK 2021, ahead of that
+page]; SDCEP Drug Prescribing [fetched]; BNF dental [paywalled to automated fetch — **flagged
+for a human BNF spot-check** of the paediatric midazolam/adrenaline bands before release]).
+
+Applied (commit follows):
+- **DRIFT-3** (refines DRIFT-1) — anaphylaxis positioning: SDCEP default is **lay flat + raise
+  legs**; sit-up is *only* for predominant breathing difficulty and must never become
+  standing/walking. `position_sit` reworded accordingly. _SDCEP Anaphylaxis; RCUK 2021._
+- **DRIFT-4 (new)** — **refractory anaphylaxis**: after 2 IM doses without improvement the app
+  now flags it and pushes the 999/IV handover (IV adrenaline + fluids are out of the dental kit
+  and dental scope — receiving-team handover only; IM q5min/no-max stays). _RCUK Anaphylaxis
+  May 2021._
+- **DRIFT-2 GTN** — **downgraded to optional**: core SDCEP is *silent* on a BP threshold; the
+  >100 mmHg figure is BDJ 2025, so the citation is corrected to BDJ 2025 (was mislabelled SDCEP).
+- Optional **agonal-breathing** cue added to the cardiac-arrest breathing check. _RCUK BLS 2021._
+
+Doses re-confirmed against **Scottish Government 2024 (primary)** + SDCEP: full match (adrenaline
+bands, salbutamol 10-puff max incl. children, aspirin 300 mg adults-only, O₂ 15 L/min, drug stock
+list, hydrocortisone off the mandatory list). **No SAFETY defect.** Procedural: confirm the BNFc
+paediatric bands against a live BNF login before release.

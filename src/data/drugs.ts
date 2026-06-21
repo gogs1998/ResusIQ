@@ -208,7 +208,7 @@ export const drugs: Drug[] = [
       'Patient MUST be sitting or lying — can cause dangerous drop in BP',
       'If patient has own GTN spray, try theirs first',
       'Pain persisting > 15 min despite GTN = likely MI',
-      'Do NOT give if systolic BP below 100 mmHg (SDCEP)',
+      'Do NOT give if systolic BP below 100 mmHg (BDJ 2025)',
       'Ask about recent PDE5 inhibitor use (Viagra/sildenafil, tadalafil)'
     ],
     contraindications: [

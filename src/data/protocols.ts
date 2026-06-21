@@ -53,8 +53,8 @@ export const protocols: Protocol[] = [
       {
         id: 'breathing_check',
         type: 'instruction',
-        say: 'Look, listen, and feel for breathing. Take no more than 10 seconds.',
-        show: 'CHECK BREATHING - Look, listen, feel (max 10 seconds)',
+        say: 'Look, listen, and feel for breathing. Take no more than 10 seconds. Occasional gasps are not normal breathing - treat as cardiac arrest.',
+        show: 'CHECK BREATHING - Look, listen, feel (max 10 seconds)\n\nOccasional gasps are NOT normal breathing - treat as arrest',
         next: 'breathing_decision'
       },
       {
@@ -208,8 +208,8 @@ export const protocols: Protocol[] = [
       {
         id: 'position_sit',
         type: 'instruction',
-        say: 'Sit the patient upright to help breathing. Do not let them stand or walk. If they feel faint, lie them flat again straight away.',
-        show: 'SIT UPRIGHT - Easier to breathe\n\nDo NOT let them stand or walk\nIf they feel faint, lie flat again immediately',
+        say: 'Sit them up only if breathing is the main problem. Never let them stand or walk. If they feel faint, lay them flat and raise the legs again straight away.',
+        show: 'SIT UP only if breathing is the main problem\n\nNever let them stand or walk\nIf they feel faint: lay flat + raise legs immediately',
         next: 'adrenaline'
       },
       {
@@ -262,8 +262,8 @@ export const protocols: Protocol[] = [
         id: 'repeat_adrenaline',
         type: 'drug',
         drug_id: 'adrenaline_im_adult',
-        say: 'Repeat adrenaline now. Same dose. Can repeat every 5 minutes. There is no upper limit on the number of doses.',
-        show: 'REPEAT ADRENALINE IM\n\nSame dose as before\nCan repeat every 5 minutes\nNo upper limit on doses',
+        say: 'Repeat adrenaline now, same dose, every 5 minutes - there is no upper limit. If there is no improvement after two doses this is refractory anaphylaxis. Make sure the ambulance is coming now - they need intravenous adrenaline and fluids you cannot give here. Keep oxygen on and keep them flat with legs raised.',
+        show: 'REPEAT ADRENALINE IM\n\nSame dose, every 5 minutes - no upper limit\n\nNo improvement after 2 doses = REFRACTORY\nMake sure 999 is coming NOW\n(they need IV adrenaline + fluids you cannot give here)\nKeep oxygen on, keep flat + legs raised',
         require_confirm: true,
         next: 'monitor_response'
       },
