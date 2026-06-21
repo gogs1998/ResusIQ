@@ -9,6 +9,7 @@
 //
 // Lives in its own module so the store no longer imports from main.tsx,
 // removing a store -> main -> App -> store cycle (HANDOFF risk #1).
+import { isNative } from './platform';
 
 interface WakeLockSentinel {
   release: () => Promise<void>;
@@ -46,6 +47,14 @@ function handleVisibilityChange(): void {
 /** Acquire the screen wake lock and keep it across backgrounding. */
 export function enableWakeLock(): void {
   wanted = true;
+  // Native (Capacitor): @capacitor-community/keep-awake holds through
+  // backgrounding with no visibility dance and no iOS-18.4 floor.
+  if (isNative) {
+    void import('@capacitor-community/keep-awake')
+      .then(({ KeepAwake }) => KeepAwake.keepAwake())
+      .catch(() => { /* ignore */ });
+    return;
+  }
   if (!listenerAttached) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     listenerAttached = true;
@@ -56,6 +65,12 @@ export function enableWakeLock(): void {
 /** Release the wake lock and stop re-acquiring it. */
 export function disableWakeLock(): void {
   wanted = false;
+  if (isNative) {
+    void import('@capacitor-community/keep-awake')
+      .then(({ KeepAwake }) => KeepAwake.allowSleep())
+      .catch(() => { /* ignore */ });
+    return;
+  }
   if (sentinel) {
     void sentinel.release().catch(() => { /* ignore */ });
     sentinel = null;
