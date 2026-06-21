@@ -54,9 +54,10 @@ export function ProtocolRunner() {
     practiceSetup
   } = useAppStore();
 
-  const { speak } = useSpeech();
+  const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [handsFree, setHandsFree] = useState(false);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
 
@@ -143,6 +144,23 @@ export function ProtocolRunner() {
 
   const { isListening, startListening, stopListening } = useVoiceCommands(handleVoiceCommand);
 
+  // Hands-free voice loop: while ON and the app isn't speaking, keep the mic
+  // open and restart it after each utterance (Web Speech is single-shot).
+  // Half-duplex — listening pauses while TTS speaks so the app never hears its
+  // own narration. STT dropping (e.g. a 999 call) just stops the loop; the big
+  // manual buttons always remain. Needs on-device QA for native iOS.
+  useEffect(() => {
+    if (!voiceCommandsSupported) return;
+    if (!handsFree || isSpeaking) {
+      if (isListening) void stopListening();
+      return;
+    }
+    if (!isListening) {
+      const t = setTimeout(() => { void startListening(); }, 500);
+      return () => clearTimeout(t);
+    }
+  }, [handsFree, isSpeaking, isListening, startListening, stopListening]);
+
   const handleRepeat = () => {
     if (currentStep) {
       speak(currentStep.say);
@@ -216,13 +234,13 @@ export function ProtocolRunner() {
               it actually works so users never trust a dead button. */}
           {voiceCommandsSupported && (
             <button
-              onClick={isListening ? stopListening : startListening}
-              aria-label={isListening ? 'Stop voice commands' : 'Start voice commands'}
-              aria-pressed={isListening}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity ${isListening ? 'animate-pulse' : ''}`}
-              style={isListening ? { background: 'var(--brand-tint)', border: '1px solid color-mix(in srgb, var(--brand) 30%, transparent)' } : chip}
+              onClick={() => setHandsFree((h) => !h)}
+              aria-label={handsFree ? 'Turn off hands-free voice' : 'Turn on hands-free voice'}
+              aria-pressed={handsFree}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity ${handsFree && isListening ? 'animate-pulse' : ''}`}
+              style={handsFree ? { background: 'var(--brand-tint)', border: '1px solid color-mix(in srgb, var(--brand) 30%, transparent)' } : chip}
             >
-              <Mic className="w-4 h-4" style={{ color: isListening ? 'var(--brand)' : 'var(--text-2)' }} />
+              <Mic className="w-4 h-4" style={{ color: handsFree ? 'var(--brand)' : 'var(--text-2)' }} />
             </button>
           )}
         </div>
