@@ -1,6 +1,13 @@
 # ResusIQ — Clinical Soundness Audit (RCUK + SDCEP)
 
-_Date: 2026-06-21 · Auditor: clinical-reviewer · Status: PASSED gate (DRIFT/WORDING applied)_
+_Date: 2026-06-21 · Auditor: clinical-reviewer · **Status: SIGNED OFF — CLINICAL GATE PASSED**_
+
+> **Final sign-off (2026-06-21):** every item re-verified against the committed `protocols.ts`
+> + `drugs.ts`. Zero SAFETY defects; all four non-negotiables hold; every dose/route/site/
+> sequence validated against current RCUK 2021 (general bar) + SDCEP/Scottish Gov 2024 (dental
+> layer) with the primary-source chain followed. Core algorithms are RCUK-correct for broader
+> (not dental-only) use. **One procedural item remains (non-blocking):** human spot-check of the
+> BNFc paediatric midazolam/adrenaline bands against a live BNF login before release.
 
 ResusIQ is built for UK dental practice but is **not limited to it** — core algorithms,
 doses and sequences are validated against full **Resuscitation Council UK** guidance (the
