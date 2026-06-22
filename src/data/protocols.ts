@@ -426,123 +426,123 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         recognition: true,
         type: 'instruction',
-        say: 'Recognise hypoglycaemia. Sweating. Shaking. Confusion. Aggression. Pallor. Weakness.',
-        show: 'RECOGNISE HYPOGLYCAEMIA\n\n• Sweating, trembling\n• Confusion, irritability\n• Pallor, weakness\n• Hunger\n• Drowsiness\n• Known diabetic',
+        say: 'Low blood sugar in a diabetic patient. They may be sweaty, shaky, confused or drowsy.',
+        show: 'Low blood sugar?\n\nSweaty, shaky, confused, irritable or drowsy in a diabetic patient.',
         next: 'conscious_check'
       },
       {
         id: 'conscious_check',
         type: 'decision',
-        say: 'Is the patient conscious and able to swallow safely?',
-        show: 'Can patient swallow safely?',
-        question: 'Is patient conscious and able to swallow?',
+        say: 'Are they fully awake and able to swallow safely?',
+        show: 'Are they awake and able to swallow safely?',
+        question: 'Are they awake and able to swallow safely?',
         answers: [
-          { label: 'Yes - Conscious', next: 'oral_glucose' },
-          { label: 'No - Unconscious/drowsy', next: 'unconscious_hypo' }
+          { label: 'Yes — awake, can swallow', next: 'oral_glucose' },
+          { label: 'No — drowsy, unconscious or can’t swallow', next: 'unconscious_hypo' }
         ]
       },
       {
         id: 'oral_glucose',
         type: 'drug',
         drug_id: 'glucose_oral',
-        say: 'Give oral glucose now. Glucose gel, glucose tablets, or sugary drink. 15 to 20 grams.',
-        show: 'GIVE ORAL GLUCOSE\n\n• GlucoGel: 1-2 tubes\n• Glucose tablets: 4-5 tablets\n• Sugary drink: 150-200ml\n• NOT diet drinks',
+        say: 'Give them fast-acting sugar by mouth now. About 15 to 20 grams.',
+        show: 'Give 15 to 20 g of fast-acting sugar.\n\n1 to 2 tubes of glucose gel, or 4 to 5 glucose tablets, or 150 to 200 ml of a non-diet sugary drink. Not a diet drink.',
         require_confirm: true,
         next: 'wait_response'
       },
       {
         id: 'wait_response',
         type: 'timer_block',
-        say: 'Wait 10 to 15 minutes. Then reassess.',
-        show: 'WAIT 10-15 MINUTES\nThen reassess',
+        say: 'Wait 10 to 15 minutes, then check them again.',
+        show: 'Wait 10 to 15 minutes.\n\nThen check whether they are improving.',
         duration_seconds: 600,
         on_timer_end_next: 'reassess_hypo'
       },
       {
         id: 'reassess_hypo',
         type: 'decision',
-        say: 'Reassess. Is the patient improving?',
-        show: 'Is patient improving?',
-        question: 'Is the patient improving?',
+        say: 'Are they getting better?',
+        show: 'Are they improving?',
+        question: 'Are they improving?',
         answers: [
-          { label: 'Yes - Improving', next: 'recovery_hypo' },
-          { label: 'No - No improvement', next: 'repeat_glucose' }
+          { label: 'Yes — improving', next: 'recovery_hypo' },
+          { label: 'No — no better yet', next: 'repeat_glucose' }
         ]
       },
       {
         id: 'repeat_glucose',
         type: 'drug',
         drug_id: 'glucose_oral',
-        say: 'Repeat oral glucose. If no improvement after 3 treatments, call 999.',
-        show: 'REPEAT ORAL GLUCOSE\n\nIf no improvement after 3 treatments - CALL 999',
+        say: 'Give another dose of fast-acting sugar. If there’s no improvement after 3 doses, call 999.',
+        show: 'Repeat the fast-acting sugar.\n\nStill no better after 3 doses? Call 999.',
         require_confirm: true,
         next: 'third_check'
       },
       {
         id: 'third_check',
         type: 'decision',
-        say: 'Is this the third treatment without improvement?',
-        show: 'Third treatment without improvement?',
-        question: 'Third attempt without improvement?',
+        say: 'Is this the third dose with still no improvement?',
+        show: 'Third dose and still no better?',
+        question: 'Third dose and still no better?',
         answers: [
-          { label: 'Yes - Call 999', next: 'call_999_hypo' },
-          { label: 'No - Wait and reassess', next: 'wait_response' }
+          { label: 'Yes — call 999', next: 'call_999_hypo' },
+          { label: 'No — wait and check again', next: 'wait_response' }
         ]
       },
       {
         id: 'call_999_hypo',
         type: 'instruction',
-        say: 'Call 999 now. State hypoglycaemia not responding to treatment.',
-        show: 'CALL 999\n\nState: Hypoglycaemia not responding',
+        say: 'Call 999 now. Tell them it’s low blood sugar that isn’t responding to treatment.',
+        show: 'Call 999 now.\n\nSay: low blood sugar not responding to treatment.',
         actions: ['suggest:call_999'],
         next: 'monitor_hypo'
       },
       {
         id: 'recovery_hypo',
         type: 'instruction',
-        say: 'Patient improving. Give longer acting carbohydrate when fully recovered. Biscuits, sandwich, or their next meal.',
-        show: 'RECOVERY\n\nGive longer-acting carbs:\n• Biscuits\n• Sandwich\n• Next meal\n\nDiscuss with patient'
+        say: 'They’re recovering. Once they’re fully back to normal, give them a longer-lasting carbohydrate.',
+        show: 'They’re recovering.\n\nWhen fully alert, give longer-lasting carbs: a biscuit, a sandwich, or their next meal.'
       },
       {
         id: 'unconscious_hypo',
         type: 'instruction',
-        say: 'Patient unconscious. Call 999 immediately. Do not give anything by mouth.',
-        show: 'UNCONSCIOUS - CALL 999\n\nDO NOT give anything by mouth',
+        say: 'Call 999 now. Do not put anything in their mouth.',
+        show: 'Call 999 now.\n\nNothing by mouth — they can’t protect their airway.',
         actions: ['suggest:call_999'],
         next: 'recovery_position_hypo'
       },
       {
         id: 'recovery_position_hypo',
         type: 'instruction',
-        say: 'Place in recovery position. Protect airway.',
-        show: 'RECOVERY POSITION\nProtect airway',
+        say: 'Roll them onto their side into the recovery position and keep their airway open.',
+        show: 'Roll them into the recovery position.\n\nKeep their airway open and keep watching their breathing.',
         next: 'glucagon_check'
       },
       {
         id: 'glucagon_check',
         type: 'decision',
-        say: 'Is glucagon available?',
-        show: 'Glucagon available?',
-        question: 'Do you have glucagon?',
+        say: 'Do you have glucagon to hand?',
+        show: 'Is glucagon available?',
+        question: 'Is glucagon available?',
         answers: [
-          { label: 'Yes', next: 'give_glucagon' },
-          { label: 'No', next: 'monitor_hypo' }
+          { label: 'Yes — glucagon available', next: 'give_glucagon' },
+          { label: 'No — none available', next: 'monitor_hypo' }
         ]
       },
       {
         id: 'give_glucagon',
         type: 'drug',
         drug_id: 'glucagon_im',
-        say: 'Give glucagon intramuscular. Adult: 1 milligram.',
-        show: 'GLUCAGON IM\n\nAdult: 1mg\nChild <8 years or <25kg: 500 micrograms',
+        say: 'Give glucagon into the muscle. 1 milligram for an adult.',
+        show: 'Glucagon IM — 1 mg for an adult.\n\nChild under 8 years or under 25 kg: 500 micrograms. It takes 10 to 15 minutes to work.',
         require_confirm: true,
         next: 'monitor_hypo'
       },
       {
         id: 'monitor_hypo',
         type: 'instruction',
-        say: 'Monitor continuously. Give oral glucose when conscious and able to swallow. Wait for ambulance.',
-        show: 'MONITOR\n\n• Recovery position\n• Give oral glucose when conscious\n• Wait for ambulance'
+        say: 'Keep watching them closely until the ambulance arrives. Only give sugar by mouth once they’re awake and can swallow.',
+        show: 'Keep watching them until the ambulance arrives.\n\nGive sugar by mouth only once they’re awake and able to swallow safely.'
       }
     ]
   },
@@ -646,101 +646,101 @@ export const protocols: Protocol[] = [
       {
         id: 'protect',
         type: 'instruction',
-        say: 'Protect from injury. Move objects away. Do NOT restrain. Do NOT put anything in mouth.',
-        show: 'PROTECT FROM INJURY\n\nMove objects away\nProtect head if possible\nDo NOT restrain\nDo NOT put anything in mouth',
+        say: 'Protect them from injury and move hard objects away. Do not restrain them, and do not put anything in their mouth.',
+        show: 'Protect them from injury.\n\nMove hard objects away and cushion their head. Do not restrain them. Do not put anything in their mouth.',
         next: 'time_seizure'
       },
       {
         id: 'time_seizure',
         type: 'timer_block',
-        say: 'Time the seizure. Note when it started.',
-        show: 'TIME THE SEIZURE\n\nNote start time',
+        say: 'Note the time it started and time the seizure.',
+        show: 'Time the seizure from now.\n\nNote the start time. Most seizures stop on their own within 5 minutes.',
         duration_seconds: 300,
         on_timer_end_next: 'prolonged_seizure'
       },
       {
         id: 'prolonged_seizure',
         type: 'decision',
-        say: 'Has the seizure lasted more than 5 minutes?',
-        show: 'Seizure >5 minutes?',
-        question: 'Has the seizure lasted more than 5 minutes?',
+        say: 'Has the seizure lasted longer than 5 minutes?',
+        show: 'Has the seizure lasted longer than 5 minutes?',
+        question: 'Has the seizure lasted longer than 5 minutes?',
         answers: [
-          { label: 'Yes - Over 5 minutes', next: 'call_999_seizure' },
-          { label: 'No - Still seizing', next: 'continue_timing' },
-          { label: 'Seizure stopped', next: 'post_ictal' }
+          { label: 'Yes — longer than 5 minutes', next: 'call_999_seizure' },
+          { label: 'No — still seizing, under 5 minutes', next: 'continue_timing' },
+          { label: 'Seizure has stopped', next: 'post_ictal' }
         ]
       },
       {
         id: 'continue_timing',
         type: 'instruction',
-        say: 'Continue timing. Protect from injury. Call 999 if seizure continues over 5 minutes.',
-        show: 'CONTINUE TIMING\nProtect from injury',
+        say: 'Keep timing and keep protecting them. Call 999 if it passes 5 minutes.',
+        show: 'Keep timing. Keep them safe.\n\nIf the seizure passes 5 minutes, call 999.',
         next: 'time_seizure'
       },
       {
         id: 'call_999_seizure',
         type: 'instruction',
-        say: 'Prolonged seizure. Call 999 now. This is status epilepticus.',
-        show: 'PROLONGED SEIZURE\n\nCALL 999 IMMEDIATELY\nStatus epilepticus',
+        say: 'Call 999 now. A seizure lasting longer than 5 minutes is a medical emergency.',
+        show: 'Call 999 now.\n\nPROLONGED — a seizure over 5 minutes is status epilepticus and needs the ambulance.',
         actions: ['suggest:call_999'],
         next: 'midazolam_check'
       },
       {
         id: 'midazolam_check',
         type: 'decision',
-        say: 'Is buccal midazolam available?',
-        show: 'Midazolam available?',
+        say: 'Do you have buccal midazolam in the emergency kit?',
+        show: 'Do you have buccal midazolam?',
         question: 'Do you have buccal midazolam?',
         answers: [
-          { label: 'Yes', next: 'give_midazolam' },
-          { label: 'No', next: 'monitor_seizure' }
+          { label: 'Yes — it is in the kit', next: 'give_midazolam' },
+          { label: 'No — not available', next: 'monitor_seizure' }
         ]
       },
       {
         id: 'give_midazolam',
         type: 'drug',
         drug_id: 'midazolam_buccal',
-        say: 'Give buccal midazolam. Adult: 10 milligrams. Insert between gum and cheek.',
-        show: 'BUCCAL MIDAZOLAM\n\nAdult: 10mg\nChild 10+: 10mg\nChild 5-10: 7.5mg\nChild 1-5: 5mg\n\nBetween gum and cheek',
+        say: 'Give one dose of buccal midazolam between the gum and cheek. For an adult that is 10 milligrams. This is a single dose only — do not repeat it.',
+        show: 'Give buccal midazolam — one dose only.\n\nAdult: 10 mg. Child 10+: 10 mg. Child 5 to 10: 7.5 mg. Child 1 to 5: 5 mg. Place between the gum and cheek, half each side. Single dose — do not repeat.',
         require_confirm: true,
         next: 'monitor_seizure'
       },
       {
         id: 'monitor_seizure',
         type: 'instruction',
-        say: 'Monitor continuously. Be ready to protect airway. Have suction ready.',
-        show: 'MONITOR\n\n• Protect airway\n• Have suction ready\n• Wait for ambulance'
+        say: 'Stay with them and keep watching their airway and breathing. Have suction ready.',
+        show: 'Stay with them until the ambulance arrives.\n\nKeep their airway clear and have suction ready. Be ready to start CPR if they stop breathing normally.'
       },
       {
         id: 'post_ictal',
         type: 'instruction',
-        say: 'Seizure has stopped. Place in recovery position. Check airway. They may be confused or drowsy.',
-        show: 'POST-ICTAL\n\nRecovery position\nCheck airway\nPatient may be confused\nStay with them',
+        say: 'The seizure has stopped. Roll them onto their side into the recovery position and check their airway.',
+        show: 'Seizure stopped — recovery position.\n\nCheck their airway. They may be confused or drowsy for a while. Stay with them.',
         next: 'post_ictal_assessment'
       },
       {
         id: 'post_ictal_assessment',
         type: 'decision',
-        say: 'Is this their first seizure, or is something unusual?',
-        show: 'First seizure or unusual?',
+        say: 'Is this their first ever seizure, or is anything unusual about it?',
+        show: 'First seizure, or anything unusual?',
         question: 'First seizure or unusual features?',
         answers: [
-          { label: 'Yes - First/unusual', next: 'call_999_first' },
-          { label: 'No - Known epileptic, typical seizure', next: 'monitor_recovery' }
+          { label: 'Yes — first seizure, or unusual', next: 'call_999_first' },
+          { label: 'No — known epilepsy, typical seizure', next: 'monitor_recovery' }
         ]
       },
       {
         id: 'call_999_first',
         type: 'instruction',
-        say: 'First seizure or unusual. Call 999 for assessment.',
-        show: 'CALL 999\n\nFirst seizure needs medical assessment',
+        say: 'Call 999. A first or unusual seizure needs to be assessed.',
+        show: 'Call 999.\n\nA first-ever, prolonged, repeated or unusual seizure, or any injury, needs medical assessment.',
         actions: ['suggest:call_999']
       },
       {
         id: 'monitor_recovery',
         type: 'instruction',
-        say: 'Monitor recovery. Stay with them until fully recovered. Do not leave alone.',
-        show: 'MONITOR RECOVERY\n\nStay with patient\nDo not leave alone\nMay take time to fully recover'
+        say: 'Stay with them until they have fully recovered, and do not leave them alone.',
+        show: 'Stay with them until they are fully recovered.\n\nRecovery can take time. Do not leave them on their own.'
       }
     ]
   },
@@ -761,42 +761,42 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         recognition: true,
         type: 'instruction',
-        say: 'Recognise cardiac chest pain. Central crushing pain. May radiate to arm or jaw. Sweating. Nausea. Shortness of breath.',
-        show: 'RECOGNISE CARDIAC PAIN\n\n• Central/left chest pain\n• Crushing, heavy, tight\n• May radiate to arm, jaw, back\n• Sweating, pallor\n• Nausea\n• Shortness of breath',
+        say: 'Sit them up, supported, and keep them calm. This could be a heart attack.',
+        show: 'Sit them up, supported. Keep them calm.\n\nCould be a heart attack: central chest pain that may spread to the arm, jaw or back, with sweating, nausea or breathlessness.',
         next: 'call_999_chest'
       },
       {
         id: 'call_999_chest',
         type: 'instruction',
-        say: 'Call 999 immediately. State suspected heart attack.',
-        show: 'CALL 999 IMMEDIATELY\n\nState: Suspected heart attack',
+        say: 'Call 999 now and say you think it’s a heart attack.',
+        show: 'Call 999 now — say suspected heart attack.\n\nGet someone to fetch the emergency kit and the defibrillator while you stay with them.',
         actions: ['suggest:call_999', 'log:999_called'],
         next: 'position_chest'
       },
       {
         id: 'position_chest',
         type: 'instruction',
-        say: 'Position for comfort. Usually sitting up, supported. Knees bent.',
-        show: 'POSITION FOR COMFORT\n\nUsually sitting up, supported\nKnees bent\nW position',
+        say: 'Keep them sitting up and resting, in whatever position feels easiest.',
+        show: 'Keep them sitting up and resting.\n\nSupported, knees bent if that’s more comfortable. Don’t let them walk about.',
         next: 'gtn_check'
       },
       {
         id: 'gtn_check',
         type: 'decision',
-        say: 'Is this angina? Does the patient have their own GTN spray?',
-        show: 'Patient has own GTN?',
-        question: 'Does patient have their own GTN spray?',
+        say: 'Do they carry their own GTN spray for angina?',
+        show: 'Do they have their own GTN spray?',
+        question: 'Do they have their own GTN spray?',
         answers: [
-          { label: 'Yes - Has GTN', next: 'give_patient_gtn' },
-          { label: 'No', next: 'aspirin' }
+          { label: 'Yes — they have their own GTN', next: 'give_patient_gtn' },
+          { label: 'No — no GTN', next: 'aspirin' }
         ]
       },
       {
         id: 'give_patient_gtn',
         type: 'drug',
         drug_id: 'gtn_sublingual',
-        say: 'Give their GTN spray, only if their systolic blood pressure is above 100. One to two sprays under the tongue.',
-        show: 'GTN SPRAY\n\nOnly if systolic BP above 100 mmHg\n1-2 sprays under tongue\nPatient must be seated\nCan repeat after 5 minutes\nMax 3 doses',
+        say: 'Give 1 to 2 sprays of their GTN under the tongue — but only if they’re sitting and their systolic blood pressure is above 100.',
+        show: 'GTN spray, 1 to 2 sprays under the tongue.\n\nOnly if systolic blood pressure is above 100 mmHg (BDJ 2025), and only while they’re sitting or lying. Repeat after 5 minutes if pain stays. Up to 3 doses.',
         require_confirm: true,
         next: 'aspirin'
       },
@@ -804,53 +804,53 @@ export const protocols: Protocol[] = [
         id: 'aspirin',
         type: 'drug',
         drug_id: 'aspirin_oral',
-        say: 'Give aspirin 300 milligrams. Patient must CHEW, not swallow whole. Check no allergy first.',
-        show: 'ASPIRIN 300mg\n\nMust CHEW the tablet\n\nCheck:\n• No aspirin allergy\n• No active bleeding\n• Not already taken today',
+        say: 'Give one 300 milligram aspirin to chew, not swallow — first check they’re not allergic and not bleeding.',
+        show: 'Aspirin 300 mg — they must chew it.\n\nFirst check: no aspirin allergy, no active bleeding, not already taken today, and they’re 16 or over. Single dose only.',
         require_confirm: true,
         next: 'oxygen_chest'
       },
       {
         id: 'oxygen_chest',
         type: 'decision',
-        say: 'Is the patient short of breath or oxygen saturation low?',
-        show: 'Needs oxygen?',
-        question: 'Is patient breathless or hypoxic?',
+        say: 'Are they breathless, or are their oxygen levels low?',
+        show: 'Are they breathless or are their oxygen levels low?',
+        question: 'Are they breathless or are their oxygen levels low?',
         answers: [
-          { label: 'Yes - Give oxygen', next: 'give_oxygen_chest' },
-          { label: 'No - Not needed', next: 'monitor_chest' }
+          { label: 'Yes — breathless or oxygen low', next: 'give_oxygen_chest' },
+          { label: 'No — breathing fine', next: 'monitor_chest' }
         ]
       },
       {
         id: 'give_oxygen_chest',
         type: 'drug',
         drug_id: 'oxygen_moderate_flow',
-        say: 'Give oxygen if needed. Aim for normal saturations.',
-        show: 'OXYGEN if hypoxic\n\nAim for SpO2 94-98%',
+        say: 'Give oxygen now, just enough to bring their levels back to normal.',
+        show: 'Oxygen only because they need it.\n\nAim for oxygen levels of 94 to 98 percent. Don’t give routine high-flow oxygen in a heart attack — it can do harm.',
         next: 'monitor_chest'
       },
       {
         id: 'monitor_chest',
         type: 'instruction',
-        say: 'Monitor continuously. Prepare AED. Be ready to start CPR if they collapse.',
-        show: 'MONITOR CONTINUOUSLY\n\n• Keep talking to patient\n• Prepare AED\n• Be ready for CPR\n• Wait for ambulance',
+        say: 'Stay with them, keep talking to them, and have the defibrillator ready.',
+        show: 'Stay with them until the ambulance arrives.\n\nKeep talking to them, have the defibrillator close, and be ready to start CPR if they collapse.',
         next: 'deterioration_check'
       },
       {
         id: 'deterioration_check',
         type: 'decision',
-        say: 'Has the patient become unresponsive?',
-        show: 'Patient unresponsive?',
-        question: 'Has patient become unresponsive?',
+        say: 'Are they still responding to you?',
+        show: 'Are they still responding?',
+        question: 'Are they still responding?',
         answers: [
-          { label: 'Yes - Collapsed', next: 'start_cpr_chest' },
-          { label: 'No - Still conscious', next: 'monitor_chest' }
+          { label: 'No — they’ve collapsed', next: 'start_cpr_chest' },
+          { label: 'Yes — still with you', next: 'monitor_chest' }
         ]
       },
       {
         id: 'start_cpr_chest',
         type: 'instruction',
-        say: 'Cardiac arrest. Start CPR. Switch to cardiac arrest protocol.',
-        show: 'CARDIAC ARREST\nStart CPR immediately',
+        say: 'They’ve gone into cardiac arrest. Start CPR now — I’ll take you through it.',
+        show: 'Start CPR now.\n\nSwitching you to the cardiac arrest guide.',
         actions: ['switch_protocol:cardiac_arrest']
       }
     ]
