@@ -170,26 +170,26 @@ export const protocols: Protocol[] = [
       {
         id: 'recognition',
         type: 'instruction',
-        say: 'Sudden onset, with an Airway, Breathing or Circulation problem, with or without skin changes? This is anaphylaxis - give adrenaline IM now.',
-        show: 'ANAPHYLAXIS?\n\nSudden onset + Airway/Breathing/Circulation problem\n(skin changes may or may not be present)\n\n-> Give adrenaline IM now',
+        say: 'They came on suddenly and have an Airway, Breathing or Circulation problem — this is anaphylaxis, so give adrenaline IM now. Skin changes may or may not be there.',
+        show: 'This is anaphylaxis — give adrenaline IM now\n\nSudden onset + an Airway, Breathing or Circulation problem.\nSkin changes may or may not be present.',
         next: 'stop_trigger'
       },
       {
         id: 'stop_trigger',
         type: 'instruction',
-        say: 'Stop the trigger if possible. Remove any IV drugs. Stop any infusions.',
-        show: 'STOP TRIGGER - Remove causative agent if possible',
+        say: 'Stop the trigger if you can. Stop any drug or infusion that might be the cause.',
+        show: 'Stop the trigger if you can\n\nStop any drug or infusion that could be causing it.',
         next: 'call_help'
       },
       {
         id: 'call_help',
         type: 'role_assignment',
-        say: 'Call for help. Call 999 immediately. State anaphylaxis.',
-        show: 'CALL 999 - State ANAPHYLAXIS',
+        say: 'Get help now — call 999 and tell them anaphylaxis. Stay with them and get ready to give adrenaline.',
+        show: 'Call 999 now — say anaphylaxis\n\nGet the emergency drugs kit and stay with them.',
         roles: [
-          { role: 'Person 1', task: 'Call 999 - say ANAPHYLAXIS' },
-          { role: 'Person 2', task: 'Get emergency drugs kit' },
-          { role: 'You', task: 'Stay with patient, give adrenaline' }
+          { role: 'Person 1', task: 'Call 999 now — say anaphylaxis' },
+          { role: 'Person 2', task: 'Bring the emergency drugs kit' },
+          { role: 'You', task: 'Stay with them and give adrenaline' }
         ],
         actions: ['suggest:call_999', 'log:999_called'],
         next: 'position'
@@ -197,34 +197,34 @@ export const protocols: Protocol[] = [
       {
         id: 'position',
         type: 'decision',
-        say: 'Position the patient. If breathing difficulty, sit them up. Otherwise, lie flat with legs raised.',
-        show: 'POSITION PATIENT',
-        question: 'Is the patient having breathing difficulty?',
+        say: 'Get them into position. Lay them flat and raise their legs, unless breathing is their main problem.',
+        show: 'Position them\n\nLay flat + raise legs by default.\nSit up only if breathing is the main problem.',
+        question: 'Is breathing their main problem?',
         answers: [
-          { label: 'Yes - Breathing problems', next: 'position_sit' },
-          { label: 'No - Circulation problems', next: 'position_flat' }
+          { label: 'Yes — breathing is the main problem', next: 'position_sit' },
+          { label: 'No — lay them flat and raise the legs', next: 'position_flat' }
         ]
       },
       {
         id: 'position_sit',
         type: 'instruction',
-        say: 'Sit them up only if breathing is the main problem. Never let them stand or walk. If they feel faint, lay them flat and raise the legs again straight away.',
-        show: 'SIT UP only if breathing is the main problem\n\nNever let them stand or walk\nIf they feel faint: lay flat + raise legs immediately',
+        say: 'Sit them up to help their breathing, but never let them stand or walk. If they feel faint, lay them flat and raise their legs again straight away.',
+        show: 'Sit them up to ease breathing\n\nNever let them stand or walk.\nIf they feel faint: lay flat and raise the legs again immediately.',
         next: 'adrenaline'
       },
       {
         id: 'position_flat',
         type: 'instruction',
-        say: 'Lie flat with legs raised. Do not sit up if low blood pressure.',
-        show: 'LIE FLAT - Legs raised\n\nDo NOT sit up if hypotensive',
+        say: 'Lay them flat and raise their legs. Do not sit them up — it can drop their blood pressure further.',
+        show: 'Lay them flat, legs raised\n\nDo not sit them up — it can worsen low blood pressure.',
         next: 'adrenaline'
       },
       {
         id: 'adrenaline',
         type: 'drug',
         drug_id: 'adrenaline_im_adult',
-        say: 'Give adrenaline intramuscular now. Adult dose: 500 micrograms. That is 0.5ml of 1 in 1000. Inject into outer thigh.',
-        show: 'ADRENALINE IM NOW\n\nAdult: 500 micrograms (0.5ml of 1:1000)\n\nSite: Outer mid-thigh\n\nPaediatric doses by age shown below',
+        say: 'Give adrenaline into the outer thigh now. For an adult that is 500 micrograms — half a millilitre of 1 in 1000.',
+        show: 'Give adrenaline IM now\n\nAdult: 500 micrograms (0.5 ml of 1:1000), into the outer mid-thigh.\nChild doses by age are shown below.',
         require_confirm: true,
         next: 'oxygen'
       },
@@ -232,8 +232,8 @@ export const protocols: Protocol[] = [
         id: 'oxygen',
         type: 'drug',
         drug_id: 'oxygen_high_flow',
-        say: 'Give high flow oxygen. 15 litres per minute via non-rebreather mask.',
-        show: 'OXYGEN 15 L/min\nNon-rebreather mask with reservoir',
+        say: 'Put them on high-flow oxygen — 15 litres a minute through a non-rebreather mask.',
+        show: 'High-flow oxygen, 15 L/min\n\nUse a non-rebreather mask with the reservoir bag.',
         require_confirm: false,
         actions: ['log:oxygen_started'],
         next: 'monitor_response'
@@ -241,8 +241,8 @@ export const protocols: Protocol[] = [
       {
         id: 'monitor_response',
         type: 'timer_block',
-        say: 'Monitor closely. Reassess in 5 minutes. If no improvement, repeat adrenaline.',
-        show: 'MONITOR & REASSESS\n\nTimer: 5 minutes to reassess\nPrepare to repeat adrenaline if no improvement',
+        say: 'Stay with them and watch closely. Reassess at 5 minutes — if they are no better, you will repeat the adrenaline.',
+        show: 'Watch closely — reassess at 5 minutes\n\nGet ready to repeat adrenaline if they are not improving.',
         duration_seconds: 300,
         on_timer_end_next: 'reassess',
         next: 'reassess'
@@ -250,45 +250,45 @@ export const protocols: Protocol[] = [
       {
         id: 'reassess',
         type: 'decision',
-        say: 'Reassess the patient. Is there improvement?',
-        show: 'REASSESS - Any improvement?',
-        question: 'Is the patient improving?',
+        say: 'Five minutes on — check them again. Are they getting better?',
+        show: 'Reassess — are they improving?',
+        question: 'Are they improving?',
         answers: [
-          { label: 'Yes - Improving', next: 'continue_monitor' },
-          { label: 'No - Not improving', next: 'repeat_adrenaline' }
+          { label: 'Yes — they are improving', next: 'continue_monitor' },
+          { label: 'No — no better, or worse', next: 'repeat_adrenaline' }
         ]
       },
       {
         id: 'repeat_adrenaline',
         type: 'drug',
         drug_id: 'adrenaline_im_adult',
-        say: 'Repeat adrenaline now, same dose, every 5 minutes - there is no upper limit. If there is no improvement after two doses this is refractory anaphylaxis. Make sure the ambulance is coming now - they need intravenous adrenaline and fluids you cannot give here. Keep oxygen on and keep them flat with legs raised.',
-        show: 'REPEAT ADRENALINE IM\n\nSame dose, every 5 minutes - no upper limit\n\nNo improvement after 2 doses = REFRACTORY\nMake sure 999 is coming NOW\n(they need IV adrenaline + fluids you cannot give here)\nKeep oxygen on, keep flat + legs raised',
+        say: 'Repeat the adrenaline now, same dose, and again every 5 minutes — there is no upper limit. If they are still no better after two doses this is refractory anaphylaxis, so make sure the ambulance is on its way now for the IV adrenaline and fluids you cannot give here. Keep the oxygen on and keep them flat with their legs raised.',
+        show: 'Repeat adrenaline IM now\n\nSame dose, every 5 minutes — no upper limit.\nNo better after 2 doses = refractory: make sure 999 is coming now for IV adrenaline and fluids you cannot give here.\nKeep oxygen on, keep them flat with legs raised.',
         require_confirm: true,
         next: 'monitor_response'
       },
       {
         id: 'continue_monitor',
         type: 'instruction',
-        say: 'Continue monitoring. Keep oxygen on. Watch for deterioration. Be ready to start CPR if they become unresponsive.',
-        show: 'CONTINUE MONITORING\n\n• Keep oxygen on\n• Watch for deterioration\n• Prepare for CPR if needed\n• Wait for ambulance'
+        say: 'They are improving — stay with them. Keep the oxygen on, watch for any deterioration, and be ready to start CPR if they stop responding.',
+        show: 'Keep monitoring\n\nKeep the oxygen on and watch for deterioration.\nBe ready to start CPR if they stop responding, and wait for the ambulance.'
       },
       {
         id: 'cardiac_arrest_check',
         type: 'decision',
-        say: 'Has the patient become unresponsive and stopped breathing?',
-        show: 'Patient unresponsive?',
-        question: 'Has patient become unresponsive?',
+        say: 'Check them — have they become unresponsive and stopped breathing normally?',
+        show: 'Are they unresponsive and not breathing normally?',
+        question: 'Have they become unresponsive and stopped breathing normally?',
         answers: [
-          { label: 'Yes - Cardiac arrest', next: 'start_cpr' },
-          { label: 'No - Continue monitoring', next: 'continue_monitor' }
+          { label: 'Yes — unresponsive, not breathing', next: 'start_cpr' },
+          { label: 'No — keep monitoring', next: 'continue_monitor' }
         ]
       },
       {
         id: 'start_cpr',
         type: 'instruction',
-        say: 'Start CPR immediately. Switch to cardiac arrest protocol.',
-        show: 'START CPR - Switch to Cardiac Arrest protocol',
+        say: 'Start CPR now. I will switch you to the cardiac arrest guide.',
+        show: 'Start CPR now\n\nSwitching you to the cardiac arrest guide.',
         actions: ['switch_protocol:cardiac_arrest']
       }
     ]
@@ -311,33 +311,33 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         recognition: true,
         type: 'instruction',
-        say: 'Recognise asthma attack. Wheeze. Shortness of breath. Tight chest. Difficulty speaking.',
-        show: 'RECOGNISE ASTHMA ATTACK\n\n• Wheeze\n• Shortness of breath\n• Chest tightness\n• Difficulty speaking\n• Using accessory muscles',
+        say: 'Sit them upright and keep them calm. They are having an asthma attack — wheeze, breathlessness, a tight chest, struggling to speak.',
+        show: 'Sit them upright. Keep calm.\n\nAsthma attack: wheeze, breathless, tight chest, struggling to speak.',
         next: 'assess_severity'
       },
       {
         id: 'assess_severity',
         type: 'decision',
-        say: 'Assess severity. Can the patient speak in full sentences?',
-        show: 'ASSESS SEVERITY',
-        question: 'Can patient speak in full sentences?',
+        say: 'How bad is it? Can they speak a full sentence in one breath?',
+        show: 'Can they speak a full sentence in one breath?',
+        question: 'Can they speak a full sentence in one breath?',
         answers: [
-          { label: 'Yes - Can speak', next: 'moderate_asthma' },
-          { label: 'No - Cannot complete sentences', next: 'severe_asthma' }
+          { label: 'Yes — they can finish a sentence', next: 'moderate_asthma' },
+          { label: 'No — too breathless to finish a sentence', next: 'severe_asthma' }
         ]
       },
       {
         id: 'moderate_asthma',
         type: 'instruction',
-        say: 'Moderate attack. Keep calm. Sit patient upright.',
-        show: 'MODERATE ATTACK\n\n• Stay calm\n• Sit upright\n• Loosen tight clothing',
+        say: 'Keep them sitting upright and calm. Loosen anything tight around the neck.',
+        show: 'Keep them upright and calm.\n\nLoosen tight clothing around the neck.',
         next: 'salbutamol'
       },
       {
         id: 'severe_asthma',
         type: 'instruction',
-        say: 'Severe attack. Call 999 now. This is a life-threatening emergency.',
-        show: 'SEVERE/LIFE-THREATENING\n\nCALL 999 IMMEDIATELY',
+        say: 'This is severe — call 999 now and tell them life-threatening asthma. Help is on the way; stay with them.',
+        show: 'Call 999 now — say life-threatening asthma.\n\nSTANDBY — stay with them, keep them upright.',
         actions: ['suggest:call_999'],
         next: 'salbutamol_severe'
       },
@@ -345,8 +345,8 @@ export const protocols: Protocol[] = [
         id: 'salbutamol',
         type: 'drug',
         drug_id: 'salbutamol_inhaled',
-        say: 'Give salbutamol inhaler. 4 puffs via spacer. One puff at a time. 5 breaths per puff.',
-        show: 'SALBUTAMOL via SPACER\n\n4 puffs initially\n• One puff at a time\n• 5 breaths per puff\n• Wait 30 seconds between puffs',
+        say: 'Give their salbutamol through the spacer — 4 puffs, one puff at a time.',
+        show: 'Salbutamol through the spacer — 4 puffs.\n\nOne puff at a time, 5 breaths each, about 30 seconds between puffs.',
         require_confirm: true,
         next: 'reassess_moderate'
       },
@@ -354,8 +354,8 @@ export const protocols: Protocol[] = [
         id: 'salbutamol_severe',
         type: 'drug',
         drug_id: 'salbutamol_inhaled',
-        say: 'Give salbutamol inhaler via spacer. Up to 10 puffs. One puff at a time.',
-        show: 'SALBUTAMOL via SPACER\n\nUp to 10 puffs\n• One puff at a time\n• 5 breaths per puff',
+        say: 'Give salbutamol through the spacer — up to 10 puffs, one puff at a time.',
+        show: 'Salbutamol through the spacer — up to 10 puffs.\n\nOne puff at a time, 5 breaths each.',
         require_confirm: true,
         next: 'oxygen_severe'
       },
@@ -363,49 +363,49 @@ export const protocols: Protocol[] = [
         id: 'oxygen_severe',
         type: 'drug',
         drug_id: 'oxygen_high_flow',
-        say: 'Give high flow oxygen if available.',
-        show: 'OXYGEN if available\n15 L/min via mask',
+        say: 'If you have oxygen, give it now at 15 litres a minute through a mask.',
+        show: 'Give oxygen if you have it.\n\n15 litres a minute through a mask.',
         require_confirm: false,
         next: 'reassess_severe'
       },
       {
         id: 'reassess_moderate',
         type: 'timer_block',
-        say: 'Reassess in 5 minutes. If improving, continue to monitor.',
-        show: 'REASSESS in 5 minutes',
+        say: 'Give it 5 minutes to work, then check them again.',
+        show: 'Wait 5 minutes, then reassess.',
         duration_seconds: 300,
         on_timer_end_next: 'moderate_check'
       },
       {
         id: 'moderate_check',
         type: 'decision',
-        say: 'Reassess. Is the patient improving?',
-        show: 'Is patient improving?',
-        question: 'Is the patient improving?',
+        say: 'How are they now — are they getting better?',
+        show: 'Are they improving?',
+        question: 'Are they improving?',
         answers: [
-          { label: 'Yes - Improving', next: 'monitor_moderate' },
-          { label: 'No - Getting worse', next: 'escalate' }
+          { label: 'Yes — breathing is easing', next: 'monitor_moderate' },
+          { label: 'No — same or getting worse', next: 'escalate' }
         ]
       },
       {
         id: 'monitor_moderate',
         type: 'instruction',
-        say: 'Continue monitoring. Can repeat salbutamol every 10 minutes if needed.',
-        show: 'MONITOR\n\nCan repeat salbutamol every 10 minutes\nSeek medical advice if not fully recovered'
+        say: 'Good. Keep watching them. You can repeat the salbutamol every 10 minutes if they need it.',
+        show: 'Keep watching them.\n\nRepeat salbutamol every 10 minutes if needed. Get medical advice before they leave if not fully back to normal.'
       },
       {
         id: 'escalate',
         type: 'instruction',
-        say: 'Not improving. Call 999 if not already done. Give more salbutamol.',
-        show: 'ESCALATE - CALL 999\n\nGive up to 10 puffs salbutamol\nGive oxygen if available',
+        say: 'They are not improving — call 999 now if you have not already, and give more salbutamol.',
+        show: 'Call 999 now if not already done.\n\nGive up to 10 more puffs of salbutamol. Give oxygen if you have it.',
         actions: ['suggest:call_999'],
         next: 'reassess_severe'
       },
       {
         id: 'reassess_severe',
         type: 'instruction',
-        say: 'Continue monitoring. Prepare for deterioration. If they become unresponsive, start CPR.',
-        show: 'MONITOR CONTINUOUSLY\n\n• Repeat salbutamol every 10 mins\n• Keep oxygen flowing\n• Prepare for CPR if deteriorates\n• Wait for ambulance'
+        say: 'Stay with them and keep treating. If they stop responding and stop breathing normally, start CPR.',
+        show: 'Stay with them until the ambulance arrives.\n\nRepeat salbutamol every 10 minutes, keep oxygen flowing. If they become unresponsive, start CPR.'
       }
     ]
   },
@@ -871,100 +871,100 @@ export const protocols: Protocol[] = [
       {
         id: 'assess_severity',
         type: 'decision',
-        say: 'Assess severity. Can they cough or speak?',
-        show: 'ASSESS CHOKING SEVERITY\n\nCan patient cough effectively?',
-        question: 'Can the patient cough or speak?',
+        say: 'First, can they cough, speak or breathe?',
+        show: 'Can they cough, speak or breathe?\n\nA strong cough is a good sign — let them try to clear it themselves.',
+        question: 'Can the patient cough, speak or breathe?',
         answers: [
-          { label: 'Yes - Mild (can cough)', next: 'mild_choking' },
-          { label: 'No - Severe (silent/weak)', next: 'severe_choking' }
+          { label: 'Coughing — still able to cough', next: 'mild_choking' },
+          { label: 'Can’t cough, breathe or speak', next: 'severe_choking' }
         ]
       },
       {
         id: 'mild_choking',
         type: 'instruction',
-        say: 'Mild obstruction. Encourage coughing. Do not interfere. Monitor for deterioration.',
-        show: 'MILD OBSTRUCTION\n\n• Encourage coughing\n• Do not slap back yet\n• Monitor for deterioration',
+        say: 'Encourage them to keep coughing. Don’t hit their back yet.',
+        show: 'Encourage them to keep coughing.\n\nDon’t slap their back or interfere. Stay with them and watch closely in case it gets worse.',
         next: 'mild_resolved'
       },
       {
         id: 'mild_resolved',
         type: 'decision',
-        say: 'Has the obstruction cleared?',
-        show: 'Obstruction cleared?',
+        say: 'Has it cleared?',
+        show: 'Has it cleared?',
         question: 'Has the obstruction cleared?',
         answers: [
-          { label: 'Yes - Cleared', next: 'choking_resolved' },
-          { label: 'No - Getting worse', next: 'severe_choking' }
+          { label: 'Yes — they’ve cleared it', next: 'choking_resolved' },
+          { label: 'No — it’s getting worse', next: 'severe_choking' }
         ]
       },
       {
         id: 'severe_choking',
         type: 'instruction',
-        say: 'Severe obstruction. Call for help. Give up to 5 back blows.',
-        show: 'SEVERE OBSTRUCTION\n\n1. Stand to the side and slightly behind\n2. Support chest with one hand\n3. Give up to 5 sharp back blows between shoulder blades',
+        say: 'Call 999 now, then give up to 5 sharp back blows between their shoulder blades.',
+        show: 'Give up to 5 back blows between their shoulder blades.\n\nStand to the side and slightly behind. Lean them well forward and support their chest with one hand. Call 999 now.',
         actions: ['suggest:call_999'],
         next: 'back_blows_check'
       },
       {
         id: 'back_blows_check',
         type: 'decision',
-        say: 'Has the obstruction cleared after back blows?',
-        show: 'Cleared after back blows?',
-        question: 'Obstruction cleared?',
+        say: 'Has it cleared after the back blows?',
+        show: 'Has it cleared?',
+        question: 'Has the obstruction cleared?',
         answers: [
-          { label: 'Yes - Cleared', next: 'choking_resolved' },
-          { label: 'No - Still choking', next: 'abdominal_thrusts' }
+          { label: 'Yes — they’ve cleared it', next: 'choking_resolved' },
+          { label: 'No — still choking', next: 'abdominal_thrusts' }
         ]
       },
       {
         id: 'abdominal_thrusts',
         type: 'instruction',
-        say: 'Give up to 5 abdominal thrusts. Stand behind. Clench fist above navel. Pull sharply inward and upward.',
-        show: 'ABDOMINAL THRUSTS\n\n1. Stand behind patient\n2. Clench fist, place above navel\n3. Grasp with other hand\n4. Pull sharply inward and upward\n5. Up to 5 thrusts',
+        say: 'Now give up to 5 abdominal thrusts. Pull sharply inward and upward.',
+        show: 'Give up to 5 abdominal thrusts.\n\nStand behind them and put your arms around their upper tummy. Make a fist above the navel, below the ribcage. Grab it with your other hand and pull sharply in and up.',
         next: 'thrusts_check'
       },
       {
         id: 'thrusts_check',
         type: 'decision',
-        say: 'Has the obstruction cleared?',
-        show: 'Obstruction cleared?',
-        question: 'Obstruction cleared?',
+        say: 'Has it cleared?',
+        show: 'Has it cleared?',
+        question: 'Has the obstruction cleared?',
         answers: [
-          { label: 'Yes - Cleared', next: 'choking_resolved' },
-          { label: 'No - Still choking', next: 'alternate_cycle' }
+          { label: 'Yes — they’ve cleared it', next: 'choking_resolved' },
+          { label: 'No — still choking', next: 'alternate_cycle' }
         ]
       },
       {
         id: 'alternate_cycle',
         type: 'instruction',
-        say: 'Continue alternating 5 back blows and 5 abdominal thrusts. Call 999 if not done.',
-        show: 'ALTERNATE\n\n5 Back blows then 5 Abdominal thrusts\n\nCall 999 if not already done\nContinue until cleared or unconscious',
+        say: 'Keep alternating 5 back blows and 5 abdominal thrusts. Make sure 999 is on the way.',
+        show: 'Keep going: 5 back blows, then 5 abdominal thrusts.\n\nRepeat until it clears or they pass out. Make sure 999 has been called.',
         actions: ['suggest:call_999'],
         next: 'conscious_check_choking'
       },
       {
         id: 'conscious_check_choking',
         type: 'decision',
-        say: 'Is the patient still conscious?',
-        show: 'Patient conscious?',
+        say: 'Are they still conscious?',
+        show: 'Are they still conscious?',
         question: 'Is the patient still conscious?',
         answers: [
-          { label: 'Yes - Continue', next: 'severe_choking' },
-          { label: 'No - Unconscious', next: 'choking_cpr' }
+          { label: 'Yes — keep going', next: 'severe_choking' },
+          { label: 'No — they’ve passed out', next: 'choking_cpr' }
         ]
       },
       {
         id: 'choking_cpr',
         type: 'instruction',
-        say: 'Patient unconscious. Lower to floor carefully. Start CPR. Call 999 if not done.',
-        show: 'UNCONSCIOUS\n\nLower to floor\nStart CPR immediately\nCall 999',
+        say: 'Lower them carefully to the floor, call 999, and start CPR now.',
+        show: 'Lower them to the floor and start CPR.\n\nMake sure 999 has been called. I’ll take you through CPR.',
         actions: ['switch_protocol:cardiac_arrest']
       },
       {
         id: 'choking_resolved',
         type: 'instruction',
-        say: 'Obstruction cleared. Monitor for deterioration. If abdominal thrusts were given, advise medical review.',
-        show: 'RESOLVED\n\n• Monitor for deterioration\n• If abdominal thrusts given, advise medical review\n• Document incident'
+        say: 'It’s cleared. Keep watching them. If you gave abdominal thrusts, they need to be checked by a doctor.',
+        show: 'Cleared — well done.\n\nKeep watching them in case it comes back. If you gave any abdominal thrusts, they must be checked by a doctor. Write up what happened.'
       }
     ]
   },
