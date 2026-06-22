@@ -53,7 +53,7 @@ class GeminiTTSService {
       this.streamer = streamer;
 
       const session = await ai.live.connect({
-        model: 'gemini-2.5-flash-preview-native-audio-dialog',
+        model: 'gemini-live-2.5-flash-native-audio',
         callbacks: {
           onopen: () => {
             this.connected = true;
