@@ -17,7 +17,6 @@ import {
   GraduationCap,
   BookOpen,
   FileText,
-  Mic,
   Stethoscope
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
@@ -116,15 +115,17 @@ export function EmergencyDashboard() {
             <Phone className="w-7 h-7" />
             <span className="text-base font-bold tracking-wide">CALL 999</span>
           </a>
-          {/* Voice AI */}
+          {/* Guided triage — "not sure which?" reliable symptom wizard.
+              (Replaced the realtime Voice AI tile: that browser Live-voice path
+              was unreliable and is deferred to the native iOS build.) */}
           <button
-            onClick={() => setScreen('ai_assistant')}
+            onClick={() => setScreen('triage')}
             className="relative overflow-hidden rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 active:scale-[0.97] transition-transform"
             style={{ background: 'linear-gradient(135deg, var(--ai-from), var(--ai-to))', boxShadow: 'var(--glow-ai)', color: 'var(--text-on-color)' }}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.15),transparent_60%)]" />
-            <Mic className="w-7 h-7" />
-            <span className="text-base font-bold tracking-wide">VOICE AI</span>
+            <ClipboardList className="w-7 h-7" />
+            <span className="text-base font-bold tracking-wide">NOT SURE?</span>
           </button>
         </div>
 

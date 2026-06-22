@@ -1,0 +1,14 @@
+ {
+    "env": {
+      "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    },
+    "teammateMode": "in-process",
+    "permissions": {
+      "allow": [
+        "Bash(ls \"C:\\\\Users\\\\gordo\\\\.claude\\\\agents\")",
+        "Bash(ls \"D:\\\\VSCode\\\\ResusIQ\\\\.claude\\\\agents\")",
+        "Bash(ls \"C:\\\\Users\\\\gordo\\\\.claude\")",
+        "Bash(ls \"D:\\\\VSCode\\\\ResusIQ\\\\.claude\")"
+      ]
+    }
+  }

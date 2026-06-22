@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { geminiTTS } from '../lib/geminiTTS';
 import { isNative } from '../lib/platform';
 
 // Web Speech API types for browsers
@@ -46,26 +45,15 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const useGemini = geminiTTS.isAvailable;
 
-  // Register speaking state callback for Gemini TTS
+  // Read-aloud uses the browser's built-in SpeechSynthesis only: it works
+  // offline, needs no API key, and never opens a websocket — so step narration
+  // can NEVER fail to start mid-emergency. (The realtime Gemini Live voice was
+  // removed from the web app; it returns in the native iOS build, where audio
+  // capture/playback is reliable. See docs/ios-plan.)
   useEffect(() => {
-    if (useGemini) {
-      geminiTTS.setSpeakingCallback(setIsSpeaking);
-      // Pre-connect so first speak() is fast
-      geminiTTS.connect();
-    }
-    return () => {
-      geminiTTS.setSpeakingCallback(() => {});
-    };
-  }, [useGemini]);
-
-  // Browser SpeechSynthesis voices (fallback)
-  useEffect(() => {
-    if (useGemini) return; // Skip loading browser voices if using Gemini
     const loadVoices = () => {
-      const availableVoices = speechSynthesis.getVoices();
-      setVoices(availableVoices);
+      setVoices(speechSynthesis.getVoices());
     };
 
     loadVoices();
@@ -74,7 +62,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     return () => {
       speechSynthesis.removeEventListener('voiceschanged', loadVoices);
     };
-  }, [useGemini]);
+  }, []);
 
   const getPreferredVoice = useCallback(() => {
     // Prefer UK English voices
@@ -88,17 +76,8 @@ export function useSpeech(options: UseSpeechOptions = {}) {
 
   const speak = useCallback((text: string, interrupt = true) => {
     if (!isVoiceEnabled || isMuted || !text) return;
+    if (typeof speechSynthesis === 'undefined') return;
 
-    // ── Gemini TTS path (high-quality voice) ──
-    if (useGemini) {
-      if (interrupt) {
-        geminiTTS.stop();
-      }
-      geminiTTS.speak(text);
-      return;
-    }
-
-    // ── Browser SpeechSynthesis fallback ──
     if (interrupt) {
       speechSynthesis.cancel();
     }
@@ -107,7 +86,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     utterance.rate = rate;
     utterance.pitch = pitch;
     utterance.volume = volume;
-    
+
     const voice = getPreferredVoice();
     if (voice) {
       utterance.voice = voice;
@@ -119,31 +98,20 @@ export function useSpeech(options: UseSpeechOptions = {}) {
 
     utteranceRef.current = utterance;
     speechSynthesis.speak(utterance);
-  }, [isVoiceEnabled, isMuted, rate, pitch, volume, getPreferredVoice, useGemini]);
+  }, [isVoiceEnabled, isMuted, rate, pitch, volume, getPreferredVoice]);
 
   const stop = useCallback(() => {
-    if (useGemini) {
-      geminiTTS.stop();
-    }
     speechSynthesis.cancel();
     setIsSpeaking(false);
-  }, [useGemini]);
+  }, []);
 
   const pause = useCallback(() => {
-    // Gemini TTS doesn't support pause — stop instead
-    if (useGemini) {
-      geminiTTS.stop();
-      setIsSpeaking(false);
-      return;
-    }
     speechSynthesis.pause();
-  }, [useGemini]);
+  }, []);
 
   const resume = useCallback(() => {
-    if (!useGemini) {
-      speechSynthesis.resume();
-    }
-  }, [useGemini]);
+    speechSynthesis.resume();
+  }, []);
 
   return {
     speak,
@@ -152,7 +120,6 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     resume,
     isSpeaking,
     voices,
-    isGeminiTTS: useGemini,
   };
 }
 
