@@ -106,6 +106,16 @@ input, select, textarea, button {
   animation: pulse-cpr 0.545s ease-in-out infinite;
 }
 
+/* "Reading aloud" equaliser — a calm 4-bar indicator (respects reduced motion) */
+.riq-eq { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.riq-eq span { width: 3px; background: currentColor; border-radius: 2px; animation: riq-eq 900ms ease-in-out infinite; }
+.riq-eq span:nth-child(1) { height: 40%; animation-delay: 0ms; }
+.riq-eq span:nth-child(2) { height: 100%; animation-delay: 150ms; }
+.riq-eq span:nth-child(3) { height: 65%; animation-delay: 300ms; }
+.riq-eq span:nth-child(4) { height: 85%; animation-delay: 450ms; }
+@keyframes riq-eq { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .riq-eq span { animation: none; } }
+
 /* Subtle fade-in for screens */
 @keyframes fade-up {
   from {
