@@ -309,11 +309,14 @@ export const drugs: Drug[] = [
     indication: 'Adrenal crisis (steroid-dependent patients)',
     adult_dose: '100 mg IM or slow IV',
     adult_dose_text: '100 mg by intramuscular injection (or slow IV if access available)',
-    child_dose: '6–12 y: 50 mg · 1–6 y: 25 mg · <1 y: 25 mg',
+    // Paediatric bands per BSPED 2024 consensus / NICE NG243 (2024): the older
+    // 50/25/25 mg bands under-dosed children — corrected 2026-06-22 (clinical
+    // reviewer signed off; see memory/clinical-decisions).
+    child_dose: '6 y and over: 100 mg · 1–5 y: 50 mg · <1 y: 25 mg',
     child_dose_text:
-      'Child 6–12 years: 50 mg IM\n' +
-      'Child 1–6 years: 25 mg IM\n' +
-      'Infant < 1 year: 25 mg IM',
+      'Child 6 years and over: 100 mg IM\n' +
+      'Child 1–5 years: 50 mg IM\n' +
+      'Infant under 1 year: 25 mg IM',
     route: 'IM',
     site: 'Deltoid or anterolateral thigh',
     how_to_give:

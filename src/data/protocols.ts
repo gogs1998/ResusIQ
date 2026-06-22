@@ -561,71 +561,71 @@ export const protocols: Protocol[] = [
         id: 'recognise',
         recognition: true,
         type: 'instruction',
-        say: 'Recognise faint. Feeling hot and sweaty. Nausea. Going pale. Lightheadedness. Loss of consciousness.',
-        show: 'RECOGNISE FAINT\n\n• Feeling faint/lightheaded\n• Nausea\n• Vision going dark\n• Sweating\n• Pallor',
+        say: 'A simple faint. They may feel hot, sick or lightheaded and go pale before they pass out.',
+        show: 'Looks like a faint.\n\nHot, sweaty, sick, going pale, then a brief loss of consciousness. The next step gets blood back to their head.',
         next: 'position'
       },
       {
         id: 'position',
         type: 'instruction',
-        say: 'Lay the patient flat. Raise their legs. Loosen tight clothing.',
-        show: 'LAY FLAT\nRAISE LEGS\nLoosen tight clothing',
+        say: 'Lay them flat and raise their legs. Loosen anything tight around their neck.',
+        show: 'Lay them flat and raise their legs.\n\nLoosen tight clothing at the neck. This gets blood back to their head — most faints come round quickly.',
         next: 'check_response'
       },
       {
         id: 'check_response',
         type: 'decision',
-        say: 'Is the patient responding?',
-        show: 'Is patient responding?',
-        question: 'Is the patient responding?',
+        say: 'Are they coming round?',
+        show: 'Are they coming round?',
+        question: 'Are they coming round?',
         answers: [
-          { label: 'Yes - Responding', next: 'recovery' },
-          { label: 'No - Still unconscious', next: 'abcde' }
+          { label: 'Yes — they’re responding', next: 'recovery' },
+          { label: 'No — still out after a minute', next: 'abcde' }
         ]
       },
       {
         id: 'recovery',
         type: 'instruction',
-        say: 'Keep lying flat until fully recovered. Then sit up slowly. Offer water.',
-        show: 'RECOVERY\n\n• Keep flat until fully recovered\n• Sit up slowly\n• Offer water\n• Do not rush',
+        say: 'Good. Keep them flat until they feel fully back to normal, then sit them up slowly.',
+        show: 'Keep them lying flat until they feel fully recovered.\n\nThen sit them up slowly — no rush. Offer a sip of water once they’re alert.',
         next: 'assess_cause'
       },
       {
         id: 'assess_cause',
         type: 'instruction',
-        say: 'Simple vascular faint usually recovers quickly. Consider other causes if not recovering or if unusual features.',
-        show: 'ASSESS CAUSE\n\nSimple faint: Quick recovery\n\nConsider other causes if:\n• Not recovering quickly\n• Chest pain\n• Palpitations\n• Pregnancy\n• Prolonged unconsciousness'
+        say: 'A simple faint settles fast. If they’re slow to recover or something feels off, think again about the cause.',
+        show: 'A simple faint recovers quickly.\n\nThink again if they’re slow to come round, or if there’s chest pain, palpitations, pregnancy, or a long loss of consciousness — and be ready to call 999.'
       },
       {
         id: 'abcde',
         type: 'instruction',
-        say: 'Check ABC. Airway, Breathing, Circulation. If not breathing normally, start CPR.',
-        show: 'CHECK ABC\n\nA - Airway open?\nB - Breathing normally?\nC - Signs of circulation?',
+        say: 'Not coming round — check the basics. Open the airway, and look and feel for normal breathing.',
+        show: 'They’re not recovering — treat this as serious.\n\nTilt the head back, lift the chin, and look and feel for normal breathing. Occasional gasps are not normal breathing.',
         next: 'breathing_check_syncope'
       },
       {
         id: 'breathing_check_syncope',
         type: 'decision',
-        say: 'Is the patient breathing normally?',
-        show: 'Breathing normally?',
+        say: 'Are they breathing normally?',
+        show: 'Are they breathing normally?',
         question: 'Is the patient breathing normally?',
         answers: [
-          { label: 'Yes - Breathing', next: 'recovery_position_syncope' },
-          { label: 'No - Not breathing', next: 'cpr' }
+          { label: 'Yes — they’re breathing', next: 'recovery_position_syncope' },
+          { label: 'No — not breathing normally', next: 'cpr' }
         ]
       },
       {
         id: 'recovery_position_syncope',
         type: 'instruction',
-        say: 'Place in recovery position. Call 999. Monitor breathing continuously.',
-        show: 'RECOVERY POSITION\nCALL 999\nMonitor breathing',
+        say: 'Roll them onto their side and call 999. Keep watching their breathing.',
+        show: 'Roll them onto their side, into the recovery position.\n\nCall 999 now. Keep watching their breathing until help arrives.',
         actions: ['suggest:call_999']
       },
       {
         id: 'cpr',
         type: 'instruction',
-        say: 'Not breathing. Start CPR. Switch to cardiac arrest protocol.',
-        show: 'START CPR\nSwitch to Cardiac Arrest protocol',
+        say: 'Not breathing normally — start CPR now. I’ll switch you to the cardiac arrest steps.',
+        show: 'Not breathing normally — start CPR.\n\nSwitching you to the cardiac arrest protocol now.',
         actions: ['switch_protocol:cardiac_arrest']
       }
     ]
@@ -985,106 +985,106 @@ export const protocols: Protocol[] = [
         id: 'fast',
         recognition: true,
         type: 'instruction',
-        say: 'Use FAST. Face: has their face fallen on one side? Arms: can they raise both arms? Speech: is their speech slurred? Time: time to call 999.',
-        show: 'FAST ASSESSMENT\n\nF - Face: Facial weakness?\nA - Arms: Arm weakness?\nS - Speech: Slurred speech?\nT - Time to call 999',
+        say: 'Check them with FAST — face, arms, speech, and time to call 999.',
+        show: 'Check them with FAST.\n\nFace, arms, speech — then time to call 999.',
         next: 'face_check'
       },
       {
         id: 'face_check',
         type: 'decision',
-        say: 'Face. Ask them to smile. Has one side of the face dropped?',
-        show: 'FACE\n\nAsk to smile\nHas face dropped on one side?',
-        question: 'Facial drooping?',
+        say: 'Ask them to smile. Has one side of their face dropped?',
+        show: 'Ask them to smile.\n\nHas one side of their face dropped?',
+        question: 'Has their face dropped on one side?',
         answers: [
-          { label: 'Yes - Face dropped', next: 'arm_check' },
-          { label: 'No', next: 'arm_check' }
+          { label: 'Yes — face has dropped', next: 'arm_check' },
+          { label: 'No — face looks even', next: 'arm_check' }
         ]
       },
       {
         id: 'arm_check',
         type: 'decision',
-        say: 'Arms. Ask them to raise both arms. Can they keep them up?',
-        show: 'ARMS\n\nAsk to raise both arms\nCan they keep both up?',
-        question: 'Arm weakness?',
+        say: 'Ask them to raise both arms. Can they hold them up?',
+        show: 'Ask them to raise both arms.\n\nCan they hold both up, or does one drift down?',
+        question: 'Is one arm weak?',
         answers: [
-          { label: 'Yes - Arm weakness', next: 'speech_check' },
-          { label: 'No', next: 'speech_check' }
+          { label: 'Yes — one arm is weak', next: 'speech_check' },
+          { label: 'No — both arms hold up', next: 'speech_check' }
         ]
       },
       {
         id: 'speech_check',
         type: 'decision',
-        say: 'Speech. Is their speech slurred or muddled? Can they speak clearly?',
-        show: 'SPEECH\n\nIs speech slurred?\nCan they repeat a simple phrase?',
-        question: 'Speech problems?',
+        say: 'Ask them to speak. Is their speech slurred or muddled?',
+        show: 'Ask them to repeat a simple phrase.\n\nIs their speech slurred or muddled?',
+        question: 'Is their speech affected?',
         answers: [
-          { label: 'Yes - Speech affected', next: 'time_call' },
-          { label: 'No', next: 'any_positive' }
+          { label: 'Yes — speech is slurred or muddled', next: 'time_call' },
+          { label: 'No — speech is clear', next: 'any_positive' }
         ]
       },
       {
         id: 'any_positive',
         type: 'decision',
-        say: 'Were any FAST signs positive?',
-        show: 'Any FAST signs positive?',
-        question: 'Any positive FAST signs?',
+        say: 'Were any of the face, arm, or speech signs there?',
+        show: 'Were any FAST signs present?\n\nFace, arm, or speech — even just one.',
+        question: 'Were any FAST signs present?',
         answers: [
-          { label: 'Yes - Call 999', next: 'time_call' },
-          { label: 'No - Monitor', next: 'not_stroke' }
+          { label: 'Yes — call 999 now', next: 'time_call' },
+          { label: 'No — keep watching them', next: 'not_stroke' }
         ]
       },
       {
         id: 'time_call',
         type: 'instruction',
-        say: 'Time to call 999. State suspected stroke. Note the time symptoms started.',
-        show: 'TIME - CALL 999 NOW\n\nState: SUSPECTED STROKE\n\nNOTE TIME OF ONSET\nThis is critical for treatment',
+        say: 'Call 999 now. Tell them it is a suspected stroke.',
+        show: 'Call 999 now.\n\nSay "suspected stroke" — they need it fast.',
         actions: ['suggest:call_999', 'log:999_called'],
         next: 'record_time'
       },
       {
         id: 'record_time',
         type: 'instruction',
-        say: 'Record the time symptoms started. This is critical for treatment decisions.',
-        show: 'RECORD ONSET TIME\n\nWhen did symptoms start?\nWhen were they last seen well?',
+        say: 'Note when the signs started, or when they were last seen well.',
+        show: 'Note the time it started.\n\nIf you are not sure, when were they last seen well? This guides treatment.',
         next: 'position_stroke'
       },
       {
         id: 'position_stroke',
         type: 'instruction',
-        say: 'Position comfortably. If conscious, slightly raised head. If unconscious, recovery position.',
-        show: 'POSITION\n\nConscious: Comfortable, head slightly raised\nUnconscious: Recovery position',
+        say: 'Sit them up a little and keep them comfortable while you wait.',
+        show: 'Keep them comfortable.\n\nIf awake, sit them up a little. If not responding, recovery position.',
         next: 'monitor_stroke'
       },
       {
         id: 'monitor_stroke',
         type: 'instruction',
-        say: 'Monitor continuously. Do not give anything to eat or drink. Do NOT give aspirin. Aspirin is dangerous in stroke as it could be a bleed. Be ready for deterioration.',
-        show: 'MONITOR\n\nNothing to eat or drink\nDo NOT give aspirin (could be haemorrhagic stroke)\nMonitor ABCDE\nReassure patient\nNote any changes\nWait for ambulance',
+        say: 'Keep watching them. Nothing to eat or drink, and do not give aspirin.',
+        show: 'Keep watching them — stay ready.\n\nNothing to eat or drink.\nDo not give aspirin — it could be a bleed.\nReassure them and note any change.',
         next: 'deterioration_stroke'
       },
       {
         id: 'deterioration_stroke',
         type: 'decision',
-        say: 'Has the patient become unresponsive?',
-        show: 'Patient unresponsive?',
-        question: 'Has patient become unresponsive?',
+        say: 'Are they still responding to you?',
+        show: 'Are they still responding?',
+        question: 'Are they still responding?',
         answers: [
-          { label: 'Yes - Collapsed', next: 'stroke_cpr' },
-          { label: 'No - Conscious', next: 'monitor_stroke' }
+          { label: 'No — they’ve collapsed', next: 'stroke_cpr' },
+          { label: 'Yes — still responding', next: 'monitor_stroke' }
         ]
       },
       {
         id: 'stroke_cpr',
         type: 'instruction',
-        say: 'Check breathing. If not breathing normally, start CPR.',
-        show: 'CHECK BREATHING\n\nIf not breathing normally - START CPR',
+        say: 'Check their breathing. If it is not normal, start CPR now.',
+        show: 'Check their breathing.\n\nIf not breathing normally, start CPR now.',
         actions: ['switch_protocol:cardiac_arrest']
       },
       {
         id: 'not_stroke',
         type: 'instruction',
-        say: 'No obvious stroke signs. Continue to monitor. Consider other causes. Seek medical advice if concerned.',
-        show: 'NO OBVIOUS STROKE\n\nContinue to monitor\nConsider other causes\nSeek medical advice if any concerns'
+        say: 'No clear stroke signs. Keep watching them and get advice if you are worried.',
+        show: 'No clear stroke signs.\n\nKeep watching them, think about other causes, and get medical advice if anything changes.'
       }
     ]
   },
@@ -1102,53 +1102,53 @@ export const protocols: Protocol[] = [
       {
         id: 'recognise',
         type: 'instruction',
-        say: 'Suspect adrenal crisis in patients on long-term steroids who collapse and do not respond to lying flat. Signs include severe pallor, weakness, nausea, low blood pressure.',
-        show: 'RECOGNISE ADRENAL CRISIS\n\n⚠️ Key question: Is patient on steroids?\n\n• Long-term prednisolone (>5mg/day)\n• Stopped steroids in past 12 months\n• High-dose inhaled steroids\n\nSigns:\n• Collapse not responding to lying flat\n• Severe pallor, weakness\n• Nausea, vomiting\n• Low blood pressure',
+        say: 'Suspect adrenal crisis if they are on long-term steroids and have collapsed without recovering when laid flat.',
+        show: 'Suspect adrenal crisis.\n\nOn long-term steroids and collapsed, not recovering when laid flat. Often pale, weak, very low blood pressure.',
         next: 'steroid_check'
       },
       {
         id: 'steroid_check',
         type: 'decision',
-        say: 'Is this patient on long-term steroids, or have they stopped steroids within the past 12 months?',
-        show: 'On long-term steroids?',
-        question: 'Is this patient on long-term steroids or recently stopped steroids?',
+        say: 'Are they on long-term steroids, or did they stop steroids within the last 12 months?',
+        show: 'Are they on long-term steroids, or stopped within the last 12 months?',
+        question: 'Are they on long-term steroids, or did they stop steroids in the past 12 months?',
         answers: [
-          { label: 'Yes - On steroids', next: 'call_999_adrenal' },
-          { label: 'No / Unsure', next: 'consider_other' }
+          { label: 'Yes — on or recently on steroids', next: 'call_999_adrenal' },
+          { label: 'No / unsure — not steroid-dependent', next: 'consider_other' }
         ]
       },
       {
         id: 'call_999_adrenal',
         type: 'instruction',
-        say: 'Call 999 immediately. State suspected adrenal crisis in a steroid-dependent patient.',
-        show: 'CALL 999 IMMEDIATELY\n\nState: Suspected adrenal crisis\nSteroid-dependent patient',
+        say: 'Call 999 now. Tell them you suspect adrenal crisis in a patient who depends on steroids.',
+        show: 'Call 999 now.\n\nSay: suspected adrenal crisis, steroid-dependent patient.',
         actions: ['suggest:call_999', 'log:999_called'],
         next: 'position_adrenal'
       },
       {
         id: 'position_adrenal',
         type: 'instruction',
-        say: 'Lay the patient flat. Raise legs if possible.',
-        show: 'LAY FLAT\nRAISE LEGS',
+        say: 'Lay them flat and raise their legs.',
+        show: 'Lay them flat. Raise their legs.',
         next: 'hydrocortisone_check'
       },
       {
         id: 'hydrocortisone_check',
         type: 'decision',
-        say: 'Is hydrocortisone injection available?',
-        show: 'Hydrocortisone available?',
-        question: 'Do you have hydrocortisone injection?',
+        say: 'Do you have a hydrocortisone injection, and are you trained to give it?',
+        show: 'Hydrocortisone injection to hand?',
+        question: 'Do you have hydrocortisone injection available?',
         answers: [
-          { label: 'Yes', next: 'give_hydrocortisone' },
-          { label: 'No', next: 'oxygen_adrenal' }
+          { label: 'Yes — have it and trained', next: 'give_hydrocortisone' },
+          { label: 'No — not available', next: 'oxygen_adrenal' }
         ]
       },
       {
         id: 'give_hydrocortisone',
         type: 'drug',
         drug_id: 'hydrocortisone_im',
-        say: 'Give hydrocortisone 100 milligrams intramuscular injection.',
-        show: 'HYDROCORTISONE 100mg IM\n\nAdult: 100mg\nChild 6-12: 50mg\nChild 1-6: 25mg\n\nInject into outer thigh or deltoid',
+        say: 'Give hydrocortisone 100 milligrams by intramuscular injection into the outer thigh or upper arm.',
+        show: 'Hydrocortisone 100 mg IM.\n\nAdult: 100 mg. Child 6 years and over: 100 mg. Child 1 to 5 years: 50 mg. Under 1 year: 25 mg. Outer thigh or upper arm.',
         require_confirm: true,
         next: 'oxygen_adrenal'
       },
@@ -1156,22 +1156,22 @@ export const protocols: Protocol[] = [
         id: 'oxygen_adrenal',
         type: 'drug',
         drug_id: 'oxygen_high_flow',
-        say: 'Give high flow oxygen if available.',
-        show: 'OXYGEN 15 L/min if available',
+        say: 'Give high-flow oxygen if you have it.',
+        show: 'High-flow oxygen if available.\n\n15 litres a minute through a non-rebreather mask.',
         require_confirm: false,
         next: 'monitor_adrenal'
       },
       {
         id: 'monitor_adrenal',
         type: 'instruction',
-        say: 'Monitor continuously. Keep flat. Wait for ambulance. Be ready to start CPR if they become unresponsive and stop breathing.',
-        show: 'MONITOR CONTINUOUSLY\n\n• Keep flat with legs raised\n• Monitor airway and breathing\n• Prepare for CPR if deteriorates\n• Wait for ambulance'
+        say: 'Keep them flat and keep watching their breathing until the ambulance arrives. Be ready to start CPR if they stop breathing normally.',
+        show: 'Keep them flat, legs raised. Watch their breathing.\n\nBe ready to start CPR if they stop breathing normally. Stay until the ambulance arrives.'
       },
       {
         id: 'consider_other',
         type: 'instruction',
-        say: 'Not obviously steroid dependent. Consider other causes such as syncope, hypoglycaemia, or anaphylaxis.',
-        show: 'CONSIDER OTHER CAUSES\n\n• Simple faint (syncope)\n• Hypoglycaemia\n• Anaphylaxis\n• Cardiac event\n\nReturn to triage if unsure'
+        say: 'They are not on steroids, so think about other causes such as a faint, low blood sugar, or anaphylaxis.',
+        show: 'Not steroid-dependent — think of other causes.\n\nFaint, low blood sugar, anaphylaxis, or a cardiac cause. Go back to triage if unsure.'
       }
     ]
   }
