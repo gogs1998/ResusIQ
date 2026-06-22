@@ -192,7 +192,12 @@ export function AIAssistant() {
 
             streamer.startRecording().catch((err) => {
               console.error('Mic error:', err);
-              setError('Could not access microphone. Check permissions.');
+              // Surface the real error name/message — a bare "check permissions"
+              // hid an iOS AudioContext sample-rate throw (mic was actually fine).
+              const detail = err?.name || err?.message
+                ? `${err?.name ?? ''}${err?.name && err?.message ? ': ' : ''}${err?.message ?? ''}`.trim()
+                : 'Check microphone permissions.';
+              setError(`Audio setup failed — ${detail}`);
               stopSession();
             });
           },

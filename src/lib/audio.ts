@@ -8,9 +8,19 @@ export class AudioStreamer {
   public onVolumeChange?: (volume: number) => void;
 
   async startRecording() {
+    // Do NOT force a sampleRate here. iOS Safari only supports the device's
+    // native rate and throws NotSupportedError when a second AudioContext is
+    // created at a different rate (this app also runs a 24kHz playback context
+    // + the Gemini TTS context). We capture at the hardware rate and resample
+    // to the 16kHz Gemini expects in JS below.
     this.audioContext = new (
       window.AudioContext || (window as any).webkitAudioContext
-    )({ sampleRate: 16000 });
+    )();
+    // iOS creates the context "suspended"; it must be resumed within the user
+    // gesture that started the session, or no audio frames are delivered.
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
     this.mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -20,23 +30,36 @@ export class AudioStreamer {
     });
     this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
 
-    // 4096 is a good buffer size for 16kHz audio (~256ms)
+    // 4096 frames (~85ms at 48kHz) — a good ScriptProcessor buffer size.
     this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+
+    const TARGET_RATE = 16000;
 
     this.processor.onaudioprocess = (e) => {
       const inputData = e.inputBuffer.getChannelData(0);
+      const inputRate = this.audioContext?.sampleRate ?? TARGET_RATE;
+
+      // Linear-resample the hardware-rate float samples down to 16kHz, then
+      // convert to little-endian Int16 PCM. ratio === 1 when the device is
+      // already at 16kHz, so this is a no-op resample in that case.
+      const ratio = inputRate / TARGET_RATE;
+      const outLength = Math.max(1, Math.floor(inputData.length / ratio));
 
       let sum = 0;
-      // Convert Float32 to Int16
-      const pcm16 = new Int16Array(inputData.length);
-      for (let i = 0; i < inputData.length; i++) {
-        const s = Math.max(-1, Math.min(1, inputData[i]));
+      const pcm16 = new Int16Array(outLength);
+      for (let i = 0; i < outLength; i++) {
+        const srcIndex = i * ratio;
+        const i0 = Math.floor(srcIndex);
+        const i1 = Math.min(i0 + 1, inputData.length - 1);
+        const frac = srcIndex - i0;
+        let s = inputData[i0] + (inputData[i1] - inputData[i0]) * frac;
+        s = Math.max(-1, Math.min(1, s));
         pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         sum += s * s;
       }
 
       if (this.onVolumeChange) {
-        const rms = Math.sqrt(sum / inputData.length);
+        const rms = Math.sqrt(sum / outLength);
         this.onVolumeChange(rms);
       }
 
@@ -88,9 +111,13 @@ export class AudioStreamer {
 
   initPlayback() {
     if (!this.playbackContext) {
+      // Native rate again (see startRecording). The 24kHz Gemini audio is
+      // carried by each AudioBuffer's own sampleRate (createBuffer(..., 24000)
+      // below), so Web Audio resamples it to the context rate on playback —
+      // no need to (and on iOS, no way to) force the context to 24kHz.
       this.playbackContext = new (
         window.AudioContext || (window as any).webkitAudioContext
-      )({ sampleRate: 24000 });
+      )();
     }
   }
 
