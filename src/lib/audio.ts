@@ -21,13 +21,21 @@ export class AudioStreamer {
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
-    this.mediaStream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
       },
     });
+    // The permission prompt is async; if the session was torn down while we
+    // waited (e.g. the Live socket closed), stopRecording() will have nulled
+    // the context. Bail cleanly instead of throwing a misleading mic error.
+    if (!this.audioContext) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    this.mediaStream = stream;
     this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
 
     // 4096 frames (~85ms at 48kHz) — a good ScriptProcessor buffer size.

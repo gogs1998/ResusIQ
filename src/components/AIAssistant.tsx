@@ -246,12 +246,21 @@ export function AIAssistant() {
               }
             }
           },
-          onerror: (err) => {
+          onerror: (err: any) => {
             console.error('Live API error:', err);
-            setError('Connection lost. Try again.');
+            const detail = err?.message || err?.reason || err?.type || 'unknown';
+            setError(`Connection error — ${detail}`);
             stopSession();
           },
-          onclose: () => {
+          onclose: (e: any) => {
+            // A normal user-initiated close is code 1000. Anything else means
+            // the *server* dropped the session right after opening (bad model
+            // for this key, quota/billing, wrong API version) — surface the
+            // code+reason instead of silently bouncing to the activate button.
+            console.warn('Live API closed:', e?.code, e?.reason);
+            if (e?.code && e.code !== 1000) {
+              setError(`Session closed by server (${e?.code}) ${e?.reason ?? ''}`.trim());
+            }
             stopSession();
           },
         },
