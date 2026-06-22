@@ -171,7 +171,7 @@ export function AIAssistant() {
       streamerRef.current = streamer;
 
       const sessionPromise = ai.live.connect({
-        model: 'gemini-live-2.5-flash-native-audio',
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
             setIsConnecting(false);
