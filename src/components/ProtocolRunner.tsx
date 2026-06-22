@@ -56,7 +56,6 @@ export function ProtocolRunner() {
 
   const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [handsFree, setHandsFree] = useState(false);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
@@ -73,31 +72,33 @@ export function ProtocolRunner() {
   // instance binds once to a stale closure and spoken commands act on an
   // outdated step/answer mid-emergency.
 
-  // The actual step progression (decision branching / next pointer).
+  // Linear progression for non-decision steps: log completion, then follow the
+  // step's explicit `next` pointer (or fall through to the next index).
   const advance = useCallback(() => {
-    if (currentStep?.type === 'decision' && !selectedAnswer) {
-      speak('Please select an answer.');
-      return;
-    }
     if (currentStep) {
       addEventLog('step_completed', currentStep.show.split('\n')[0]);
     }
-    if (currentStep?.type === 'decision' && selectedAnswer) {
-      const answer = currentStep.answers?.find(a => a.label === selectedAnswer);
-      if (answer) {
-        const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === answer.next);
-        if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
-        else nextStep();
-      }
-      setSelectedAnswer(null);
-    } else if (currentStep?.next) {
+    if (currentStep?.next) {
       const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === currentStep.next);
       if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
       else nextStep();
     } else {
       nextStep();
     }
-  }, [currentStep, selectedAnswer, addEventLog, activeProtocol, goToStep, nextStep, speak]);
+  }, [currentStep, addEventLog, activeProtocol, goToStep, nextStep]);
+
+  // Decision steps now resolve in ONE tap: choosing an answer logs the choice
+  // and jumps straight to that branch's target step — no separate "Next" press.
+  // The answer is passed directly (not via state) so the jump uses the freshly
+  // chosen branch, never a stale selection.
+  const chooseAnswer = useCallback((answer: { label: string; next: string }) => {
+    if (currentStep) {
+      addEventLog('step_completed', `${currentStep.show.split('\n')[0]} → ${answer.label}`);
+    }
+    const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === answer.next);
+    if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
+    else nextStep();
+  }, [currentStep, addEventLog, activeProtocol, goToStep, nextStep]);
 
   // On a require_confirm (drug) step the primary button IS the confirmation:
   // one press logs the drug as given and advances. Keeps the event log honest
@@ -324,40 +325,27 @@ export function ProtocolRunner() {
           </div>
         )}
 
-        {/* Decision Options */}
+        {/* Decision Options — ONE tap. Each answer is an action button that
+            immediately jumps to its branch (no select-then-confirm two-step). */}
         {currentStep.type === 'decision' && currentStep.answers && (
           <div className="mb-4">
             {currentStep.question && (
               <p className="text-[18px] font-semibold mb-2.5" style={{ color: 'var(--text-1)' }}>{currentStep.question}</p>
             )}
-            <div
-              className="space-y-2"
-              role="radiogroup"
-              aria-label={currentStep.question || 'Select an option'}
-            >
-              {currentStep.answers.map((answer, idx) => {
-                const selected = selectedAnswer === answer.label;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedAnswer(answer.label)}
-                    role="radio"
-                    aria-checked={selected}
-                    className="w-full p-4 rounded-2xl text-left transition-all active:opacity-90"
-                    style={{ minHeight: 'var(--touch-comfort)', background: selected ? 'var(--decision-tint)' : 'var(--surface-2)', border: `1.5px solid ${selected ? 'var(--decision)' : 'var(--border)'}` }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ border: `2px solid ${selected ? 'var(--decision)' : 'var(--text-3)'}`, background: selected ? 'var(--decision)' : 'transparent' }}
-                      >
-                        {selected && <Check className="w-3 h-3" style={{ color: 'var(--text-on-light)' }} />}
-                      </div>
-                      <span className="font-medium text-[15px]" style={{ color: 'var(--text-1)' }}>{answer.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="space-y-2" role="group" aria-label={currentStep.question || 'Choose an option'}>
+              {currentStep.answers.map((answer, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => chooseAnswer(answer)}
+                  className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
+                  style={{ minHeight: 'var(--touch-comfort)', background: 'var(--decision-tint)', border: '1.5px solid color-mix(in srgb, var(--decision) 45%, transparent)' }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-[15px]" style={{ color: 'var(--text-1)' }}>{answer.label}</span>
+                    <CircleArrowRight className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--decision)' }} />
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -423,24 +411,27 @@ export function ProtocolRunner() {
             <span className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>Repeat</span>
           </button>
         </div>
-        <button
-          onClick={handleNext}
-          disabled={currentStep.type === 'decision' && !selectedAnswer}
-          className="w-full rounded-2xl flex items-center justify-center gap-1.5 font-bold active:opacity-90 transition-opacity disabled:opacity-40"
-          style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-hero)', boxShadow: 'var(--glow-green)' }}
-        >
-          {currentStep.require_confirm ? (
-            <>
-              <Check className="w-5 h-5" />
-              <span className="text-base">{currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done'}</span>
-            </>
-          ) : (
-            <>
-              <span className="text-base">Next step</span>
-              <ChevronRight className="w-5 h-5" />
-            </>
-          )}
-        </button>
+        {/* Decision steps have no hero button — the answer cards above ARE the
+            single action. Every other step gets one unmistakable primary CTA. */}
+        {currentStep.type !== 'decision' && (
+          <button
+            onClick={handleNext}
+            className="w-full rounded-2xl flex items-center justify-center gap-1.5 font-bold active:opacity-90 transition-opacity"
+            style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-hero)', boxShadow: 'var(--glow-green)' }}
+          >
+            {currentStep.require_confirm ? (
+              <>
+                <Check className="w-5 h-5" />
+                <span className="text-base">{currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done'}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-base">Next step</span>
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
+        )}
       </footer>
 
       {/* Drug Card Modal */}
