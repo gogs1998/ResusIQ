@@ -19,26 +19,26 @@ export const protocols: Protocol[] = [
       {
         id: 'safety',
         type: 'instruction',
-        say: 'Check for danger. Ensure the area is safe.',
-        show: 'CHECK DANGER - Ensure area is safe',
+        say: 'First, make sure it is safe to approach them.',
+        show: 'Make sure it’s safe to approach them.',
         next: 'response'
       },
       {
         id: 'response',
         type: 'instruction',
-        say: 'Shake shoulders gently and shout. Are you alright?',
-        show: 'CHECK RESPONSE - Shake & shout "Are you alright?"',
+        say: 'Shake their shoulders gently and ask loudly, are you alright?',
+        show: 'Shake their shoulders and shout, "Are you alright?"',
         next: 'shout_help'
       },
       {
         id: 'shout_help',
         type: 'role_assignment',
-        say: 'Shout for help now. Assign someone to call 999 and get the AED.',
-        show: 'SHOUT FOR HELP',
+        say: 'Shout for help. Get someone to call 999 on speakerphone now and fetch the defibrillator.',
+        show: 'Shout for help.\n\nGet someone to call 999 on speakerphone and fetch the defibrillator.',
         roles: [
-          { role: 'Person 1', task: 'Call 999 - speakerphone on' },
-          { role: 'Person 2', task: 'Get AED and oxygen' },
-          { role: 'You', task: 'Start assessment and CPR' }
+          { role: 'Person 1', task: 'Call 999 now, speakerphone on' },
+          { role: 'Person 2', task: 'Fetch the defibrillator and oxygen' },
+          { role: 'You', task: 'Stay with them and start CPR' }
         ],
         actions: ['suggest:call_999'],
         next: 'airway'
@@ -46,47 +46,47 @@ export const protocols: Protocol[] = [
       {
         id: 'airway',
         type: 'instruction',
-        say: 'Open the airway. Head tilt, chin lift.',
-        show: 'OPEN AIRWAY - Head tilt, chin lift',
+        say: 'Tilt their head back and lift their chin to open the airway.',
+        show: 'Tilt their head back and lift their chin.',
         next: 'breathing_check'
       },
       {
         id: 'breathing_check',
         type: 'instruction',
-        say: 'Look, listen, and feel for breathing. Take no more than 10 seconds. Occasional gasps are not normal breathing - treat as cardiac arrest.',
-        show: 'CHECK BREATHING - Look, listen, feel (max 10 seconds)\n\nOccasional gasps are NOT normal breathing - treat as arrest',
+        say: 'Look and feel for normal breathing for no more than 10 seconds.',
+        show: 'Look and feel for normal breathing.\n\nNo more than 10 seconds. Occasional gasps are not normal breathing.',
         next: 'breathing_decision'
       },
       {
         id: 'breathing_decision',
         type: 'decision',
-        say: 'Is the patient breathing normally?',
-        show: 'Is patient breathing normally?',
-        question: 'Is the patient breathing normally?',
+        say: 'Are they breathing normally?',
+        show: 'Are they breathing normally?',
+        question: 'Are they breathing normally?',
         answers: [
-          { label: 'Yes - Breathing', next: 'recovery_position' },
-          { label: 'No / Abnormal', next: 'start_cpr' }
+          { label: 'Yes — they’re breathing', next: 'recovery_position' },
+          { label: 'No — not breathing normally', next: 'start_cpr' }
         ]
       },
       {
         id: 'recovery_position',
         type: 'instruction',
-        say: 'Place in the recovery position. Call 999 if not done. Monitor breathing.',
-        show: 'RECOVERY POSITION - Monitor breathing continuously',
+        say: 'Roll them onto their side into the recovery position and keep watching their breathing.',
+        show: 'Roll them onto their side.\n\nKeep watching their breathing. Make sure 999 is on the way.',
         next: 'monitor'
       },
       {
         id: 'start_cpr',
         type: 'instruction',
-        say: 'Start CPR immediately. 30 compressions then 2 breaths.',
-        show: 'START CPR NOW - 30:2 ratio',
+        say: 'Start CPR now. Give 30 chest compressions, then 2 rescue breaths.',
+        show: 'Start CPR now.\n\n30 compressions, then 2 breaths.',
         next: 'cpr_mode'
       },
       {
         id: 'cpr_mode',
         type: 'cpr_mode',
-        say: 'Performing CPR. Push hard and fast in the centre of the chest.',
-        show: 'CPR IN PROGRESS\n\nRate: 100-120/min\nDepth: 5-6cm\nAllow full recoil',
+        say: 'Push hard and fast in the centre of their chest.',
+        show: 'Push hard and fast in the centre of their chest.\n\nRate 100 to 120 a minute. Depth 5 to 6 cm. Let the chest come all the way back up.',
         metronome_bpm: 110,
         compressions_per_cycle: 30,
         breaths_per_cycle: 2,
@@ -95,53 +95,53 @@ export const protocols: Protocol[] = [
       {
         id: 'aed_check',
         type: 'decision',
-        say: 'Is the AED here?',
-        show: 'Is AED available?',
-        question: 'Is the AED here?',
+        say: 'Is the defibrillator here?',
+        show: 'Is the defibrillator here?',
+        question: 'Is the defibrillator here?',
         answers: [
-          { label: 'Yes', next: 'aed_attach' },
-          { label: 'No - Continue CPR', next: 'cpr_mode' }
+          { label: 'Yes — it’s here', next: 'aed_attach' },
+          { label: 'No — keep doing CPR', next: 'cpr_mode' }
         ]
       },
       {
         id: 'aed_attach',
         type: 'instruction',
-        say: 'Attach AED pads. One below right collarbone, one on left side below armpit. Follow AED prompts.',
-        show: 'ATTACH AED PADS\n\n• Right: Below collarbone\n• Left: Side of chest, below armpit\n\nFollow AED voice prompts',
+        say: 'Turn the defibrillator on and attach the pads to their bare chest, then follow its voice.',
+        show: 'Turn it on and put the pads on their bare chest.\n\nOne below the right collarbone, one on the left side just below the armpit.',
         actions: ['log:aed_attached'],
         next: 'aed_analyse'
       },
       {
         id: 'aed_analyse',
         type: 'instruction',
-        say: 'Stand clear. AED is analysing. Do not touch the patient.',
-        show: 'STAND CLEAR - AED ANALYSING',
+        say: 'Stand clear and do not touch them while it checks the heart.',
+        show: 'Stand clear. Don’t touch them.\n\nANALYSING — let it check the heart.',
         next: 'shock_decision'
       },
       {
         id: 'shock_decision',
         type: 'decision',
-        say: 'Does the AED advise a shock?',
-        show: 'AED advises shock?',
-        question: 'AED advises shock?',
+        say: 'Is it telling you to give a shock?',
+        show: 'Is it telling you to give a shock?',
+        question: 'Is it telling you to give a shock?',
         answers: [
-          { label: 'Yes - Shock advised', next: 'deliver_shock' },
-          { label: 'No - No shock', next: 'resume_cpr' }
+          { label: 'Yes — shock advised', next: 'deliver_shock' },
+          { label: 'No — no shock advised', next: 'resume_cpr' }
         ]
       },
       {
         id: 'deliver_shock',
         type: 'instruction',
-        say: 'Stand clear. Press the shock button now. Then immediately resume CPR.',
-        show: 'STAND CLEAR\nDELIVER SHOCK\nThen resume CPR immediately',
+        say: 'Make sure everyone is clear, then press the flashing shock button.',
+        show: 'Make sure everyone is clear, then press the shock button.\n\nSTAND CLEAR — then start CPR again straight away.',
         actions: ['log:shock_delivered'],
         next: 'resume_cpr'
       },
       {
         id: 'resume_cpr',
         type: 'timer_block',
-        say: 'Resume CPR immediately. Continue for 2 minutes until AED re-analyses.',
-        show: 'RESUME CPR - 2 minutes',
+        say: 'Start CPR again straight away and keep going for 2 minutes.',
+        show: 'Start CPR again straight away.\n\nKeep going for 2 minutes until it tells you to stop.',
         duration_seconds: 120,
         on_timer_end_next: 'aed_analyse',
         next: 'aed_analyse'
@@ -149,8 +149,8 @@ export const protocols: Protocol[] = [
       {
         id: 'monitor',
         type: 'instruction',
-        say: 'Continue monitoring until ambulance arrives. Be ready to restart CPR if they stop breathing.',
-        show: 'MONITOR CONTINUOUSLY\nBe ready to restart CPR'
+        say: 'Keep going until the ambulance crew take over or they start breathing normally.',
+        show: 'Keep going until the ambulance arrives.\n\nBe ready to restart CPR if they stop breathing.'
       }
     ]
   },
