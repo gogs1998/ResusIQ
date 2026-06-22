@@ -1,6 +1,8 @@
-/* ResusIQ — Spacing tokens
-   4px base scale (matches the as-built Tailwind 4px grid). Plus semantic
-   layout tokens for screen gutters, control gaps, and iOS safe-area insets. */
+/* ResusIQ — Spacing (2026 rebuild)
+   4px base grid, but the app breathes: real screens use the larger steps so
+   there is never a cramped, lecturing wall of controls. Tap targets are
+   governed here — nothing tappable is below 64px (well above the 44px floor),
+   because the user is stressed and one-handed. */
 
 :root {
   --space-0:   0;
@@ -14,24 +16,26 @@
   --space-8:   40px;
   --space-9:   48px;
   --space-10:  64px;
+  --space-11:  80px;
 
   /* ---- Semantic layout ---- */
-  --gutter:        20px;  /* screen left/right padding */
+  --gutter:        24px;  /* screen left/right padding */
   --gutter-tight:  16px;
-  --card-pad:      16px;
-  --card-pad-lg:   20px;
-  --stack-gap:     12px;  /* default vertical rhythm between cards */
-  --control-gap:   10px;
+  --card-pad:      20px;
+  --card-pad-lg:   24px;
+  --stack-gap:     16px;  /* default vertical rhythm */
+  --control-gap:   12px;
+  --section-gap:   32px;
 
-  /* ---- Touch targets (glove-friendly floor) ---- */
-  --touch-min:     44px;  /* HARD minimum for anything tapped mid-emergency */
-  --touch-comfort: 56px;  /* primary actions */
-  --touch-hero:    64px;  /* Next / Call 999 / primary bottom control */
+  /* ---- Touch targets (stressed, one-handed) ---- */
+  --touch-min:     64px;  /* smallest interactive element */
+  --touch-comfort: 80px;  /* standard button height */
+  --touch-hero:    104px; /* primary continue / Call 999 */
 
-  /* ---- iOS safe-area insets (notch + home indicator). Reserve top ~59px. ---- */
+  /* ---- iOS safe-area insets ---- */
   --safe-top:    env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left:   env(safe-area-inset-left, 0px);
   --safe-right:  env(safe-area-inset-right, 0px);
-  --appbar-h:    52px;  /* top app-bar height (sits below --safe-top) */
+  --appbar-h:    56px;
 }

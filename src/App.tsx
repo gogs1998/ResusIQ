@@ -29,8 +29,8 @@ const AIAssistant = lazy(() =>
 
 function ScreenLoading() {
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <p className="text-zinc-500 text-sm">Loading…</p>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <p className="text-sm" style={{ color: 'var(--text-3)' }}>Loading…</p>
     </div>
   );
 }

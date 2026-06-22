@@ -170,8 +170,8 @@ export function ProtocolRunner() {
 
   if (!activeProtocol || !currentStep) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-zinc-500">No protocol selected</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <p style={{ color: 'var(--text-3)' }}>No protocol selected</p>
       </div>
     );
   }

@@ -1,12 +1,21 @@
-/* ResusIQ — Radii tokens
-   Generous, iOS-like. Controls 12, cards 16, modals 24, pills full. */
+/* ResusIQ — Radii (2026 rebuild)
+   Generous, soft radii read as friendly and human rather than clinical.
+   Cards/buttons 24, tiles & hero buttons 32, pills fully round. */
 
 :root {
-  --radius-xs:   6px;
-  --radius-sm:   10px;
-  --radius-md:   12px;   /* controls, buttons, inputs */
-  --radius-lg:   16px;   /* cards, condition tiles */
-  --radius-xl:   20px;
-  --radius-2xl:  24px;   /* modals, hero, bottom sheets */
-  --radius-pill: 999px;  /* pills, badges, avatars */
+  --radius-xs:   10px;
+  --radius-sm:   14px;
+  --radius-md:   18px;   /* controls, inputs */
+  --radius-lg:   24px;   /* cards, buttons */
+  --radius-xl:   32px;   /* tiles, hero buttons */
+  --radius-2xl:  40px;   /* sheets */
+  --radius-pill: 999px;
+
+  /* New-system aliases */
+  --r-sm:   12px;
+  --r-md:   18px;
+  --r-lg:   24px;
+  --r-xl:   32px;
+  --r-2xl:  40px;
+  --r-pill: 999px;
 }

@@ -1,10 +1,10 @@
-/* ResusIQ webfonts — self-hosted via @fontsource (offline-safe, no cross-origin).
-   Weights 400/500/600/700 cover the Clear Signal ramp (regular→bold). */
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
-@import '@fontsource/ibm-plex-sans/700.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/ibm-plex-mono/600.css';
-@import '@fontsource/ibm-plex-mono/700.css';
+/* ResusIQ webfont — Lexend, self-hosted via @fontsource (offline-safe).
+   Lexend is engineered to reduce visual stress and improve reading proficiency
+   — exactly what a panicking user needs at arm's length. Single family, used at
+   every size. Weights 300–800 cover the calm/big/obvious ramp. */
+@import '@fontsource/lexend/300.css';
+@import '@fontsource/lexend/400.css';
+@import '@fontsource/lexend/500.css';
+@import '@fontsource/lexend/600.css';
+@import '@fontsource/lexend/700.css';
+@import '@fontsource/lexend/800.css';

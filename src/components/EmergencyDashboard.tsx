@@ -1,6 +1,5 @@
 import {
   Heart,
-  AlertTriangle,
   Wind,
   Droplet,
   CircleOff,
@@ -17,15 +16,15 @@ import {
   GraduationCap,
   BookOpen,
   FileText,
-  Stethoscope
+  CircleHelp,
+  Stethoscope,
+  ChevronRight,
 } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ComponentType } from 'react';
 import { useAppStore } from '../store/appStore';
-import { protocols } from '../data/protocols';
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
   Heart,
-  AlertTriangle,
   Wind,
   Droplet,
   CircleOff,
@@ -33,183 +32,184 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   HeartPulse,
   AlertOctagon,
   Brain,
-  ShieldAlert
+  ShieldAlert,
+  Stethoscope,
 };
 
-// Clear Signal: tiles are dark surfaces with a hairline border + a subtle
-// corner hue-wash in the per-condition colour (depth from borders, not bold
-// gradient fills). `accent` maps each tile to its --cond-* token.
-const surface: CSSProperties = {
-  background: 'var(--surface-1)',
-  border: '1px solid var(--border)',
+// Plain-English tile names (sentence case) — the lay word a panicking carer
+// recognises, not the clinical term. Icon names map into iconMap above.
+const TILES: { id: string; label: string; icon: string }[] = [
+  { id: 'cardiac_arrest', label: 'Cardiac arrest', icon: 'HeartPulse' },
+  { id: 'anaphylaxis', label: 'Anaphylaxis', icon: 'ShieldAlert' },
+  { id: 'choking', label: 'Choking', icon: 'Wind' },
+  { id: 'asthma', label: 'Asthma attack', icon: 'Stethoscope' },
+  { id: 'chest_pain', label: 'Chest pain', icon: 'Heart' },
+  { id: 'hypoglycaemia', label: 'Low blood sugar', icon: 'Droplet' },
+  { id: 'seizure', label: 'Seizure', icon: 'Brain' },
+  { id: 'syncope', label: 'Fainting', icon: 'CircleOff' },
+  { id: 'stroke', label: 'Stroke', icon: 'Zap' },
+  { id: 'adrenal_crisis', label: 'Adrenal crisis', icon: 'AlertOctagon' },
+];
+
+const TOOLS = [
+  { screen: 'protocol_library' as const, icon: BookOpen, label: 'Library' },
+  { screen: 'sbar' as const, icon: FileText, label: 'SBAR' },
+  { screen: 'reports' as const, icon: ClipboardList, label: 'Reports' },
+  { screen: 'training' as const, icon: GraduationCap, label: 'Training' },
+];
+
+const headerBtn: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 'var(--radius-md)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
 };
+
+function TileIcon({ name }: { name: string }) {
+  const Icon = iconMap[name] ?? Heart;
+  return (
+    <span
+      className="flex items-center justify-center flex-shrink-0"
+      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+    >
+      <Icon className="w-8 h-8" style={{ color: 'var(--teal-700)' }} />
+    </span>
+  );
+}
 
 export function EmergencyDashboard() {
-  const {
-    startEmergency,
-    setScreen,
-    practiceSetup,
-    isMuted,
-    toggleMute,
-    isTrainingMode
-  } = useAppStore();
-
-  const emergencyTiles = [
-    { id: 'cardiac_arrest', title: 'CARDIAC ARREST', subtitle: 'Unconscious · Not breathing', accent: 'var(--cond-cardiac)', priority: 1 },
-    { id: 'anaphylaxis', title: 'ANAPHYLAXIS', subtitle: 'Severe allergic reaction', accent: 'var(--cond-anaphyl)', priority: 2 },
-    { id: 'choking', title: 'CHOKING', subtitle: 'Airway obstruction', accent: 'var(--cond-choking)', priority: 3 },
-    { id: 'asthma', title: 'ASTHMA', subtitle: 'Acute attack', accent: 'var(--cond-asthma)', priority: 4 },
-    { id: 'chest_pain', title: 'CHEST PAIN', subtitle: 'Suspected MI', accent: 'var(--cond-chest)', priority: 5 },
-    { id: 'hypoglycaemia', title: 'HYPO', subtitle: 'Low blood sugar', accent: 'var(--cond-hypo)', priority: 6 },
-    { id: 'seizure', title: 'SEIZURE', subtitle: 'Convulsion', accent: 'var(--cond-seizure)', priority: 7 },
-    { id: 'syncope', title: 'FAINT', subtitle: 'Vasovagal', accent: 'var(--cond-faint)', priority: 8 },
-    { id: 'stroke', title: 'STROKE', subtitle: 'FAST assessment', accent: 'var(--cond-stroke)', priority: 9 },
-    { id: 'adrenal_crisis', title: 'ADRENAL', subtitle: 'Steroid crisis', accent: 'var(--cond-adrenal)', priority: 10 },
-  ];
+  const { startEmergency, setScreen, practiceSetup, isMuted, toggleMute, isTrainingMode } = useAppStore();
 
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      {/* Status Bar / Header */}
-      <header className="px-5 pt-3 pb-2 flex items-center justify-between">
+      {/* Header */}
+      <header className="flex items-start justify-between" style={{ padding: '12px 24px 8px' }}>
         <div className="flex items-center gap-2.5">
-          <img src="/logo-mark.svg" alt="ResusIQ" className="w-9 h-9 rounded-xl" />
+          <img src="/logo-mark.svg" alt="" className="w-9 h-9 rounded-xl" />
           <div>
-            <h1 className="text-lg font-bold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            <h1 className="font-bold" style={{ fontSize: 'var(--fs-lead)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
               <span style={{ color: 'var(--text-1)' }}>Resus</span><span style={{ color: 'var(--brand)' }}>IQ</span>
             </h1>
-            <p className="cs-eyebrow mt-0.5">
-              {isTrainingMode ? 'Training Mode' : 'Emergency Protocols'}
+            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>
+              {isTrainingMode ? 'Training mode' : "What's happening? Tap to begin."}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={toggleMute}
-            className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
-            style={isMuted ? { background: 'var(--red-tint)', border: '1px solid var(--red)' } : surface}
-            aria-label={isMuted ? 'Unmute' : 'Mute'}
-          >
-            {isMuted ? <VolumeX className="w-4 h-4" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-4 h-4" style={{ color: 'var(--text-2)' }} />}
+        <div className="flex items-center" style={{ gap: 2 }}>
+          <button onClick={toggleMute} style={headerBtn} aria-label={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'} aria-pressed={isMuted}>
+            {isMuted ? <VolumeX className="w-6 h-6" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-6 h-6" style={{ color: 'var(--text-2)' }} />}
           </button>
-          <button
-            onClick={() => setScreen('setup')}
-            className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
-            style={surface}
-            aria-label="Settings"
-          >
-            <Settings className="w-4 h-4" style={{ color: 'var(--text-2)' }} />
+          <button onClick={() => setScreen('setup')} style={headerBtn} aria-label="Settings">
+            <Settings className="w-6 h-6" style={{ color: 'var(--text-2)' }} />
           </button>
         </div>
       </header>
 
-      {/* Hero Action Buttons */}
-      <div className="px-4 pt-2 pb-1">
-        <div className="grid grid-cols-2 gap-2.5">
-          {/* Call 999 */}
-          <a
-            href="tel:999"
-            className="relative overflow-hidden rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 active:scale-[0.97] transition-transform"
-            style={{ background: 'linear-gradient(135deg, var(--red), var(--red-strong))', boxShadow: 'var(--glow-red)', color: 'var(--text-on-color)' }}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.15),transparent_60%)]" />
-            <Phone className="w-7 h-7" />
-            <span className="text-base font-bold tracking-wide">CALL 999</span>
-          </a>
-          {/* Guided triage — "not sure which?" reliable symptom wizard.
-              (Replaced the realtime Voice AI tile: that browser Live-voice path
-              was unreliable and is deferred to the native iOS build.) */}
-          <button
-            onClick={() => setScreen('triage')}
-            className="relative overflow-hidden rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 active:scale-[0.97] transition-transform"
-            style={{ background: 'linear-gradient(135deg, var(--ai-from), var(--ai-to))', boxShadow: 'var(--glow-ai)', color: 'var(--text-on-color)' }}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.15),transparent_60%)]" />
-            <ClipboardList className="w-7 h-7" />
-            <span className="text-base font-bold tracking-wide">NOT SURE?</span>
-          </button>
+      {/* Practice badge */}
+      {practiceSetup?.address && (
+        <div className="flex items-center gap-1.5" style={{ margin: '0 24px 4px' }}>
+          <Stethoscope className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
+          <p className="truncate" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-2)' }}>
+            {practiceSetup.name || practiceSetup.address}{practiceSetup.postcode ? ` · ${practiceSetup.postcode}` : ''}
+          </p>
         </div>
+      )}
 
-        {/* Practice Address Badge */}
-        {practiceSetup?.address && (
-          <div className="mt-2.5 flex items-center justify-center gap-1.5 rounded-xl py-2 px-3" style={surface}>
-            <Stethoscope className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
-            <p className="text-[11px] truncate" style={{ color: 'var(--text-2)' }}>
-              {practiceSetup.name || practiceSetup.address}{practiceSetup.postcode ? ` · ${practiceSetup.postcode}` : ''}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Emergency Grid */}
-      <main className="flex-1 px-4 pt-3 pb-2 overflow-y-auto">
-        <p className="cs-eyebrow mb-2.5 pl-1">Select Emergency</p>
-        <div className="grid grid-cols-2 gap-2.5">
-          {emergencyTiles.map((tile) => {
-            const protocol = protocols.find(p => p.id === tile.id);
-            const IconComponent = protocol ? iconMap[protocol.icon] : Heart;
-
-            return (
-              <button
-                key={tile.id}
-                onClick={() => startEmergency(tile.id, 'tile')}
-                className="relative overflow-hidden rounded-2xl p-3.5 text-left active:scale-[0.97] transition-transform"
-                style={{ ...surface, ['--accent' as string]: tile.accent } as CSSProperties}
-              >
-                {/* Subtle corner hue-wash in the condition colour */}
-                <div
-                  className="absolute inset-0"
-                  style={{ background: 'radial-gradient(circle at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%)' }}
-                />
-                <div className="relative flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[15px] leading-tight tracking-tight" style={{ color: 'var(--text-1)' }}>{tile.title}</h3>
-                    <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--text-3)' }}>{tile.subtitle}</p>
-                  </div>
-                  {IconComponent && (
-                    <div
-                      className="ml-2 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)' }}
-                    >
-                      <IconComponent className="w-4.5 h-4.5" style={{ color: 'var(--accent)' }} />
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </main>
-
-      {/* Bottom Tab Bar — glass */}
-      <nav className="px-3 pb-2 safe-area-bottom">
-        <div
-          className="rounded-2xl p-1.5 grid grid-cols-5 gap-1"
-          style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--blur-bar)', WebkitBackdropFilter: 'var(--blur-bar)', border: '1px solid var(--border)' }}
-        >
-          {[
-            { screen: 'triage' as const, icon: AlertTriangle, label: 'Triage' },
-            { screen: 'protocol_library' as const, icon: BookOpen, label: 'Library' },
-            { screen: 'sbar' as const, icon: FileText, label: 'SBAR' },
-            { screen: 'reports' as const, icon: ClipboardList, label: 'Reports' },
-            { screen: 'training' as const, icon: GraduationCap, label: 'Training' },
-          ].map(({ screen, icon: Icon, label }) => (
+      {/* Scrollable tile grid */}
+      <main className="flex-1 overflow-y-auto" style={{ padding: '8px 24px 12px', minHeight: 0 }}>
+        <div className="grid grid-cols-2" style={{ gap: 16 }}>
+          {TILES.map((tile) => (
             <button
-              key={screen}
-              onClick={() => setScreen(screen)}
-              className="flex flex-col items-center gap-0.5 py-2 rounded-xl active:opacity-70 transition-opacity"
+              key={tile.id}
+              onClick={() => startEmergency(tile.id, 'tile')}
+              className="flex flex-col text-left active:scale-[0.98] transition-transform"
+              style={{
+                gap: 16,
+                minHeight: 150,
+                padding: 22,
+                borderRadius: 'var(--radius-xl)',
+                background: 'var(--surface)',
+                boxShadow: 'var(--shadow-md)',
+                border: 'none',
+              }}
             >
-              <Icon className="w-[18px] h-[18px]" style={{ color: 'var(--text-2)' }} />
-              <span className="text-[10px] font-medium" style={{ color: 'var(--text-3)' }}>{label}</span>
+              <TileIcon name={tile.icon} />
+              <span className="font-bold" style={{ fontSize: 'var(--fs-subtitle)', lineHeight: 1.1, letterSpacing: '-0.01em', marginTop: 'auto', color: 'var(--text-1)' }}>
+                {tile.label}
+              </span>
             </button>
           ))}
         </div>
-      </nav>
 
-      {/* Disclaimer */}
-      <div className="text-center px-4 pb-2 safe-area-bottom">
-        <p className="text-[9px]" style={{ color: 'var(--text-3)' }}>
-          Supports trained teams · Resuscitation Council UK · SDCEP
-        </p>
+        {/* Guided "Not sure?" — warm amber, reassuring */}
+        <button
+          onClick={() => setScreen('triage')}
+          className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
+          style={{
+            marginTop: 16,
+            gap: 18,
+            minHeight: 96,
+            padding: '20px 22px',
+            borderRadius: 'var(--radius-xl)',
+            background: 'var(--amber-50)',
+            boxShadow: '0 0 0 2px var(--amber-600) inset, var(--shadow-sm)',
+            border: 'none',
+          }}
+        >
+          <span className="flex items-center justify-center flex-shrink-0" style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--amber-100)' }}>
+            <CircleHelp className="w-7 h-7" style={{ color: 'var(--amber-700)' }} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-bold" style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.15, color: 'var(--text-1)' }}>Not sure?</span>
+            <span className="block" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--amber-700)', marginTop: 2 }}>Answer a few quick questions</span>
+          </span>
+          <ChevronRight className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--amber-700)' }} />
+        </button>
+
+        {/* Low-emphasis tools row */}
+        <div className="grid grid-cols-4" style={{ gap: 8, marginTop: 24 }}>
+          {TOOLS.map(({ screen, icon: Icon, label }) => (
+            <button
+              key={screen}
+              onClick={() => setScreen(screen)}
+              className="flex flex-col items-center gap-1.5 active:opacity-70 transition-opacity"
+              style={{ padding: '12px 4px', borderRadius: 'var(--radius-md)', background: 'transparent', border: 'none' }}
+            >
+              <Icon className="w-5 h-5" style={{ color: 'var(--text-3)' }} />
+              <span style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </main>
+
+      {/* Persistent Call 999 — pinned, with a bottom protection fade */}
+      <div
+        className="safe-area-bottom"
+        style={{ padding: '12px 24px 24px', background: 'linear-gradient(0deg, var(--canvas) 72%, transparent)' }}
+      >
+        <a
+          href="tel:999"
+          className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+          style={{
+            gap: 14,
+            minHeight: 'var(--touch-hero)',
+            borderRadius: 'var(--radius-xl)',
+            background: 'var(--red)',
+            color: '#fff',
+            boxShadow: 'var(--shadow-999)',
+            textDecoration: 'none',
+          }}
+        >
+          <Phone className="w-7 h-7" />
+          <span className="text-center" style={{ lineHeight: 1.1 }}>
+            <span className="block font-bold" style={{ fontSize: 'var(--fs-subtitle)' }}>Call 999</span>
+            <span className="block" style={{ fontSize: 'var(--fs-caption)', opacity: 0.9, fontWeight: 500 }}>Ambulance — emergency services</span>
+          </span>
+        </a>
       </div>
     </div>
   );
