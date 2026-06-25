@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-  ChevronLeft, 
-  Play, 
+import {
+  ArrowLeft,
+  Play,
   Trophy,
   Clock,
   Target,
@@ -85,7 +85,7 @@ export function TrainingMode() {
   const [selectedScenario, setSelectedScenario] = useState<TrainingScenario | null>(null);
   const [drillComplete, setDrillComplete] = useState(false);
   const [checkedActions, setCheckedActions] = useState<string[]>([]);
-  
+
   const { formattedTime, start, pause, reset, seconds } = useStopwatch();
 
   const handleStartDrill = (scenario: TrainingScenario) => {
@@ -114,8 +114,8 @@ export function TrainingMode() {
   };
 
   const toggleAction = (action: string) => {
-    setCheckedActions(prev => 
-      prev.includes(action) 
+    setCheckedActions(prev =>
+      prev.includes(action)
         ? prev.filter(a => a !== action)
         : [...prev, action]
     );
@@ -139,78 +139,84 @@ export function TrainingMode() {
   // Drill Complete Screen
   if (drillComplete && selectedScenario) {
     const score = getScore();
-    
+
     return (
       <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-        <header className="px-4 flex flex-col items-center justify-center" style={{ height: 'var(--appbar-h)' }}>
-          <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Mode</p>
-          <h1 className="text-lg font-bold" style={{ color: 'var(--text-1)' }}>Drill Complete</h1>
+        <header className="flex flex-col items-center justify-center" style={{ height: 'var(--appbar-h)', paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}>
+          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training mode</p>
+          <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Drill complete</h1>
         </header>
 
-        <main className="flex-1 p-4 flex flex-col items-center justify-center">
-          <div className="cs-card p-6 w-full max-w-md text-center">
-            <Trophy className="w-20 h-20 mx-auto mb-4" style={{ color: score >= 80 ? 'var(--decision)' : score >= 60 ? 'var(--text-2)' : 'var(--text-3)' }} />
+        <main className="flex-1 flex flex-col items-center justify-center" style={{ padding: 'var(--gutter)' }}>
+          <div
+            className="w-full max-w-md text-center"
+            style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-md)', borderRadius: 'var(--radius-xl)', padding: '32px' }}
+          >
+            <Trophy className="w-20 h-20 mx-auto mb-4" style={{ color: score >= 80 ? 'var(--green-600)' : score >= 60 ? 'var(--brand)' : 'var(--text-3)' }} />
 
-            <h2 className="cs-numeric text-4xl font-bold mb-2" style={{ color: 'var(--text-1)' }}>{score}%</h2>
-            <p className="mb-6" style={{ color: 'var(--text-3)' }}>
+            <h2 className="cs-numeric font-bold mb-2" style={{ fontSize: 'var(--fs-title)', color: 'var(--text-1)' }}>{score}%</h2>
+            <p className="mb-6" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-3)' }}>
               {score >= 80 ? 'Excellent!' :
                score >= 60 ? 'Good effort!' :
                'Keep practising!'}
             </p>
 
-            <div className="rounded-xl p-4 mb-4 text-left" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-              <div className="flex justify-between mb-2">
-                <span style={{ color: 'var(--text-3)' }}>Time taken:</span>
+            <div className="text-left" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: '16px' }}>
+              <div className="flex justify-between mb-2" style={{ fontSize: 'var(--fs-body-sm)' }}>
+                <span style={{ color: 'var(--text-3)' }}>Time taken</span>
                 <span className="cs-numeric" style={{ color: 'var(--text-1)' }}>{formattedTime}</span>
               </div>
-              <div className="flex justify-between mb-2">
-                <span style={{ color: 'var(--text-3)' }}>Target time:</span>
+              <div className="flex justify-between mb-2" style={{ fontSize: 'var(--fs-body-sm)' }}>
+                <span style={{ color: 'var(--text-3)' }}>Target time</span>
                 <span className="cs-numeric" style={{ color: 'var(--text-1)' }}>
                   {Math.floor(selectedScenario.time_target_seconds / 60)}:{(selectedScenario.time_target_seconds % 60).toString().padStart(2, '0')}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--text-3)' }}>Key actions:</span>
+              <div className="flex justify-between" style={{ fontSize: 'var(--fs-body-sm)' }}>
+                <span style={{ color: 'var(--text-3)' }}>Key actions</span>
                 <span style={{ color: 'var(--text-1)' }}>{checkedActions.length} / {selectedScenario.key_actions.length}</span>
               </div>
             </div>
 
             {/* Actions checklist */}
-            <div className="text-left mb-4">
-              <p className="cs-eyebrow mb-2">Key actions review:</p>
-              {selectedScenario.key_actions.map((action, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 p-2 rounded"
-                  style={{ color: checkedActions.includes(action) ? 'var(--green)' : 'var(--red)' }}
-                >
-                  {checkedActions.includes(action) ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4" />
-                  )}
-                  <span className="text-sm">{action}</span>
-                </div>
-              ))}
+            <div className="text-left">
+              <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px' }}>Key actions review</p>
+              {selectedScenario.key_actions.map((action, idx) => {
+                const ok = checkedActions.includes(action);
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3"
+                    style={{ padding: '8px 4px', color: ok ? 'var(--green-700)' : 'var(--red-700)' }}
+                  >
+                    {ok ? (
+                      <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    )}
+                    <span style={{ fontSize: 'var(--fs-body-sm)' }}>{action}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </main>
 
-        <footer className="p-4 safe-area-bottom">
+        <footer className="safe-area-bottom" style={{ padding: 'var(--gutter)' }}>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => handleStartDrill(selectedScenario)}
-              className="p-3 rounded-xl font-bold active:opacity-90 transition-opacity"
-              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+              className="font-bold active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-btn)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
             >
-              Try Again
+              Try again
             </button>
             <button
               onClick={handleBackToList}
-              className="p-3 rounded-xl font-bold active:opacity-80 transition-opacity"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+              className="font-bold active:opacity-80 transition-opacity"
+              style={{ background: 'var(--surface)', border: '2px solid var(--brand)', color: 'var(--teal-700)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
             >
-              Back to Drills
+              Back to drills
             </button>
           </div>
         </footer>
@@ -220,51 +226,52 @@ export function TrainingMode() {
 
   // Active Drill Screen
   if (selectedScenario) {
+    const pct = (checkedActions.length / selectedScenario.key_actions.length) * 100;
     return (
       <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-        <header className="p-4 flex items-center justify-between" style={{ background: 'var(--decision-tint)', borderBottom: '1px solid color-mix(in srgb, var(--decision) 30%, transparent)' }}>
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-6 h-6" style={{ color: 'var(--decision)' }} />
+        <header className="flex items-center justify-between" style={{ background: 'var(--teal-50)', borderBottom: '1px solid var(--border)', padding: 'var(--gutter)' }}>
+          <div className="flex items-center gap-3">
+            <GraduationCap className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--brand)' }} />
             <div>
-              <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Drill</p>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{selectedScenario.title}</p>
+              <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training drill</p>
+              <p className="font-semibold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-1)' }}>{selectedScenario.title}</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="cs-numeric text-2xl font-bold" style={{ color: 'var(--text-1)' }}>{formattedTime}</p>
-            <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>
-              Target: {Math.floor(selectedScenario.time_target_seconds / 60)}m
+            <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--text-1)' }}>{formattedTime}</p>
+            <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>
+              Target {Math.floor(selectedScenario.time_target_seconds / 60)}m
             </p>
           </div>
         </header>
 
-        <main className="flex-1 p-4 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--gutter)' }}>
           {/* Scenario */}
-          <div className="cs-card p-4 mb-4">
-            <h2 className="cs-eyebrow mb-2">Scenario</h2>
-            <p style={{ color: 'var(--text-2)' }}>{selectedScenario.description}</p>
+          <div style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '8px' }}>Scenario</h2>
+            <p style={{ fontSize: 'var(--fs-body)', color: 'var(--text-2)' }}>{selectedScenario.description}</p>
           </div>
 
           {/* Key Actions Checklist */}
-          <div className="cs-card p-4 mb-4">
-            <h2 className="cs-eyebrow mb-3">Key Actions (check as completed)</h2>
-            <div className="space-y-2">
+          <div style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '12px' }}>Key actions (check as completed)</h2>
+            <div className="space-y-3">
               {selectedScenario.key_actions.map((action, idx) => {
                 const done = checkedActions.includes(action);
                 return (
                   <button
                     key={idx}
                     onClick={() => toggleAction(action)}
-                    className="w-full p-3 rounded-lg flex items-center gap-3 text-left transition-opacity active:opacity-90"
-                    style={{ background: done ? 'var(--green-tint)' : 'var(--surface-2)', border: `1px solid ${done ? 'color-mix(in srgb, var(--green) 40%, transparent)' : 'var(--border)'}` }}
+                    className="w-full flex items-center gap-3 text-left transition-opacity active:opacity-90"
+                    style={{ background: 'var(--surface)', border: `2px solid ${done ? 'var(--green-600)' : 'var(--border)'}`, borderRadius: 'var(--radius-xl)', padding: '16px', minHeight: 'var(--touch-min)' }}
                   >
                     <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ border: `2px solid ${done ? 'var(--green)' : 'var(--text-3)'}`, background: done ? 'var(--green)' : 'transparent' }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ border: `2px solid ${done ? 'var(--green-600)' : 'var(--text-3)'}`, background: done ? 'var(--green-600)' : 'transparent' }}
                     >
-                      {done && <CheckCircle className="w-4 h-4" style={{ color: 'var(--text-on-light)' }} />}
+                      {done && <CheckCircle className="w-5 h-5" style={{ color: '#fff' }} />}
                     </div>
-                    <span style={{ color: 'var(--text-1)' }}>{action}</span>
+                    <span style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{action}</span>
                   </button>
                 );
               })}
@@ -272,44 +279,44 @@ export function TrainingMode() {
           </div>
 
           {/* Progress */}
-          <div className="cs-card p-4">
-            <div className="flex justify-between text-sm mb-2" style={{ color: 'var(--text-2)' }}>
+          <div style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+            <div className="flex justify-between mb-3" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)' }}>
               <span>Progress</span>
               <span className="cs-numeric">{checkedActions.length} / {selectedScenario.key_actions.length}</span>
             </div>
-            <div className="h-2 rounded-full" style={{ background: 'var(--surface-3)' }}>
+            <div className="rounded-full" style={{ height: '10px', background: 'var(--surface-inset)' }}>
               <div
                 className="h-full rounded-full transition-all"
-                style={{ width: `${(checkedActions.length / selectedScenario.key_actions.length) * 100}%`, background: 'var(--green)' }}
+                style={{ width: `${pct}%`, background: 'var(--green-600)' }}
               />
             </div>
           </div>
         </main>
 
-        <footer className="p-4 safe-area-bottom">
+        <footer className="safe-area-bottom" style={{ padding: 'var(--gutter)' }}>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={handleRunProtocol}
-              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
-              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+              className="font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+              style={{ background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-btn)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
             >
               <Play className="w-5 h-5" />
-              Run Protocol
+              Run protocol
             </button>
             <button
               onClick={handleEndDrill}
-              className="p-3 rounded-xl font-bold active:opacity-90 transition-opacity"
-              style={{ background: 'var(--green)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+              className="font-bold active:opacity-90 transition-opacity"
+              style={{ background: 'var(--green-600)', color: '#fff', boxShadow: 'var(--shadow-btn)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
             >
-              End Drill
+              End drill
             </button>
           </div>
           <button
             onClick={handleBackToList}
-            className="w-full p-2 rounded-xl text-sm active:opacity-80 transition-opacity"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+            className="w-full active:opacity-80 transition-opacity"
+            style={{ background: 'var(--surface)', border: '2px solid var(--border)', color: 'var(--text-2)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-min)', fontSize: 'var(--fs-body-sm)' }}
           >
-            Cancel Drill
+            Cancel drill
           </button>
         </footer>
       </div>
@@ -319,57 +326,59 @@ export function TrainingMode() {
   // Drill Selection Screen
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
+      <header className="flex items-center gap-3" style={{ height: 'var(--appbar-h)', paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}>
         <button
           onClick={() => setScreen('home')}
           aria-label="Back"
-          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          className="flex items-center justify-center active:opacity-80 transition-opacity flex-shrink-0"
+          style={{ width: '56px', height: '56px', marginLeft: '-12px', background: 'transparent' }}
         >
-          <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+          <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
         </button>
         <div>
-          <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Training Mode</p>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>Training Drills</h1>
+          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training mode</p>
+          <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Training drills</h1>
         </div>
       </header>
 
-      <main className="flex-1 p-4 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--gutter)' }}>
         {/* Random Drill Button */}
         <button
           onClick={handleRandomScenario}
-          className="w-full p-4 rounded-xl mb-4 flex items-center justify-center gap-3 active:opacity-90 transition-opacity"
-          style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-comfort)' }}
+          className="w-full flex items-center justify-center gap-3 active:opacity-90 transition-opacity"
+          style={{ background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-btn)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', marginBottom: '24px' }}
         >
           <Shuffle className="w-6 h-6" />
-          <span className="font-bold text-lg">Random Scenario</span>
+          <span className="font-bold" style={{ fontSize: 'var(--fs-lead)' }}>Random scenario</span>
         </button>
 
         {/* Scenario List */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {trainingScenarios.map((scenario) => {
-            const diff = scenario.difficulty === 'beginner' ? 'var(--green)' : scenario.difficulty === 'intermediate' ? 'var(--decision)' : 'var(--red)';
+            const diff = scenario.difficulty === 'beginner' ? 'var(--green-700)' : scenario.difficulty === 'intermediate' ? 'var(--amber-700)' : 'var(--red-700)';
+            const diffBg = scenario.difficulty === 'beginner' ? 'var(--green-50)' : scenario.difficulty === 'intermediate' ? 'var(--amber-50)' : 'var(--red-50)';
             return (
               <button
                 key={scenario.id}
                 onClick={() => handleStartDrill(scenario)}
-                className="w-full cs-card p-4 text-left active:opacity-90 transition-opacity"
+                className="w-full text-left active:opacity-90 transition-opacity"
+                style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)', padding: '20px' }}
               >
-                <div className="flex justify-between items-start mb-2 gap-2">
-                  <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>{scenario.title}</h3>
-                  <span className="text-xs px-2 py-1 rounded flex-shrink-0" style={{ background: `color-mix(in srgb, ${diff} 15%, transparent)`, color: diff }}>
+                <div className="flex justify-between items-start mb-2 gap-3">
+                  <h3 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{scenario.title}</h3>
+                  <span className="flex-shrink-0" style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, padding: '4px 12px', borderRadius: 'var(--radius-pill)', background: diffBg, color: diff }}>
                     {scenario.difficulty}
                   </span>
                 </div>
-                <p className="text-sm mb-3" style={{ color: 'var(--text-3)' }}>{scenario.description}</p>
-                <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
-                  <span className="flex items-center gap-1">
+                <p className="mb-3" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-3)' }}>{scenario.description}</p>
+                <div className="flex items-center gap-4" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>
+                  <span className="flex items-center gap-2">
                     <Target className="w-4 h-4" />
                     {scenario.key_actions.length} key actions
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    Target: {Math.floor(scenario.time_target_seconds / 60)}m
+                    Target {Math.floor(scenario.time_target_seconds / 60)}m
                   </span>
                 </div>
               </button>
@@ -379,7 +388,7 @@ export function TrainingMode() {
       </main>
 
       {/* Training info */}
-      <div className="p-4 text-center text-sm safe-area-bottom" style={{ color: 'var(--text-3)' }}>
+      <div className="text-center safe-area-bottom" style={{ padding: 'var(--gutter)', fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>
         <p>Training drills help maintain emergency readiness.</p>
         <p>GDC expects ongoing capability maintenance.</p>
       </div>

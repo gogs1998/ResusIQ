@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-  ChevronLeft, 
-  Download, 
+import {
+  ArrowLeft,
+  Download,
   Calendar,
   Clock,
   FileText,
@@ -46,7 +46,7 @@ export function EventReports() {
 
   const generateReport = (event: EmergencyEvent) => {
     const protocol = protocols.find(p => p.id === event.protocol_id);
-    
+
     const report = `
 EMERGENCY INCIDENT REPORT
 =========================
@@ -90,7 +90,7 @@ For audit and training purposes only.
 
   const handleShare = async (event: EmergencyEvent) => {
     const report = generateReport(event);
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -107,69 +107,88 @@ For audit and training purposes only.
     }
   };
 
+  const eyebrowStyle = {
+    fontSize: 'var(--fs-label)',
+    fontWeight: 700,
+    letterSpacing: 'var(--ls-label)',
+    textTransform: 'uppercase' as const,
+    color: 'var(--teal-700)',
+  };
+
   if (selectedEvent) {
     const protocol = protocols.find(p => p.id === selectedEvent.protocol_id);
 
     return (
       <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-        <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
+        <header className="flex items-center gap-3 px-6" style={{ height: 'var(--appbar-h)' }}>
           <button
             onClick={() => setSelectedEvent(null)}
             aria-label="Back"
-            className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            className="flex items-center justify-center active:opacity-70 transition-opacity"
+            style={{ width: 56, height: 56, background: 'transparent', border: 'none' }}
           >
-            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+            <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
           </button>
           <div className="flex-1">
-            <h1 className="font-bold" style={{ color: 'var(--text-1)' }}>{protocol?.title}</h1>
-            <p className="cs-eyebrow mt-0.5">{formatDate(selectedEvent.timestamp)}</p>
+            <h1 className="font-bold" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body)' }}>{protocol?.title}</h1>
+            <p className="mt-0.5" style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>{formatDate(selectedEvent.timestamp)}</p>
           </div>
         </header>
 
-        <main className="flex-1 p-4 overflow-y-auto">
+        <main className="flex-1 px-6 pb-6 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Summary */}
-          <div className="cs-card p-4 mb-4">
-            <h2 className="cs-eyebrow mb-3">Summary</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div
+            className="p-6"
+            style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)' }}
+          >
+            <h2 style={{ ...eyebrowStyle, marginBottom: 16 }}>Summary</h2>
+            <div className="grid grid-cols-2" style={{ gap: 16 }}>
               <div>
-                <p style={{ color: 'var(--text-3)' }}>Duration</p>
-                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{formatDuration(selectedEvent.timestamp, selectedEvent.events)}</p>
+                <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Duration</p>
+                <p className="cs-numeric" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{formatDuration(selectedEvent.timestamp, selectedEvent.events)}</p>
               </div>
               <div>
-                <p style={{ color: 'var(--text-3)' }}>Events Logged</p>
-                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.events.length}</p>
+                <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Events logged</p>
+                <p className="cs-numeric" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{selectedEvent.events.length}</p>
               </div>
               <div>
-                <p style={{ color: 'var(--text-3)' }}>Outcome</p>
-                <p className="font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.outcome || 'Not recorded'}</p>
+                <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Outcome</p>
+                <p style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{selectedEvent.outcome || 'Not recorded'}</p>
               </div>
               <div>
-                <p style={{ color: 'var(--text-3)' }}>Protocol Version</p>
-                <p className="cs-numeric font-medium" style={{ color: 'var(--text-1)' }}>{selectedEvent.protocol_version}</p>
+                <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Protocol version</p>
+                <p className="cs-numeric" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{selectedEvent.protocol_version}</p>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="cs-card p-4 mb-4">
-            <h2 className="cs-eyebrow mb-3">Event Timeline</h2>
-            <div className="space-y-3">
-              {selectedEvent.events.map((event, idx) => (
-                <div key={event.id} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className="w-3 h-3 rounded-full" style={{ background: eventColor(event.type) }} />
-                    {idx < selectedEvent.events.length - 1 && (
-                      <div className="w-0.5 flex-1 my-1" style={{ background: 'var(--surface-3)' }} />
-                    )}
-                  </div>
-                  <div className="flex-1 pb-3">
-                    <p className="font-medium" style={{ color: 'var(--text-1)' }}>{event.label}</p>
-                    <p className="cs-numeric text-xs" style={{ color: 'var(--text-3)' }}>
+          <div
+            className="p-6"
+            style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)' }}
+          >
+            <h2 style={{ ...eyebrowStyle, marginBottom: 16 }}>Event timeline</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {selectedEvent.events.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-start gap-3 p-4"
+                  style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-md)' }}
+                >
+                  <div
+                    className="mt-1.5 rounded-full flex-shrink-0"
+                    style={{ width: 12, height: 12, background: eventColor(event.type) }}
+                  />
+                  <div className="flex-1">
+                    <p
+                      className="cs-numeric"
+                      style={{ color: 'var(--teal-700)', fontSize: 'var(--fs-caption)', fontWeight: 700, letterSpacing: 'var(--ls-label)' }}
+                    >
                       {format(new Date(event.timestamp), 'HH:mm:ss')}
                     </p>
+                    <p style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{event.label}</p>
                     {event.details && (
-                      <p className="text-sm" style={{ color: 'var(--text-3)' }}>{event.details}</p>
+                      <p style={{ color: 'var(--text-2)', fontSize: 'var(--fs-caption)' }}>{event.details}</p>
                     )}
                   </div>
                 </div>
@@ -179,28 +198,49 @@ For audit and training purposes only.
 
           {/* Notes */}
           {selectedEvent.notes && (
-            <div className="cs-card p-4 mb-4">
-              <h2 className="cs-eyebrow mb-2">Notes</h2>
-              <p style={{ color: 'var(--text-2)' }}>{selectedEvent.notes}</p>
+            <div
+              className="p-6"
+              style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-lg)' }}
+            >
+              <h2 style={{ ...eyebrowStyle, marginBottom: 12 }}>Notes</h2>
+              <p style={{ color: 'var(--text-2)', fontSize: 'var(--fs-body-sm)' }}>{selectedEvent.notes}</p>
             </div>
           )}
         </main>
 
         {/* Footer */}
-        <footer className="p-4 safe-area-bottom">
-          <div className="grid grid-cols-2 gap-3">
+        <footer className="px-6 pb-6 safe-area-bottom">
+          <div className="grid grid-cols-2" style={{ gap: 12 }}>
             <button
               onClick={() => handleExport(selectedEvent)}
-              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
-              style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+              className="flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+              style={{
+                background: 'var(--brand)',
+                color: '#fff',
+                boxShadow: 'var(--shadow-btn)',
+                borderRadius: 'var(--radius-lg)',
+                border: 'none',
+                minHeight: 'var(--touch-min)',
+                fontSize: 'var(--fs-body-sm)',
+                fontWeight: 700,
+              }}
             >
               <Download className="w-5 h-5" />
               Export
             </button>
             <button
               onClick={() => handleShare(selectedEvent)}
-              className="p-3 rounded-xl font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+              className="flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                boxShadow: 'var(--shadow-sm)',
+                borderRadius: 'var(--radius-lg)',
+                minHeight: 'var(--touch-min)',
+                fontSize: 'var(--fs-body-sm)',
+                fontWeight: 700,
+              }}
             >
               <Share2 className="w-5 h-5" />
               Share
@@ -213,40 +253,47 @@ For audit and training purposes only.
 
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
+      <header className="flex items-center gap-3 px-6" style={{ height: 'var(--appbar-h)' }}>
         <button
           onClick={() => setScreen('home')}
           aria-label="Back"
-          className="w-11 h-11 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          className="flex items-center justify-center active:opacity-70 transition-opacity"
+          style={{ width: 56, height: 56, background: 'transparent', border: 'none' }}
         >
-          <ChevronLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+          <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
         </button>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>Event Reports</h1>
-          <p className="cs-eyebrow mt-0.5">{eventHistory.length} incidents recorded</p>
+          <h1 className="font-bold" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body)' }}>Event reports</h1>
+          <p className="mt-0.5" style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>{eventHistory.length} incidents recorded</p>
         </div>
       </header>
 
-      <main className="flex-1 p-4 overflow-y-auto">
+      <main className="flex-1 px-6 pb-6 overflow-y-auto">
         {eventHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64" style={{ color: 'var(--text-3)' }}>
             <FileText className="w-16 h-16 mb-4 opacity-50" />
-            <p className="text-lg">No incidents recorded yet</p>
-            <p className="text-sm">Events will appear here after emergencies</p>
+            <p style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-2)', fontWeight: 600 }}>No incidents recorded yet</p>
+            <p style={{ fontSize: 'var(--fs-body-sm)' }}>Events will appear here after emergencies</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[...eventHistory].reverse().map((event) => (
               <button
                 key={event.id}
                 onClick={() => setSelectedEvent(event)}
-                className="w-full cs-card p-4 text-left active:opacity-90 transition-opacity"
+                className="w-full text-left active:opacity-90 transition-opacity p-6"
+                style={{
+                  background: 'var(--surface)',
+                  boxShadow: 'var(--shadow-sm)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: 'none',
+                  minHeight: 'var(--touch-comfort)',
+                }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex-1">
-                    <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>{getProtocolTitle(event.protocol_id)}</h3>
-                    <div className="flex items-center gap-4 text-sm mt-1" style={{ color: 'var(--text-3)' }}>
+                    <h3 className="font-bold" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body)' }}>{getProtocolTitle(event.protocol_id)}</h3>
+                    <div className="flex items-center gap-4 mt-1" style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {format(new Date(event.timestamp), 'dd MMM yyyy')}
@@ -257,14 +304,20 @@ For audit and training purposes only.
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5" style={{ color: 'var(--text-3)' }} />
+                  <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}>
+                <div className="flex gap-2 mt-3">
+                  <span
+                    className="px-3 py-1"
+                    style={{ background: 'var(--teal-50)', color: 'var(--teal-700)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                  >
                     {event.events.length} events
                   </span>
                   {event.completed && (
-                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--green-tint)', color: 'var(--green)' }}>
+                    <span
+                      className="px-3 py-1"
+                      style={{ background: 'var(--green-50)', color: 'var(--green-700)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                    >
                       Completed
                     </span>
                   )}

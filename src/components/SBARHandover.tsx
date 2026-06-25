@@ -32,11 +32,11 @@ export function SBARHandover() {
 
   function buildSBAR(): string {
     const lines: string[] = [];
-    
+
     lines.push('═══ SBAR HANDOVER ═══');
     lines.push(`Date/Time: ${format(now, 'dd/MM/yyyy HH:mm')}`);
     lines.push('');
-    
+
     // SITUATION
     lines.push('── S: SITUATION ──');
     lines.push(`I am calling from ${practiceName}, ${address} ${postcode}.`);
@@ -100,49 +100,73 @@ export function SBARHandover() {
     }
   };
 
+  const eyebrowStyle = {
+    fontSize: 'var(--fs-label)',
+    fontWeight: 700,
+    letterSpacing: 'var(--ls-label)',
+    textTransform: 'uppercase' as const,
+    color: 'var(--teal-700)',
+  };
+
+  const inputStyle = {
+    width: '100%',
+    minHeight: 'var(--touch-min)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '14px 16px',
+    fontSize: 'var(--fs-body-sm)',
+    color: 'var(--text-1)',
+  };
+
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
-      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
-        <button onClick={() => setScreen('home')} aria-label="Back" className="w-11 h-11 -ml-1 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-          <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+      <header className="flex items-center gap-2 px-2" style={{ height: 'var(--appbar-h)' }}>
+        <button
+          onClick={() => setScreen('home')}
+          aria-label="Back"
+          className="flex items-center justify-center active:opacity-60 transition-opacity"
+          style={{ width: 56, height: 56, background: 'transparent', border: 'none' }}
+        >
+          <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
         </button>
-        <ClipboardList className="w-5 h-5" style={{ color: 'var(--brand)' }} />
-        <h1 className="text-lg font-bold flex-1" style={{ color: 'var(--text-1)' }}>SBAR Handover</h1>
+        <ClipboardList className="w-6 h-6" style={{ color: 'var(--brand)' }} />
+        <h1 className="font-bold flex-1" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>SBAR handover</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto" style={{ padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* What is SBAR */}
-        <div className="rounded-xl p-3" style={{ background: 'var(--brand-tint)', border: '1px solid color-mix(in srgb, var(--brand) 30%, transparent)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
-            <strong style={{ color: 'var(--brand)' }}>SBAR</strong> = Situation, Background, Assessment, Recommendation.
+        <div style={{ background: 'var(--teal-50)', borderRadius: 'var(--radius-lg)', padding: 16 }}>
+          <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}>
+            <strong style={{ color: 'var(--teal-700)' }}>SBAR</strong> = Situation, Background, Assessment, Recommendation.
             Use this to hand over to the ambulance crew.
           </p>
         </div>
 
         {/* Patient Details */}
-        <section>
-          <h2 className="cs-eyebrow mb-2">Patient Details</h2>
-          <div className="space-y-2">
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={eyebrowStyle}>Patient details</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input
               type="text"
               placeholder="Patient name (if known)"
               value={patientName}
               onChange={e => setPatientName(e.target.value)}
-              className="cs-input"
+              style={inputStyle}
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <input
                 type="number"
                 placeholder="Age"
                 value={patientAge}
                 onChange={e => setPatientAge(e.target.value)}
-                className="cs-input"
+                style={inputStyle}
               />
               <select
                 value={patientGender}
                 onChange={e => setPatientGender(e.target.value)}
-                className="cs-input"
+                style={inputStyle}
               >
                 <option value="">Gender</option>
                 <option value="male">Male</option>
@@ -153,48 +177,50 @@ export function SBARHandover() {
         </section>
 
         {/* Background */}
-        <section>
-          <h2 className="cs-eyebrow mb-2">Background</h2>
-          <div className="space-y-2">
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={eyebrowStyle}>Background</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <textarea
               placeholder="Medical history (e.g., diabetes, asthma, heart disease)"
               value={medicalHistory}
               onChange={e => setMedicalHistory(e.target.value)}
               rows={2}
-              className="cs-input resize-none"
+              className="resize-none"
+              style={inputStyle}
             />
             <textarea
               placeholder="Current medications"
               value={medications}
               onChange={e => setMedications(e.target.value)}
               rows={2}
-              className="cs-input resize-none"
+              className="resize-none"
+              style={inputStyle}
             />
             <input
               type="text"
               placeholder="Allergies (NKDA if none known)"
               value={allergies}
               onChange={e => setAllergies(e.target.value)}
-              className="cs-input"
+              style={inputStyle}
             />
           </div>
         </section>
 
         {/* Auto-populated Assessment */}
-        <section>
-          <h2 className="cs-eyebrow mb-2">Assessment (auto-filled)</h2>
-          <div className="cs-card p-3 space-y-2">
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={eyebrowStyle}>Assessment (auto-filled)</h2>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-3)' }}>Emergency:</span>
-              <span className="font-semibold" style={{ color: 'var(--cond-anaphyl)' }}>{emergencyType}</span>
+              <span style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-3)' }}>Emergency:</span>
+              <span className="font-semibold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--cond-anaphyl)' }}>{emergencyType}</span>
             </div>
             {logEntries.length > 0 && (
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--text-3)' }}>Actions taken:</p>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
+                <p className="mb-2" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-3)' }}>Actions taken:</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {logEntries.map((entry, i) => (
-                    <div key={i} className="text-sm flex items-start gap-2">
-                      <span className="cs-numeric text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
+                    <div key={i} className="flex items-start gap-2" style={{ fontSize: 'var(--fs-body-sm)' }}>
+                      <span className="cs-numeric mt-0.5" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>
                         {format(new Date(entry.timestamp), 'HH:mm:ss')}
                       </span>
                       <span style={{ color: 'var(--text-2)' }}>{entry.label}</span>
@@ -204,48 +230,52 @@ export function SBARHandover() {
               </div>
             )}
             {logEntries.length === 0 && (
-              <p className="text-sm italic" style={{ color: 'var(--text-3)' }}>No logged actions yet</p>
+              <p className="italic" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-3)' }}>No logged actions yet</p>
             )}
           </div>
         </section>
 
         {/* Recommendation */}
-        <section>
-          <h2 className="cs-eyebrow mb-2">Additional Information</h2>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={eyebrowStyle}>Additional information</h2>
           <textarea
             placeholder="Any other information for the ambulance crew"
             value={additionalInfo}
             onChange={e => setAdditionalInfo(e.target.value)}
             rows={2}
-            className="cs-input resize-none"
+            className="resize-none"
+            style={inputStyle}
           />
         </section>
 
         {/* Preview */}
-        <section>
-          <h2 className="cs-eyebrow mb-2">Handover Preview</h2>
-          <pre className="rounded-xl p-4 text-sm whitespace-pre-wrap font-mono overflow-x-auto" style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={eyebrowStyle}>Handover preview</h2>
+          <pre
+            className="whitespace-pre-wrap overflow-x-auto"
+            style={{ background: 'var(--surface-inset)', borderRadius: 'var(--radius-lg)', padding: 16, fontSize: 'var(--fs-caption)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}
+          >
             {sbarText}
           </pre>
         </section>
       </div>
 
       {/* Action buttons */}
-      <div className="p-4 grid grid-cols-2 gap-3 safe-area-bottom">
+      <div className="grid grid-cols-2 safe-area-bottom" style={{ padding: 24, gap: 12 }}>
         <button
           onClick={handleCopy}
-          className="font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+          className="font-semibold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', color: 'var(--text-2)', borderRadius: 'var(--radius-lg)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body-sm)' }}
         >
-          {copied ? <Check className="w-5 h-5" style={{ color: 'var(--green)' }} /> : <Copy className="w-5 h-5" />}
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? <Check className="w-6 h-6" style={{ color: 'var(--green)' }} /> : <Copy className="w-6 h-6" />}
+          {copied ? 'Copied' : 'Copy'}
         </button>
         <button
           onClick={handleShare}
-          className="font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
-          style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
+          className="font-semibold flex items-center justify-center gap-2 active:opacity-90 transition-opacity"
+          style={{ background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-btn)', borderRadius: 'var(--radius-lg)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body-sm)' }}
         >
-          <Share2 className="w-5 h-5" />
+          <Share2 className="w-6 h-6" />
           Share
         </button>
       </div>

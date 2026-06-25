@@ -3,6 +3,25 @@ import { useAppStore } from '../store/appStore';
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 
+const backBtn: CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 'var(--radius-md)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
+  flexShrink: 0,
+};
+
+const eyebrow: CSSProperties = {
+  fontSize: 'var(--fs-label)',
+  fontWeight: 700,
+  letterSpacing: 'var(--ls-label)',
+  textTransform: 'uppercase',
+};
+
 export function CallScript() {
   const { practiceSetup, setScreen, activeProtocol, activeEvent } = useAppStore();
   const [copied, setCopied] = useState(false);
@@ -98,42 +117,61 @@ export function CallScript() {
   return (
     <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
-      <header className="flex items-center gap-3 px-4" style={{ height: 'var(--appbar-h)' }}>
-        <button onClick={() => setScreen('home')} aria-label="Back" className="w-11 h-11 -ml-1 rounded-xl flex items-center justify-center active:opacity-80 transition-opacity" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-          <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+      <header className="flex items-center" style={{ gap: 8, padding: '8px 12px', height: 'var(--appbar-h)' }}>
+        <button onClick={() => setScreen('home')} aria-label="Back" style={backBtn} className="active:opacity-70 transition-opacity">
+          <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
         </button>
-        <Phone className="w-5 h-5" style={{ color: 'var(--red)' }} />
-        <h1 className="text-lg font-bold flex-1" style={{ color: 'var(--text-1)' }}>999 Call Script</h1>
-        <div className="cs-numeric flex items-center gap-1 text-sm" style={{ color: 'var(--text-2)' }}>
-          <Clock className="w-4 h-4" />
+        <h1 className="font-bold flex-1" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>999 call script</h1>
+        <div
+          className="cs-numeric flex items-center gap-1.5"
+          style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 600, color: 'var(--text-2)' }}
+        >
+          <Clock className="w-5 h-5" />
           {formatTime(elapsedSeconds)}
         </div>
       </header>
 
       {/* Call Button */}
-      <div className="p-4">
+      <div style={{ padding: '8px 24px 16px' }}>
         <a
           href="tel:999"
-          className="w-full font-bold py-5 px-6 rounded-2xl flex items-center justify-center gap-3 text-2xl active:opacity-90 transition-opacity text-center"
-          style={{ background: 'var(--red-strong)', color: 'var(--text-on-color)', boxShadow: 'var(--glow-red)', minHeight: 'var(--touch-hero)' }}
+          className="w-full font-bold flex items-center justify-center gap-3 active:scale-[0.98] transition-transform text-center"
+          style={{
+            fontSize: 'var(--fs-subtitle)',
+            background: 'var(--red)',
+            color: '#fff',
+            boxShadow: 'var(--shadow-999)',
+            borderRadius: 'var(--radius-xl)',
+            minHeight: 'var(--touch-hero)',
+            textDecoration: 'none',
+            padding: '0 24px',
+          }}
         >
           <Phone className="w-8 h-8" />
-          TAP TO CALL 999
+          Tap to call 999
         </a>
       </div>
 
       {/* Practice Address - prominent */}
-      <div className="px-4 pb-3">
-        <div className="cs-card cs-step-card p-4" style={{ ['--step-accent' as string]: 'var(--decision)', background: 'var(--decision-tint)' } as CSSProperties}>
-          <div className="flex items-start gap-3">
-            <MapPin className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: 'var(--decision)' }} />
+      <div style={{ padding: '0 24px 16px' }}>
+        <div
+          style={{
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-sm)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1.5px solid var(--teal-100)',
+            padding: 20,
+          }}
+        >
+          <div className="flex items-start" style={{ gap: 16 }}>
+            <MapPin className="w-7 h-7 flex-shrink-0" style={{ color: 'var(--brand)', marginTop: 2 }} />
             <div>
-              <p className="cs-eyebrow" style={{ color: 'var(--decision)' }}>Practice Address</p>
-              <p className="text-lg font-bold mt-1" style={{ color: 'var(--text-1)' }}>{practiceName}</p>
-              <p className="text-base" style={{ color: 'var(--text-2)' }}>{address}</p>
-              <p className="cs-numeric text-xl font-bold mt-1" style={{ color: 'var(--decision)' }}>{postcode}</p>
+              <p style={{ ...eyebrow, color: 'var(--teal-700)' }}>Practice address</p>
+              <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)', marginTop: 6 }}>{practiceName}</p>
+              <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>{address}</p>
+              <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--brand)', marginTop: 6 }}>{postcode}</p>
               {phone && phone !== '[Phone not set]' && (
-                <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>Tel: {phone}</p>
+                <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-3)', marginTop: 6 }}>Tel: {phone}</p>
               )}
             </div>
           </div>
@@ -141,67 +179,94 @@ export function CallScript() {
       </div>
 
       {/* Script */}
-      <div className="flex-1 px-4 pb-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="cs-eyebrow">What to say</h2>
+      <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px 16px' }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+          <h2 style={{ ...eyebrow, color: 'var(--text-3)' }}>What to say</h2>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg active:opacity-80 transition-opacity"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)' }}
+            className="flex items-center gap-2 active:opacity-70 transition-opacity"
+            style={{
+              fontSize: 'var(--fs-label)',
+              fontWeight: 600,
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface)',
+              boxShadow: 'var(--shadow-sm)',
+              border: 'none',
+              color: copied ? 'var(--green-700)' : 'var(--text-2)',
+            }}
           >
-            {copied ? <Check className="w-4 h-4" style={{ color: 'var(--green)' }} /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-5 h-5" style={{ color: 'var(--green-600)' }} /> : <Copy className="w-5 h-5" />}
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
 
-        <div className="space-y-3">
-          <ScriptStep number={1} instruction="State service needed:">
-            <p className="text-2xl font-bold" style={{ color: 'var(--red)' }}>"AMBULANCE"</p>
+        <div className="flex flex-col" style={{ gap: 12 }}>
+          <ScriptStep number={1} instruction="State the service needed">
+            <p className="font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--red-700)' }}>"Ambulance"</p>
           </ScriptStep>
 
-          <ScriptStep number={2} instruction="Give your location:">
-            <p className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>"{practiceName}"</p>
-            <p className="text-base" style={{ color: 'var(--text-2)' }}>"{address}"</p>
-            <p className="cs-numeric text-lg font-bold" style={{ color: 'var(--decision)' }}>"{postcode}"</p>
+          <ScriptStep number={2} instruction="Give your location">
+            <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{practiceName}"</p>
+            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>"{address}"</p>
+            <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--brand)', marginTop: 2 }}>"{postcode}"</p>
           </ScriptStep>
 
-          <ScriptStep number={3} instruction="Describe the emergency:">
-            <p className="text-lg font-semibold" style={{ color: 'var(--cond-anaphyl)' }}>"{emergencyType}"</p>
+          <ScriptStep number={3} instruction="Describe the emergency">
+            <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{emergencyType}"</p>
           </ScriptStep>
 
-          <ScriptStep number={4} instruction="Patient status:">
-            <p className="text-base" style={{ color: 'var(--text-1)' }}>"{getPatientState()}"</p>
+          <ScriptStep number={4} instruction="Patient status">
+            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState()}"</p>
           </ScriptStep>
 
           <ScriptStep number={5} instruction="Answer their questions">
-            <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}>
               Stay on the line. The operator will guide you.
-              Put phone on SPEAKER so you can continue treatment.
+              Put the phone on speaker so you can continue treatment.
             </p>
           </ScriptStep>
         </div>
 
         {/* Important reminders */}
-        <div className="mt-4 cs-card p-4 space-y-2">
-          <h3 className="cs-eyebrow">Remember</h3>
-          <ul className="text-sm space-y-1" style={{ color: 'var(--text-2)' }}>
-            <li>• Put phone on SPEAKER MODE</li>
-            <li>• Do NOT hang up — let them hang up first</li>
-            <li>• Send someone to meet the ambulance at the door</li>
-            <li>• Have patient's medical history ready if possible</li>
-            <li>• Note the time of the call</li>
+        <div
+          style={{
+            marginTop: 16,
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-sm)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 20,
+          }}
+        >
+          <h3 style={{ ...eyebrow, color: 'var(--teal-700)', marginBottom: 12 }}>Remember</h3>
+          <ul className="flex flex-col" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', gap: 10, listStyle: 'none', padding: 0, margin: 0, lineHeight: 'var(--lh-normal)' }}>
+            <li>Put the phone on speaker mode</li>
+            <li>Do not hang up — let them hang up first</li>
+            <li>Send someone to meet the ambulance at the door</li>
+            <li>Have the patient's medical history ready if possible</li>
+            <li>Note the time of the call</li>
           </ul>
         </div>
       </div>
 
       {/* Back to protocol button */}
-      <div className="p-4 safe-area-bottom">
+      <div className="safe-area-bottom" style={{ padding: 24 }}>
         <button
           onClick={() => setScreen('protocol')}
-          className="w-full font-semibold py-3 px-6 rounded-2xl active:opacity-80 transition-opacity"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+          className="w-full flex items-center justify-center gap-2 font-semibold active:scale-[0.98] transition-transform"
+          style={{
+            fontSize: 'var(--fs-body-sm)',
+            padding: '0 24px',
+            minHeight: 'var(--touch-min)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-sm)',
+            border: 'none',
+            color: 'var(--text-2)',
+          }}
         >
-          ← Back to Protocol
+          <ArrowLeft className="w-5 h-5" />
+          Back to protocol
         </button>
       </div>
     </div>
@@ -210,13 +275,23 @@ export function CallScript() {
 
 function ScriptStep({ number, instruction, children }: { number: number; instruction: string; children: React.ReactNode }) {
   return (
-    <div className="cs-card p-4">
-      <div className="flex items-start gap-3">
-        <div className="cs-numeric w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: 'var(--brand-tint)', color: 'var(--brand)' }}>
+    <div
+      style={{
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-sm)',
+        borderRadius: 'var(--radius-lg)',
+        padding: 20,
+      }}
+    >
+      <div className="flex items-start" style={{ gap: 16 }}>
+        <div
+          className="cs-numeric flex items-center justify-center font-bold flex-shrink-0"
+          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--teal-50)', color: 'var(--brand)' }}
+        >
           {number}
         </div>
-        <div>
-          <p className="text-sm mb-1" style={{ color: 'var(--text-3)' }}>{instruction}</p>
+        <div className="flex-1">
+          <p style={{ fontSize: 'var(--fs-label)', color: 'var(--text-3)', marginBottom: 6 }}>{instruction}</p>
           {children}
         </div>
       </div>
