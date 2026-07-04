@@ -60,6 +60,31 @@ describe('appStore emergency lifecycle', () => {
     expect(useAppStore.getState().currentStepIndex).toBe(0); // recognition shown
   });
 
+  it('switchProtocol swaps the active protocol on the SAME event, logging the switch', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const eventId = useAppStore.getState().activeEvent?.id;
+
+    store.switchProtocol('cardiac_arrest');
+    const s = useAppStore.getState();
+    expect(s.activeProtocol?.id).toBe('cardiac_arrest');
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.currentScreen).toBe('protocol');
+    // Same event continues (elapsed clock + log survive the switch).
+    expect(s.activeEvent?.id).toBe(eventId);
+    const switched = s.activeEvent?.events.some((e) => /^Switched to:/.test(e.label));
+    expect(switched).toBe(true);
+    // Lands on the first action step, not a leading recognition step.
+    expect(s.activeProtocol?.steps[s.currentStepIndex].recognition).toBeFalsy();
+  });
+
+  it('switchProtocol ignores an unknown protocol id', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('asthma');
+    store.switchProtocol('does_not_exist');
+    expect(useAppStore.getState().activeProtocol?.id).toBe('asthma');
+  });
+
   it('does NOT skip recognition where clinical kept it (anaphylaxis) even on tile entry', () => {
     useAppStore.getState().startEmergency('anaphylaxis', 'tile');
     const s = useAppStore.getState();

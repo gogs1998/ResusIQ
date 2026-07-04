@@ -21,6 +21,7 @@ interface AppState {
   activeProtocol: Protocol | null;
   currentStepIndex: number;
   startEmergency: (protocolId: string, source?: 'tile' | 'triage' | 'library') => void;
+  switchProtocol: (protocolId: string) => void;
   setProtocol: (protocol: Protocol | null) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -108,6 +109,32 @@ export const useAppStore = create<AppState>()(
         }
       },
       
+      // Mid-emergency deterioration: swap the active protocol WITHOUT starting a
+      // new event — the log and elapsed clock continue. This is the single code
+      // path for a `switch_protocol:<id>` action (EscapeRail calls it directly;
+      // ProtocolRunner routes step actions through it too). Applies the same
+      // leading-recognition skip a decisive tile entry uses, so e.g.
+      // cardiac_arrest lands on its first action step, not a recognition step.
+      switchProtocol: (protocolId) => {
+        const protocol = protocols.find(p => p.id === protocolId);
+        if (!protocol) return;
+        let startIndex = 0;
+        while (
+          startIndex < protocol.steps.length - 1 &&
+          protocol.steps[startIndex].recognition
+        ) {
+          startIndex++;
+        }
+        set({
+          isEmergencyActive: true,
+          activeProtocol: protocol,
+          currentStepIndex: startIndex,
+          currentScreen: 'protocol',
+        });
+        // Records the switch on the SAME event log (no-op if none is active).
+        get().addEventLog('custom', `Switched to: ${protocol.title}`);
+      },
+
       setProtocol: (protocol) => set({ activeProtocol: protocol, currentStepIndex: 0 }),
       
       nextStep: () => {

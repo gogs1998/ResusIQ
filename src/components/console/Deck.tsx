@@ -1,0 +1,169 @@
+import { useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useAppStore } from '../../store/appStore';
+import { getDrugById } from '../../data/drugs';
+import { CallScriptContent } from '../CallScript';
+
+// The deck — a slide-up sheet inside the runner. Dissolves the "999 script / log
+// unreachable mid-emergency" gap WITHOUT adding navigation that can hide the
+// runner (CLAUDE.md: ProtocolRunner must stay reachable — the deck lives inside
+// it). Collapsed it is just a handle + three tabs; a tab opens the sheet.
+
+type DeckTab = 'script' | 'drugs' | 'log';
+
+const TABS: { id: DeckTab; label: string }[] = [
+  { id: 'script', label: '📞 999 script' },
+  { id: 'drugs', label: '💉 Drugs' },
+  { id: 'log', label: '📋 Log' },
+];
+
+// Local wall-clock HH:MM (24h) for the moment an event was logged.
+function hhmm(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+const tabBtnBase: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  background: 'var(--surface-1)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-3)',
+  borderRadius: 9,
+  padding: '8px 4px',
+  fontSize: 11.5,
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const rowStyle: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  fontSize: 12.5,
+  padding: '6px 0',
+  borderBottom: '1px solid var(--border-faint)',
+  color: 'var(--text-2)',
+};
+
+const rowTime: CSSProperties = {
+  color: 'var(--text-3)',
+  fontWeight: 700,
+  flex: 'none',
+};
+
+const sayLabel: CSSProperties = {
+  fontSize: 10,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color: 'var(--text-3)',
+  fontWeight: 800,
+  margin: '6px 0',
+};
+
+export function Deck() {
+  const { activeEvent } = useAppStore();
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<DeckTab>('script');
+
+  const events = activeEvent?.events ?? [];
+  const drugsGiven = events.filter((e) => e.type === 'drug_given');
+
+  const openTab = (id: DeckTab) => {
+    setTab(id);
+    setOpen(true);
+  };
+
+  return (
+    <div style={{ background: 'var(--surface-inset)', borderTop: '1px solid var(--border)' }}>
+      <div className="flex justify-center" style={{ padding: '7px 0 3px' }}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? 'Close deck' : 'Open deck'}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: '4px 20px',
+            cursor: 'pointer',
+            borderRadius: 6,
+          }}
+        >
+          <span style={{ display: 'block', width: 36, height: 4, borderRadius: 2, background: 'var(--border-strong)' }} />
+        </button>
+      </div>
+
+      <div className="flex" style={{ gap: 6, padding: '2px 14px 12px' }}>
+        {TABS.map((t) => {
+          const active = open && tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => openTab(t.id)}
+                  aria-pressed={active}
+              style={{
+                ...tabBtnBase,
+                ...(active
+                  ? { color: 'var(--text-1)', borderColor: 'var(--border-strong)', background: 'var(--surface-3)' }
+                  : null),
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {open && (
+        <div style={{ padding: '0 16px 14px', maxHeight: '40vh', overflowY: 'auto' }}>
+          {tab === 'script' && <CallScriptContent />}
+
+          {tab === 'drugs' && (
+            <>
+              <div style={sayLabel}>Given so far · tap for full drug card</div>
+              {drugsGiven.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '6px 0' }}>No drugs given yet</p>
+              ) : (
+                drugsGiven.map((e) => {
+                  const drug = e.drug_id ? getDrugById(e.drug_id) : undefined;
+                  return (
+                    <div key={e.id} style={rowStyle}>
+                      <span className="riq-data" style={rowTime}>{hhmm(e.timestamp)}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="block font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {drug?.name ?? e.label}
+                        </span>
+                        {drug && (
+                          <span className="block" style={{ color: 'var(--text-2)', marginTop: 1 }}>
+                            {drug.adult_dose_text}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </>
+          )}
+
+          {tab === 'log' && (
+            <>
+              <div style={sayLabel}>Event log — feeds the 999 script &amp; SBAR</div>
+              {events.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '6px 0' }}>No events logged yet</p>
+              ) : (
+                events.map((e) => (
+                  <div key={e.id} style={rowStyle}>
+                    <span className="riq-data" style={rowTime}>{hhmm(e.timestamp)}</span>
+                    <span>{e.label}</span>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
