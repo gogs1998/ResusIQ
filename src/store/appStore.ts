@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type {
   AppScreen,
   Protocol,
+  ProtocolStep,
   EmergencyEvent,
   EventLogEntry,
   PracticeSetup,
@@ -22,6 +23,7 @@ interface AppState {
   currentStepIndex: number;
   startEmergency: (protocolId: string, source?: 'tile' | 'triage' | 'library') => void;
   switchProtocol: (protocolId: string) => void;
+  runStepActions: (step: ProtocolStep) => void;
   setProtocol: (protocol: Protocol | null) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -67,6 +69,35 @@ function firstActionStepIndex(steps: Protocol['steps']): number {
   while (i < steps.length - 1 && steps[i].recognition) i++;
   return i;
 }
+
+// Runtime mirror of the EventType union (the type itself is erased at build
+// time). Lets runStepActions tell a `log:<label>` whose label names a real event
+// type (e.g. log:999_called) — which must be logged AS that type so the 999 chip
+// / 999 script / SBAR recognise it — from a free-text label logged as 'custom'.
+const EVENT_TYPES = new Set<EventType>([
+  'protocol_started',
+  'step_completed',
+  'drug_given',
+  'drug_confirmed',
+  '999_called',
+  'aed_attached',
+  'shock_delivered',
+  'rosc',
+  'oxygen_started',
+  'symptoms_started',
+  'ambulance_arrived',
+  'handover',
+  'custom',
+]);
+
+// Human-readable labels for the typed log verbs that appear in protocols.ts
+// actions. Falls back to the raw label for any typed event without an entry.
+const LOG_LABELS: Record<string, string> = {
+  '999_called': '999 called',
+  aed_attached: 'AED attached',
+  shock_delivered: 'Shock delivered',
+  oxygen_started: 'Oxygen started',
+};
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -116,7 +147,10 @@ export const useAppStore = create<AppState>()(
       // Mid-emergency deterioration: swap the active protocol WITHOUT starting a
       // new event — the log and elapsed clock continue (a second event would
       // fracture the medico-legal record). The single code path for switching
-      // protocols mid-emergency; EscapeRail calls it directly. Applies the same
+      // protocols mid-emergency: EscapeRail calls it directly, and a protocol
+      // step's `switch_protocol:<id>` action routes through it via
+      // runStepActions (so the anaphylaxis→CPR handoff is one graph edge, not a
+      // hand-wired branch). Applies the same
       // leading-recognition skip a decisive tile entry uses, so e.g.
       // cardiac_arrest lands on its first action step, not a recognition step.
       // Unknown ids are a silent no-op — target validity is owned by the
@@ -141,6 +175,46 @@ export const useAppStore = create<AppState>()(
         });
         // Records the switch on the SAME event log.
         get().addEventLog('custom', `Switched to: ${protocol.title}`);
+      },
+
+      // Execute a step's declarative `actions` — the bridge that turns the
+      // formerly-dead `actions` data in protocols.ts into runtime behaviour.
+      // Called by the runner on step COMPLETION (leaving the step), never on
+      // render, so back-navigation can't re-fire and nothing fires before the
+      // user actually did the thing. Verbs:
+      //   switch_protocol:<id> — hand off to another protocol (via switchProtocol,
+      //     which keeps the same event + elapsed clock).
+      //   log:<label>          — append an event-log entry. When <label> is an
+      //     EventType (e.g. 999_called), it is logged AS that type with a human
+      //     label so downstream readers (TimerStrip's 999 chip, the 999 script,
+      //     SBAR) recognise it; otherwise it is a 'custom' entry with the raw label.
+      //   suggest:<x>          — deliberate no-op: the persistent 999 pill already
+      //     surfaces the suggestion; no UI is built off it here.
+      //   anything else        — no-op (forward-compat for future verbs).
+      runStepActions: (step) => {
+        for (const action of step.actions ?? []) {
+          const sep = action.indexOf(':');
+          const verb = sep === -1 ? action : action.slice(0, sep);
+          const arg = sep === -1 ? '' : action.slice(sep + 1);
+          switch (verb) {
+            case 'switch_protocol':
+              get().switchProtocol(arg);
+              break;
+            case 'log':
+              if (EVENT_TYPES.has(arg as EventType)) {
+                get().addEventLog(arg as EventType, LOG_LABELS[arg] ?? arg);
+              } else {
+                get().addEventLog('custom', arg);
+              }
+              break;
+            case 'suggest':
+              // No-op: the persistent 999 pill already surfaces call_999.
+              break;
+            default:
+              // Unknown verb — no-op so new data can't crash an old client.
+              break;
+          }
+        }
       },
 
       setProtocol: (protocol) => set({ activeProtocol: protocol, currentStepIndex: 0 }),

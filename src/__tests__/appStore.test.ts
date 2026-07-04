@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore } from '../store/appStore';
+import { protocols } from '../data/protocols';
 
 const reset = () =>
   useAppStore.setState({
@@ -108,5 +109,81 @@ describe('appStore emergency lifecycle', () => {
     // anaphylaxis recognition is intentionally NOT flagged — must still show first
     expect(s.currentStepIndex).toBe(0);
     expect(s.activeProtocol?.steps[0].id).toBe('recognition');
+  });
+});
+
+// These assert step `actions` actually EXECUTE — the previous suite only proved
+// the action strings exist in the data. runStepActions is the bridge that was
+// missing; the anaphylaxis start_cpr step used to say "switching you to the
+// cardiac arrest guide" and then dead-end.
+describe('appStore runStepActions (step-action execution)', () => {
+  beforeEach(reset);
+
+  const anaphylaxis = protocols.find((p) => p.id === 'anaphylaxis')!;
+  const startCprStep = anaphylaxis.steps.find((s) => s.id === 'start_cpr')!;
+
+  it('switch_protocol action hands off to cardiac_arrest on the SAME event', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const eventId = useAppStore.getState().activeEvent!.id;
+
+    // Sanity: the step really carries the action we are exercising.
+    expect(startCprStep.actions).toContain('switch_protocol:cardiac_arrest');
+
+    store.runStepActions(startCprStep);
+
+    const s = useAppStore.getState();
+    expect(s.activeProtocol?.id).toBe('cardiac_arrest');
+    expect(s.isEmergencyActive).toBe(true);
+    // Same event — the medico-legal record and elapsed clock continue.
+    expect(s.activeEvent?.id).toBe(eventId);
+    const last = s.activeEvent!.events.at(-1)!;
+    expect(last.label).toBe('Switched to: Cardiac Arrest (CPR + AED)');
+    // Lands on cardiac_arrest's first action step, not a recognition step.
+    expect(s.activeProtocol?.steps[s.currentStepIndex].recognition).toBeFalsy();
+  });
+
+  it('log:<typed-label> is logged AS that event type with a human label', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const countBefore = useAppStore.getState().activeEvent!.events.length;
+
+    store.runStepActions({ id: 't', type: 'instruction', say: '', show: '', actions: ['log:999_called'] });
+
+    const events = useAppStore.getState().activeEvent!.events;
+    expect(events.length).toBe(countBefore + 1);
+    const entry = events.at(-1)!;
+    // Typed so TimerStrip's 999 chip (which matches on type '999_called') sees it.
+    expect(entry.type).toBe('999_called');
+    expect(entry.label).toBe('999 called');
+  });
+
+  it('log:<free-text> falls back to a custom entry with the raw label', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+
+    store.runStepActions({ id: 't', type: 'instruction', say: '', show: '', actions: ['log:kit_opened'] });
+
+    const entry = useAppStore.getState().activeEvent!.events.at(-1)!;
+    expect(entry.type).toBe('custom');
+    expect(entry.label).toBe('kit_opened');
+  });
+
+  it('suggest: and unknown verbs change nothing', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const before = useAppStore.getState().activeEvent!.events.length;
+
+    store.runStepActions({
+      id: 't',
+      type: 'instruction',
+      say: '',
+      show: '',
+      actions: ['suggest:call_999', 'orbit:mars'],
+    });
+
+    const s = useAppStore.getState();
+    expect(s.activeEvent!.events.length).toBe(before);
+    expect(s.activeProtocol?.id).toBe('anaphylaxis');
   });
 });

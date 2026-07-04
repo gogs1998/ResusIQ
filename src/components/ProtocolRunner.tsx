@@ -15,6 +15,7 @@ import {
 import type { CSSProperties } from 'react';
 import { useAppStore } from '../store/appStore';
 import { voiceCommandsSupported } from '../lib/platform';
+import { switchTargetId, switchButtonLabel } from '../lib/stepCopy';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
@@ -55,6 +56,7 @@ export function ProtocolRunner() {
     isMuted,
     toggleMute,
     addEventLog,
+    runStepActions,
     practiceSetup,
   } = useAppStore();
 
@@ -71,30 +73,39 @@ export function ProtocolRunner() {
     }
   }, [currentStep, isMuted, speak]);
 
-  // Linear progression for non-decision steps.
+  // Linear progression for non-decision steps. Step `actions` fire HERE, on
+  // completion (leaving the step) — not on render — so back-navigation can't
+  // re-fire them and they run only after the user did the thing.
   const advance = useCallback(() => {
-    if (currentStep) {
-      addEventLog('step_completed', currentStep.show.split('\n')[0]);
-    }
-    if (currentStep?.next) {
+    if (!currentStep) return;
+    addEventLog('step_completed', currentStep.show.split('\n')[0]);
+    runStepActions(currentStep);
+    // A switch_protocol action has already moved us to the new protocol + step;
+    // linear navigation below would read the NEW protocol and mis-advance.
+    if (switchTargetId(currentStep)) return;
+    if (currentStep.next) {
       const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === currentStep.next);
       if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
       else nextStep();
     } else {
       nextStep();
     }
-  }, [currentStep, addEventLog, activeProtocol, goToStep, nextStep]);
+  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep, nextStep]);
 
-  // Decision steps resolve in ONE tap: choosing an answer logs the choice and
-  // jumps straight to that branch's target step.
+  // Decision steps resolve in ONE tap: choosing an answer logs the choice, runs
+  // any step actions, and jumps straight to that branch's target step.
   const chooseAnswer = useCallback((answer: { label: string; next: string }) => {
     if (currentStep) {
       addEventLog('step_completed', `${currentStep.show.split('\n')[0]} → ${answer.label}`);
+      runStepActions(currentStep);
+      // Defensive: no decision carries a switch today, but if one did the switch
+      // owns navigation — don't also jump to answer.next.
+      if (switchTargetId(currentStep)) return;
     }
     const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === answer.next);
     if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
     else nextStep();
-  }, [currentStep, addEventLog, activeProtocol, goToStep, nextStep]);
+  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep, nextStep]);
 
   // On a require_confirm (drug) step one press logs the drug as given and
   // advances — keeps the event log honest without a two-tap dance.
@@ -171,6 +182,9 @@ export function ProtocolRunner() {
   const drug = currentStep.drug_id ? getDrugById(currentStep.drug_id) : null;
   const totalSteps = activeProtocol.steps.length;
   const isDecision = currentStep.type === 'decision';
+  // A step that hands off to another protocol on completion (e.g. start_cpr →
+  // cardiac_arrest). Its footer button is labelled for the destination.
+  const switchTarget = switchTargetId(currentStep);
 
   // Step hierarchy: `show` is "HERO\n\n<detail>".
   const [stepHero, ...stepRest] = currentStep.show.split('\n\n');
@@ -358,7 +372,11 @@ export function ProtocolRunner() {
           >
             <Check className="w-6 h-6" />
             <span className="font-bold" style={{ fontSize: 'var(--fs-subtitle)' }}>
-              {currentStep.require_confirm ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done') : 'Done — next step'}
+              {switchTarget
+                ? switchButtonLabel(switchTarget)
+                : currentStep.require_confirm
+                  ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done')
+                  : 'Done — next step'}
             </span>
           </button>
         )}
