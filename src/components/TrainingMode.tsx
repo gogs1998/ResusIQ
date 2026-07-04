@@ -355,8 +355,10 @@ export function TrainingMode() {
         {/* Scenario List */}
         <div className="space-y-4">
           {trainingScenarios.map((scenario) => {
-            const diff = scenario.difficulty === 'beginner' ? 'var(--green-700)' : scenario.difficulty === 'intermediate' ? 'var(--amber-700)' : 'var(--red-700)';
-            const diffBg = scenario.difficulty === 'beginner' ? 'var(--green-50)' : scenario.difficulty === 'intermediate' ? 'var(--amber-50)' : 'var(--red-50)';
+            // Difficulty is a neutral attribute — the word carries the meaning.
+            // Green/amber/red are reserved for confirm/gate/life-threat.
+            const diff = 'var(--ink-600)';
+            const diffBg = 'var(--surface-3)';
             return (
               <button
                 key={scenario.id}

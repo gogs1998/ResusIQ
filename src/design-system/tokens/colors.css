@@ -30,17 +30,8 @@
   --brand-100: #D6E3FA;
   --brand-50:  #EAF1FC;
 
-  /* ---- Teal raw scale — retained so nothing dangling breaks, but nothing
-         semantic points at it any more (kept out of the four-meaning language). ---- */
-  --teal-900: #063B3B;
-  --teal-800: #084B4A;
-  --teal-700: #0A5757;
-  --teal-600: #0C6E6E;
-  --teal-500: #14857F;
-  --teal-400: #2AA09A;
-  --teal-200: #B7DBD6;
-  --teal-100: #D7EAE7;
-  --teal-50:  #ECF5F3;
+  /* (Legacy teal scale removed 2026-07-04 — its last consumers were swept to
+     the brand blues; grep confirms zero --teal-* references remain.) */
 
   /* ---- Emergency red (999 + critical only) ---- */
   --red-800: #912018;
