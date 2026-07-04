@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import { PROTOCOL_MAP } from '../components/AIAssistant';
+import { TILES } from '../components/EmergencyDashboard';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -96,6 +97,22 @@ describe('protocol step graph integrity', () => {
       }
     });
   }
+});
+
+describe('home tile <-> protocol integrity', () => {
+  // The home grid must offer exactly one tile per protocol and no more: a tile
+  // whose id has no protocol is a dead button (tap strands the user); a protocol
+  // with no tile is unreachable from the home screen. Guard both directions.
+  it('TILES id set equals the protocols[] id set exactly', () => {
+    const tileIds = new Set(TILES.map((t) => t.id));
+    const protocolIds = new Set(protocols.map((p) => p.id));
+    for (const id of tileIds) {
+      expect(protocolIds, `home tile "${id}" has no matching protocol`).toContain(id);
+    }
+    for (const id of protocolIds) {
+      expect(tileIds, `protocol "${id}" has no home tile`).toContain(id);
+    }
+  });
 });
 
 describe('AIAssistant PROTOCOL_MAP integrity', () => {

@@ -36,7 +36,7 @@ const iconMap: Record<string, ComponentType<{ className?: string; style?: CSSPro
 // hint, NOT a clinical instruction. `crit` flags the two genuinely life-threat
 // conditions (red chip); the rest read as calm ink. `cond` is the per-condition
 // icon hue token from colors.css.
-const TILES: { id: string; label: string; icon: string; cue: string; cond: string; crit?: boolean }[] = [
+export const TILES: { id: string; label: string; icon: string; cue: string; cond: string; crit?: boolean }[] = [
   { id: 'cardiac_arrest', label: 'Cardiac arrest', icon: 'HeartPulse', cue: 'Not breathing · start CPR', cond: 'var(--cond-cardiac)', crit: true },
   { id: 'anaphylaxis', label: 'Anaphylaxis', icon: 'ShieldAlert', cue: 'Severe allergic reaction', cond: 'var(--cond-anaphyl)', crit: true },
   { id: 'choking', label: 'Choking', icon: 'Wind', cue: 'Airway blocked', cond: 'var(--cond-choking)' },
@@ -105,8 +105,11 @@ export function EmergencyDashboard() {
         </div>
       )}
 
-      {/* Condition grid + demoted nav — fills the middle, no scroll */}
-      <main className="flex-1 flex flex-col min-h-0" style={{ padding: '8px 14px 0' }}>
+      {/* Condition grid + demoted nav — fills the middle. Fits 390x780 with no
+          scroll; on shorter screens (e.g. iPhone SE 320x667) or with iOS text
+          zoom it SCROLLS rather than clipping, so the bottom tile row (stroke,
+          adrenal_crisis) is never unreachable. Footer stays pinned (flex-none). */}
+      <main className="flex-1 flex flex-col min-h-0 overflow-y-auto" style={{ padding: '8px 14px 0' }}>
         <div className="grid grid-cols-2" style={{ gap: 8 }}>
           {TILES.map((tile) => {
             const Icon = iconMap[tile.icon] ?? Heart;
@@ -114,6 +117,7 @@ export function EmergencyDashboard() {
               <button
                 key={tile.id}
                 onClick={() => startEmergency(tile.id, 'tile')}
+                aria-label={`${tile.label}. ${tile.cue.replace(/\s*·\s*/g, ', ')}`}
                 className="flex flex-col text-left active:scale-[0.98] transition-transform"
                 style={{
                   gap: 7,
