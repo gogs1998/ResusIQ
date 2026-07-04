@@ -223,7 +223,7 @@ export function ProtocolRunner() {
       : 'Done — next step';
 
   return (
-    <div className="theatre min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header — back · protocol · elapsed clock, then progress + pinned timers */}
       <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
         <div className="flex items-center" style={{ gap: 10 }}>
@@ -437,7 +437,7 @@ export function ProtocolRunner() {
         </div>
 
         {/* Deck — full-bleed at the very bottom, extends over the home indicator */}
-        <div style={{ background: 'var(--surface-inset)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div style={{ background: 'var(--surface-inset)', paddingBottom: 'var(--sab)' }}>
           <Deck />
         </div>
       </footer>
