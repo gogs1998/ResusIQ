@@ -156,6 +156,9 @@ input, select, textarea, button {
   font-variant-numeric: tabular-nums;
 }
 
+/* Data numerals — every dose, timer, counter renders in tabular mono */
+.riq-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
 /* ── Clear Signal shared primitives ─────────────────────────── */
 .cs-card {
   background: var(--surface-1);
