@@ -159,6 +159,24 @@ input, select, textarea, button {
 /* Data numerals — every dose, timer, counter renders in tabular mono */
 .riq-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
+/* Printed-script "document" — a light card inside the dark console Deck's 999
+   tab. CallScriptContent is authored in the Ward (light) palette; on the dark
+   sheet its --text-1/2/3 would be near-white on white cards (invisible), so this
+   wrapper resets just those tokens to their Ward values via the raw scales that
+   .theatre never overrides. The result reads as an intentional printed script. */
+.riq-script-doc {
+  --text-1: var(--ink-900);
+  --text-2: var(--ink-500);
+  --text-3: var(--ink-400);
+  --brand: var(--brand-600);
+  --surface-2: var(--surface-2sand);
+  background: var(--surface);
+  color: var(--ink-900);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+}
+
 /* ── Clear Signal shared primitives ─────────────────────────── */
 .cs-card {
   background: var(--surface-1);

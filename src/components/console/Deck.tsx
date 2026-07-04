@@ -134,7 +134,11 @@ export function Deck() {
 
       {open && (
         <div id={PANEL_ID} style={{ padding: '0 16px 14px', maxHeight: '40vh', overflowY: 'auto' }}>
-          {tab === 'script' && <CallScriptContent />}
+          {tab === 'script' && (
+            <div className="riq-script-doc">
+              <CallScriptContent />
+            </div>
+          )}
 
           {tab === 'drugs' && (
             <>

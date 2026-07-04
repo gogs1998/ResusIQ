@@ -7,7 +7,6 @@ import {
   Check,
   X,
   Timer,
-  Pill,
   Users,
   ChevronRight,
   Mic,
@@ -15,33 +14,41 @@ import {
 import type { CSSProperties } from 'react';
 import { useAppStore } from '../store/appStore';
 import { voiceCommandsSupported } from '../lib/platform';
-import { switchTargetId, switchButtonLabel } from '../lib/stepCopy';
+import { switchTargetId, switchButtonLabel, splitHero, isDuplicateSupport } from '../lib/stepCopy';
+import { elapsedSeconds, formatClock } from '../lib/emergencyTimers';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
 import { DrugCard } from './DrugCard';
 import { ChildDoseBands } from './ChildDoseBands';
 import { CPRMode } from './CPRMode';
+import { TimerStrip } from './console/TimerStrip';
+import { EscapeRail } from './console/EscapeRail';
+import { Deck } from './console/Deck';
 
-// Short, calm kicker word per step type (sits above the instruction in teal).
-const KICKER: Record<string, string> = {
-  instruction: 'Action',
-  drug: 'Give medicine',
-  decision: 'Decision',
-  timer_block: 'Reassess',
-  role_assignment: 'Assign roles',
+// Eyebrow per step type: a tracked caps label + a SEMANTIC dot colour (colour is
+// the four-word language — red = drug/critical, amber = a decision to make,
+// blue = timed/info, neutral = plain instruction/role).
+const EYEBROW: Record<string, { label: string; dot: string }> = {
+  instruction: { label: 'Action', dot: 'var(--text-2)' },
+  drug: { label: 'Give medicine', dot: 'var(--red)' },
+  decision: { label: 'Decision', dot: 'var(--warn)' },
+  timer_block: { label: 'Reassess', dot: 'var(--brand)' },
+  role_assignment: { label: 'Assign roles', dot: 'var(--text-2)' },
+  call_emergency: { label: 'Call 999', dot: 'var(--red)' },
+  handover: { label: 'Handover', dot: 'var(--text-2)' },
 };
 
-// Header icon button (transparent, large tap target).
-const headBtn: CSSProperties = {
-  width: 56,
-  height: 56,
+// Footer icon button (transparent, large tap target) — mute / hands-free.
+const footBtn: CSSProperties = {
+  width: 52,
+  height: 52,
   borderRadius: 'var(--radius-md)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border)',
   flexShrink: 0,
 };
 
@@ -57,12 +64,21 @@ export function ProtocolRunner() {
     toggleMute,
     addEventLog,
     runStepActions,
+    activeEvent,
     practiceSetup,
   } = useAppStore();
 
   const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  // 1s tick for the header elapsed clock (999 asks elapsed time first). Derived
+  // from activeEvent.timestamp, same source the TimerStrip reads.
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
 
@@ -183,213 +199,247 @@ export function ProtocolRunner() {
   const totalSteps = activeProtocol.steps.length;
   const isDecision = currentStep.type === 'decision';
   // A step that hands off to another protocol on completion (e.g. start_cpr →
-  // cardiac_arrest). Its footer button is labelled for the destination.
+  // cardiac_arrest). Its footer button is labelled for the destination, and the
+  // escape rail is suppressed on it (the primary action already goes to CPR).
   const switchTarget = switchTargetId(currentStep);
 
-  // Step hierarchy: `show` is "HERO\n\n<detail>".
-  const [stepHero, ...stepRest] = currentStep.show.split('\n\n');
-  const stepDetail = stepRest.join('\n\n');
-  const kicker = KICKER[currentStep.type] ?? 'Action';
+  // Step hierarchy: hero = the bare imperative, support = added detail. Support
+  // that only echoes the hero (say≈show) is suppressed so one instruction shows.
+  const { hero: rawHero, support: rawSupport } = splitHero(currentStep.show);
+  const heroText = isDecision && currentStep.question ? currentStep.question : rawHero;
+  const supportText = isDuplicateSupport(heroText, rawSupport) ? '' : rawSupport;
+  const eyebrow = EYEBROW[currentStep.type] ?? EYEBROW.instruction;
+
+  const elapsed = activeEvent ? elapsedSeconds(activeEvent.timestamp, now) : 0;
+  const progressPct = totalSteps > 1 ? Math.round((currentStepIndex / (totalSteps - 1)) * 100) : 100;
+
+  // ONE dominant action per state: green = confirm a dose given, red = escalate
+  // to CPR, blue = proceed. Decisions have no footer CTA (answers act).
+  const primaryBg = switchTarget ? 'var(--red)' : currentStep.type === 'drug' ? 'var(--green)' : 'var(--brand)';
+  const primaryLabel = switchTarget
+    ? switchButtonLabel(switchTarget)
+    : currentStep.require_confirm
+      ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done')
+      : 'Done — next step';
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      {/* Header */}
-      <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
-        <button onClick={handleBack} style={headBtn} aria-label={currentStepIndex === 0 ? 'End emergency' : 'Previous step'}>
-          {currentStepIndex === 0 ? <X className="w-7 h-7" style={{ color: 'var(--text-2)' }} /> : <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />}
-        </button>
-        <div className="flex-1 min-w-0 text-center">
-          <div className="font-bold truncate" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)', lineHeight: 1.1 }}>{activeProtocol.title}</div>
-          <div style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', marginTop: 2 }}>
-            Step {currentStepIndex + 1} of {totalSteps}
+    <div className="theatre min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      {/* Header — back · protocol · elapsed clock, then progress + pinned timers */}
+      <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+        <div className="flex items-center" style={{ gap: 10 }}>
+          <button
+            onClick={handleBack}
+            className="flex items-center justify-center flex-shrink-0"
+            style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'transparent', border: 'none' }}
+            aria-label={currentStepIndex === 0 ? 'End emergency' : 'Previous step'}
+          >
+            {currentStepIndex === 0 ? <X className="w-6 h-6" style={{ color: 'var(--text-3)' }} /> : <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />}
+          </button>
+          <div className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)' }}>
+            {activeProtocol.title}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="riq-data font-bold" style={{ fontSize: 15, color: 'var(--text-1)', lineHeight: 1 }}>{formatClock(elapsed)}</div>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>Elapsed</div>
           </div>
         </div>
-        {voiceCommandsSupported && (
-          <button
-            onClick={() => setHandsFree(h => !h)}
-            style={headBtn}
-            aria-label={handsFree ? 'Turn off hands-free voice' : 'Turn on hands-free voice'}
-            aria-pressed={handsFree}
-          >
-            <Mic className="w-6 h-6" style={{ color: handsFree ? 'var(--brand)' : 'var(--text-3)' }} />
-          </button>
-        )}
-        <button onClick={toggleMute} style={headBtn} aria-label={isMuted ? 'Unmute voice' : 'Mute voice'} aria-pressed={isMuted}>
-          {isMuted ? <VolumeX className="w-6 h-6" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-6 h-6" style={{ color: 'var(--text-2)' }} />}
-        </button>
+
+        {/* Thin progress bar + step counter (replaces the segmented dashes) */}
+        <div className="flex items-center" style={{ gap: 10, marginTop: 12 }}>
+          <div style={{ flex: 1, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--surface-inset)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', width: `${progressPct}%`, transition: 'width 0.3s ease' }} />
+          </div>
+          <span className="riq-data flex-shrink-0" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>{currentStepIndex + 1} / {totalSteps}</span>
+        </div>
+
+        {/* Pinned timers — first-class */}
+        <div style={{ marginTop: 10 }}>
+          <TimerStrip />
+        </div>
       </header>
 
-      {/* Segmented progress */}
-      <div className="flex" style={{ gap: 6, padding: '0 16px 8px' }}>
-        {Array.from({ length: totalSteps }, (_, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: 6,
-              borderRadius: 'var(--radius-pill)',
-              background: i < currentStepIndex ? 'var(--teal-600)' : i === currentStepIndex ? 'var(--teal-400)' : 'var(--ink-100)',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Persistent Call 999 (compact, tonal — always reachable) */}
-      <a
-        href="tel:999"
-        onClick={() => addEventLog('999_called', '999 called')}
-        className="flex items-center justify-center active:scale-[0.99] transition-transform"
-        style={{ gap: 8, margin: '0 16px 4px', minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--red-50)', border: '1.5px solid var(--red-200)', textDecoration: 'none' }}
-      >
-        <Phone className="w-5 h-5" style={{ color: 'var(--red)' }} />
-        <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--red-700)' }}>Call 999</span>
-        {practiceSetup?.postcode && (
-          <span style={{ fontSize: 'var(--fs-caption)', color: 'var(--red-600)', opacity: 0.8 }}>· {practiceSetup.postcode}</span>
-        )}
-      </a>
-
       {/* Main */}
-      <main className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '12px 24px 16px', minHeight: 0 }}>
+      <main className="flex-1 overflow-y-auto" style={{ padding: '16px 18px 8px', minHeight: 0 }}>
         {/* SR announcement */}
         <div aria-live="assertive" role="status" className="sr-only">
           {`Step ${currentStepIndex + 1} of ${totalSteps}. ${currentStep.show}`}
         </div>
 
-        <div className={isDecision ? '' : 'flex-1 flex flex-col justify-center'} style={{ paddingTop: 4 }}>
-          {/* Kicker + reading-aloud indicator */}
-          <div className="flex items-center" style={{ gap: 12, marginBottom: 18 }}>
-            <span className="font-bold" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>
-              {kicker}
-            </span>
-            <button
-              onClick={handleRepeat}
-              className="inline-flex items-center"
-              style={{ gap: 8, background: 'transparent', border: 'none', padding: 0, fontSize: 'var(--fs-caption)', fontWeight: 600, color: isSpeaking ? 'var(--teal-600)' : 'var(--ink-400)' }}
-              aria-label="Read this step aloud again"
-            >
-              {isSpeaking ? (
-                <span className="riq-eq" aria-hidden><span /><span /><span /><span /></span>
-              ) : (
-                <Volume2 className="w-[18px] h-[18px]" />
-              )}
-              {isSpeaking ? 'Reading aloud' : 'Tap to hear'}
-            </button>
+        {/* Eyebrow: semantic dot + tracked label · reading-aloud indicator */}
+        <div className="flex items-center justify-between" style={{ gap: 12 }}>
+          <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: eyebrow.dot, flexShrink: 0 }} />
+            <span className="font-extrabold truncate" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{eyebrow.label}</span>
           </div>
+          <button
+            onClick={handleRepeat}
+            className="inline-flex items-center flex-shrink-0"
+            style={{ gap: 6, background: 'transparent', border: 'none', padding: '4px 0', fontSize: 11, fontWeight: 600, color: isSpeaking ? 'var(--brand)' : 'var(--text-3)' }}
+            aria-label="Read this step aloud again"
+          >
+            {isSpeaking ? (
+              <span className="riq-eq" aria-hidden><span /><span /><span /><span /></span>
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+            {isSpeaking ? 'Reading aloud' : 'Tap to hear'}
+          </button>
+        </div>
 
-          {/* The one instruction */}
-          <h2 className="whitespace-pre-line" style={{ fontSize: 'var(--fs-step)', fontWeight: 'var(--fw-semibold)', lineHeight: 'var(--lh-snug)', letterSpacing: 'var(--ls-tight)', color: 'var(--ink-900)' }}>
-            {isDecision && currentStep.question ? currentStep.question : stepHero}
-          </h2>
-          {stepDetail && (
-            <p className="whitespace-pre-line" style={{ fontSize: 'var(--fs-lead)', color: 'var(--ink-600)', lineHeight: 'var(--lh-relaxed)', marginTop: 16 }}>
-              {stepDetail}
-            </p>
-          )}
+        {/* Hero — the one instruction */}
+        <h2 className="whitespace-pre-line" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.14, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', margin: '12px 0 0' }}>
+          {heroText}
+        </h2>
+        {supportText && (
+          <p className="whitespace-pre-line" style={{ fontSize: 14.5, color: 'var(--text-2)', lineHeight: 1.45, marginTop: 8 }}>
+            {supportText}
+          </p>
+        )}
 
-          {/* Roles */}
-          {currentStep.roles && currentStep.roles.length > 0 && (
-            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {currentStep.roles.map((role, idx) => (
-                <div key={idx} className="flex items-center" style={{ gap: 12, padding: '14px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                  <span className="flex items-center justify-center flex-shrink-0" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--teal-50)' }}>
-                    <Users className="w-5 h-5" style={{ color: 'var(--teal-700)' }} />
+        {/* Roles */}
+        {currentStep.roles && currentStep.roles.length > 0 && (
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {currentStep.roles.map((role, idx) => (
+              <div key={idx} className="flex items-center" style={{ gap: 12, padding: '14px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+                <span className="flex items-center justify-center flex-shrink-0" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--surface-3)' }}>
+                  <Users className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span className="block font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-1)' }}>{role.role}</span>
+                  <span className="block" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)' }}>{role.task}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Decision choices — one tap each */}
+        {isDecision && currentStep.answers && (
+          <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {currentStep.answers.map((answer, idx) => {
+              const isYes = /^yes/i.test(answer.label);
+              const isNo = /^no/i.test(answer.label);
+              const [mainLabel, ...subParts] = answer.label.split(' — ');
+              const sub = subParts.join(' — ');
+              const markBg = isYes ? 'var(--green-tint)' : isNo ? 'var(--red-tint)' : 'var(--brand-tint)';
+              const markColor = isYes ? 'var(--green-bright)' : isNo ? 'var(--red)' : 'var(--brand)';
+              return (
+                <button
+                  key={idx}
+                  onClick={() => chooseAnswer(answer)}
+                  className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
+                  style={{ gap: 14, minHeight: 70, padding: '14px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border)' }}
+                >
+                  <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: markBg }}>
+                    {isYes ? <Check className="w-6 h-6" style={{ color: markColor }} /> : isNo ? <X className="w-6 h-6" style={{ color: markColor }} /> : <ChevronRight className="w-6 h-6" style={{ color: markColor }} />}
                   </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span className="block font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-1)' }}>{role.role}</span>
-                    <span className="block" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)' }}>{role.task}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold" style={{ fontSize: 18.5, color: 'var(--text-1)', lineHeight: 1.15 }}>{mainLabel}</span>
+                    {sub && <span className="block" style={{ fontSize: 13.5, color: 'var(--text-3)', marginTop: 2 }}>{sub}</span>}
                   </span>
-                </div>
-              ))}
-            </div>
-          )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-          {/* Decision choices — one tap each */}
-          {isDecision && currentStep.answers && (
-            <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {currentStep.answers.map((answer, idx) => {
-                const isYes = /^yes/i.test(answer.label);
-                const isNo = /^no/i.test(answer.label);
-                const ring = isYes ? 'var(--green-600)' : isNo ? 'var(--red-600)' : 'var(--border-strong)';
-                const iconBg = isYes ? 'var(--green-100)' : isNo ? 'var(--red-100)' : 'var(--teal-50)';
-                const iconColor = isYes ? 'var(--green-700)' : isNo ? 'var(--red-700)' : 'var(--teal-700)';
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => chooseAnswer(answer)}
-                    className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
-                    style={{ gap: 18, minHeight: 'var(--touch-comfort)', padding: '18px 22px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)', border: `2px solid ${ring}`, boxShadow: 'var(--shadow-sm)' }}
-                  >
-                    <span className="flex items-center justify-center flex-shrink-0" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: iconBg }}>
-                      {isYes ? <Check className="w-6 h-6" style={{ color: iconColor }} /> : isNo ? <X className="w-6 h-6" style={{ color: iconColor }} /> : <ChevronRight className="w-6 h-6" style={{ color: iconColor }} />}
-                    </span>
-                    <span className="flex-1 font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)', lineHeight: 1.2 }}>{answer.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Drug card */}
-          {currentStep.type === 'drug' && drug && (
+        {/* Drug — dose panel (tap for the full card), amber warning strip */}
+        {currentStep.type === 'drug' && drug && (
+          <div style={{ marginTop: 18, borderRadius: 14, overflow: 'hidden', background: 'var(--surface-2)', border: '1px solid var(--border-strong)' }}>
             <button
               onClick={() => setShowDrugCard(true)}
-              className="w-full flex items-center text-left active:scale-[0.99] transition-transform"
-              style={{ marginTop: 24, gap: 16, padding: '18px 20px', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-md)', border: 'none' }}
+              className="w-full text-left active:opacity-90 transition-opacity"
+              style={{ display: 'block', padding: '14px 16px 12px', background: 'transparent', border: 'none' }}
             >
-              <span className="flex items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', background: 'var(--teal-50)' }}>
-                <Pill className="w-6 h-6" style={{ color: 'var(--teal-700)' }} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>{drug.name}</span>
-                <span className="block" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>{drug.adult_dose_text}</span>
-              </span>
-              <ChevronRight className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
+              <div className="flex items-baseline" style={{ gap: 8 }}>
+                <span className="riq-data font-extrabold" style={{ fontSize: 29, color: 'var(--text-1)', lineHeight: 1 }}>{drug.adult_dose}</span>
+                <span className="font-bold" style={{ fontSize: 15, color: 'var(--text-2)' }}>{drug.route}</span>
+              </div>
+              <div className="flex items-center" style={{ gap: 6, marginTop: 6, fontSize: 13, color: 'var(--text-2)' }}>
+                <span className="truncate">{drug.site ?? drug.name}</span>
+                <span style={{ color: 'var(--text-3)', flexShrink: 0 }}>·</span>
+                <span className="flex-shrink-0" style={{ color: 'var(--brand)', fontWeight: 600 }}>full card</span>
+                <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
+              </div>
+            </button>
+            {drug.warnings.length > 0 && (
+              <div className="flex" style={{ gap: 8, padding: '9px 16px', background: 'var(--warn-tint)', borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--warn)', lineHeight: 1.4 }}>
+                <span aria-hidden style={{ flexShrink: 0 }}>⚠︎</span>
+                <span>{drug.warnings[0]}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStep.type === 'drug' && drug?.child_dose_bands && (
+          <div style={{ marginTop: 12 }}>
+            <ChildDoseBands drug={drug} />
+          </div>
+        )}
+
+        {/* Timer */}
+        {currentStep.type === 'timer_block' && currentStep.duration_seconds && (
+          <div style={{ marginTop: 18 }}>
+            <TimerDisplay seconds={currentStep.duration_seconds} onComplete={handleNext} />
+          </div>
+        )}
+      </main>
+
+      {/* Footer — one dominant CTA, persistent 999 + voice controls, escape rail, deck */}
+      <footer style={{ flexShrink: 0 }}>
+        <div style={{ padding: '10px 18px 12px' }}>
+          {!isDecision && (
+            <button
+              onClick={handleNext}
+              className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+              style={{ gap: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: primaryBg, color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
+            >
+              <Check className="w-6 h-6" />
+              <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>{primaryLabel}</span>
             </button>
           )}
 
-          {currentStep.type === 'drug' && drug?.child_dose_bands && (
-            <div style={{ marginTop: 16 }}>
-              <ChildDoseBands drug={drug} />
-            </div>
-          )}
+          {/* Persistent 999 (logs on tap, doesn't block the dial) + voice controls */}
+          <div className="flex items-center" style={{ gap: 8, marginTop: isDecision ? 0 : 10 }}>
+            <a
+              href="tel:999"
+              onClick={() => addEventLog('999_called', '999 called')}
+              className="flex-1 flex items-center justify-center active:scale-[0.99] transition-transform"
+              style={{ gap: 8, minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--red-tint-2)', border: '1.5px solid var(--red)', textDecoration: 'none' }}
+            >
+              <Phone className="w-5 h-5" style={{ color: 'var(--red-strong)' }} />
+              <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--red-strong)' }}>Call 999</span>
+              {practiceSetup?.postcode && (
+                <span style={{ fontSize: 'var(--fs-caption)', color: 'var(--red-strong)', opacity: 0.75 }}>· {practiceSetup.postcode}</span>
+              )}
+            </a>
+            <button onClick={toggleMute} style={footBtn} aria-label={isMuted ? 'Unmute voice' : 'Mute voice'} aria-pressed={isMuted}>
+              {isMuted ? <VolumeX className="w-5 h-5" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-5 h-5" style={{ color: 'var(--text-2)' }} />}
+            </button>
+            {voiceCommandsSupported && (
+              <button
+                onClick={() => setHandsFree(h => !h)}
+                style={footBtn}
+                aria-label={handsFree ? 'Turn off hands-free voice' : 'Turn on hands-free voice'}
+                aria-pressed={handsFree}
+              >
+                <Mic className="w-5 h-5" style={{ color: handsFree ? 'var(--brand)' : 'var(--text-3)' }} />
+              </button>
+            )}
+          </div>
 
-          {/* Timer */}
-          {currentStep.type === 'timer_block' && currentStep.duration_seconds && (
-            <div style={{ marginTop: 24 }}>
-              <TimerDisplay seconds={currentStep.duration_seconds} onComplete={handleNext} />
+          {/* Escape rail — suppressed on a step whose action already switches to CPR */}
+          {switchTarget !== 'cardiac_arrest' && (
+            <div style={{ marginTop: 10 }}>
+              <EscapeRail />
             </div>
           )}
         </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="safe-area-bottom" style={{ padding: '8px 24px 24px' }}>
-        {!isDecision && (
-          <button
-            onClick={handleNext}
-            className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
-            style={{ gap: 12, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', boxShadow: 'var(--shadow-btn)', border: 'none' }}
-          >
-            <Check className="w-6 h-6" />
-            <span className="font-bold" style={{ fontSize: 'var(--fs-subtitle)' }}>
-              {switchTarget
-                ? switchButtonLabel(switchTarget)
-                : currentStep.require_confirm
-                  ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done')
-                  : 'Done — next step'}
-            </span>
-          </button>
-        )}
-        {currentStepIndex > 0 && (
-          <button
-            onClick={prevStep}
-            className="w-full flex items-center justify-center active:opacity-70 transition-opacity"
-            style={{ gap: 6, marginTop: 10, minHeight: 44, background: 'transparent', border: 'none', color: 'var(--text-3)' }}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 500 }}>Back a step</span>
-          </button>
-        )}
+        {/* Deck — full-bleed at the very bottom, extends over the home indicator */}
+        <div style={{ background: 'var(--surface-inset)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <Deck />
+        </div>
       </footer>
 
       {showDrugCard && drug && <DrugCard drug={drug} onClose={() => setShowDrugCard(false)} />}
@@ -400,14 +450,14 @@ export function ProtocolRunner() {
 function TimerDisplay({ seconds, onComplete }: { seconds: number; onComplete: () => void }) {
   const { formattedTime, isRunning, start, pause } = useTimer({ initialSeconds: seconds, onComplete, autoStart: true });
   return (
-    <div className="text-center" style={{ padding: 24, borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-md)' }}>
-      <p className="font-bold" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+    <div className="text-center" style={{ padding: 20, borderRadius: 'var(--radius-lg)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+      <p className="font-bold" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <Timer className="w-4 h-4" /> Reassess timer
       </p>
-      <p className="font-bold" style={{ fontSize: 'var(--fs-display)', lineHeight: 1, color: 'var(--ink-900)', margin: '8px 0', fontVariantNumeric: 'tabular-nums' }}>{formattedTime}</p>
+      <p className="riq-data font-extrabold" style={{ fontSize: 'var(--fs-display)', lineHeight: 1, color: 'var(--text-1)', margin: '8px 0' }}>{formattedTime}</p>
       <button
         onClick={isRunning ? pause : start}
-        style={{ minHeight: 48, padding: '0 24px', borderRadius: 'var(--radius-md)', background: 'var(--teal-50)', color: 'var(--teal-700)', border: 'none', fontWeight: 600, fontSize: 'var(--fs-body-sm)' }}
+        style={{ minHeight: 48, padding: '0 24px', borderRadius: 'var(--radius-md)', background: 'var(--surface-3)', color: 'var(--text-1)', border: '1px solid var(--border)', fontWeight: 600, fontSize: 'var(--fs-body-sm)' }}
       >
         {isRunning ? 'Pause' : 'Resume'}
       </button>
