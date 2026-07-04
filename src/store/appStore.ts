@@ -216,7 +216,15 @@ export const useAppStore = create<AppState>()(
       isVoiceEnabled: true,
       isMuted: false,
       toggleVoice: () => set(state => ({ isVoiceEnabled: !state.isVoiceEnabled })),
-      toggleMute: () => set(state => ({ isMuted: !state.isMuted })),
+      toggleMute: () =>
+        set(state => {
+          const isMuted = !state.isMuted;
+          // Muting must silence the sentence being spoken, not just future ones.
+          if (isMuted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+          }
+          return { isMuted };
+        }),
       
       // Practice Setup
       practiceSetup: null,
