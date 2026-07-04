@@ -1,0 +1,437 @@
+<title>ResusIQ — Console & Modes mockup</title>
+<style>
+  :root{
+    --pg-bg:#0e1116; --pg-ink:#e8edf3; --pg-sub:#8b97a5; --pg-line:#232b36; --pg-panel:#141a22;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --pg-bg:#eef1f5; --pg-ink:#141a22; --pg-sub:#5b6873; --pg-line:#d7dee6; --pg-panel:#ffffff; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#0e1116; --pg-ink:#e8edf3; --pg-sub:#8b97a5; --pg-line:#232b36; --pg-panel:#141a22; }
+  :root[data-theme="light"]{ --pg-bg:#eef1f5; --pg-ink:#141a22; --pg-sub:#5b6873; --pg-line:#d7dee6; --pg-panel:#ffffff; }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--pg-bg); color:var(--pg-ink);
+    font-family:-apple-system,"SF Pro Text",BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    margin:0; padding:32px 16px 64px; display:flex; flex-direction:column; align-items:center; gap:24px;
+  }
+  .mono{font-family:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace; font-variant-numeric:tabular-nums}
+
+  header.pitch{max-width:740px; text-align:center}
+  header.pitch h1{font-size:20px; margin:0 0 6px; letter-spacing:-.01em}
+  header.pitch p{margin:0; color:var(--pg-sub); font-size:14px; line-height:1.55}
+  header.pitch b{color:var(--pg-ink)}
+
+  .rail{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:740px}
+  .rail button{
+    background:var(--pg-panel); color:var(--pg-sub); border:1px solid var(--pg-line);
+    border-radius:999px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .rail button.on{color:var(--pg-ink); border-color:var(--pg-sub)}
+  .rail button:focus-visible{outline:2px solid #54c1ff; outline-offset:2px}
+  .rail .grp{font-size:11px; color:var(--pg-sub); align-self:center; letter-spacing:.1em; text-transform:uppercase; margin:0 2px 0 8px}
+
+  .phone{
+    width:390px; max-width:100%; height:800px; border-radius:38px; overflow:hidden; position:relative;
+    border:1px solid var(--pg-line); box-shadow:0 24px 80px rgba(0,0,0,.45); background:#0c1118; flex:none;
+  }
+  .screen{position:absolute; inset:0; display:none; flex-direction:column}
+  .screen.on{display:flex}
+
+  /* ======== WARD (light) ======== */
+  .ward{background:#f4f6f9; color:#101720}
+  .ward .apphead{display:flex; align-items:center; justify-content:space-between; padding:20px 20px 6px}
+  .ward .brand{font-size:17px; font-weight:800; letter-spacing:-.02em}
+  .ward .brand em{font-style:normal; color:#175cd3}
+  .ward .headtools{display:flex; gap:14px; color:#5b6873; font-size:15px}
+  .modechip{
+    margin:6px 20px 10px; display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+    background:#e9eff7; border:1px solid #cdd9e8; color:#2d4d75; border-radius:999px; padding:5px 12px;
+    font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .modechip i{font-style:normal; opacity:.65; font-weight:600}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 14px}
+  .tile{
+    background:#fff; border:1px solid #e1e7ee; border-radius:12px; padding:11px 12px 10px;
+    display:flex; flex-direction:column; gap:7px; cursor:pointer; text-align:left; font:inherit; color:inherit;
+  }
+  .tile:active{background:#eaf0f6}
+  .tile .ti{width:25px; height:25px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; background:#eef3f8}
+  .tile .tn{font-size:14px; font-weight:700; letter-spacing:-.01em; line-height:1.15}
+  .tile .tc{font-size:10.5px; color:#5b6873; line-height:1.25}
+  .tile.crit .ti{background:#feecec}
+  .morelinks{display:flex; justify-content:center; gap:18px; padding:10px 0 2px; font-size:12px; color:#5b6873; font-weight:600}
+  .ward .footer{margin-top:auto; padding:8px 14px 16px; display:flex; flex-direction:column; gap:8px}
+  .btn-triage{display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff8ec; border:1px solid #f2d59b; color:#7a4d10; border-radius:12px; padding:11px 16px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit}
+  .btn-999{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:#d92d20; border:none; color:#fff; border-radius:12px; padding:15px; font-size:16px; font-weight:800; cursor:pointer; font-family:inherit}
+  .btn-999 small{display:block; font-size:10.5px; font-weight:600; opacity:.85}
+
+  /* ======== THEATRE (dark) ======== */
+  .theatre{background:#0c1118; color:#f2f6fa}
+  .t-head{padding:14px 16px 0}
+  .t-toprow{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .t-back{background:none; border:none; color:#8fa0b3; font-size:20px; cursor:pointer; padding:2px 8px 2px 0}
+  .t-proto{font-size:12.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#c8d4e0}
+  .t-clock{font-size:15px; font-weight:700}
+  .t-clock .lbl{font-size:9px; color:#8fa0b3; letter-spacing:.08em; display:block; text-align:right}
+
+  /* pinned timer strip — timers are first-class */
+  .timerstrip{display:flex; gap:8px; margin:10px 0 0}
+  .tchip{flex:1; display:flex; flex-direction:column; gap:1px; background:#121a24; border:1px solid #223041; border-radius:10px; padding:7px 11px}
+  .tchip .k{font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#8fa0b3; font-weight:700}
+  .tchip .v{font-size:16px; font-weight:800}
+  .tchip.due{border-color:#7a5a16; background:#1c1710}
+  .tchip.due .v{color:#ffb224}
+  .tchip.ok .v{color:#3dd68c}
+
+  .eyebrow{display:flex; align-items:center; gap:8px; font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#8fa0b3}
+  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:#54c1ff}
+  .eyebrow .dot.red{background:#ff4d4d}
+  .hero{font-size:27px; line-height:1.16; font-weight:800; letter-spacing:-.02em; margin:10px 0 6px; text-wrap:balance}
+  .support{font-size:14px; line-height:1.45; color:#9fb0c2; margin:0}
+
+  .t-body{flex:1; padding:16px 18px 0; display:flex; flex-direction:column; min-height:0; overflow:hidden}
+
+  .dosecard{margin-top:14px; background:#111a25; border:1px solid #24405c; border-radius:14px; overflow:hidden}
+  .dosecard .dc-main{padding:14px 16px 12px}
+  .dose{font-size:29px; font-weight:800}
+  .dose .unit{font-size:15px; color:#9fb0c2; font-weight:700}
+  .dosemeta{margin-top:4px; font-size:13px; color:#9fb0c2}
+  .dosemeta b{color:#e7eff7}
+  .dc-warn{display:flex; gap:8px; padding:9px 16px; background:rgba(255,178,36,.08); border-top:1px solid rgba(255,178,36,.25); font-size:11.5px; color:#ffd58a; line-height:1.4}
+  .btn-given{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:#178a53; border:none; color:#fff; border-radius:13px; padding:15px; margin-top:12px; font-size:16.5px; font-weight:800; cursor:pointer; font-family:inherit}
+  .btn-given small{font-weight:600; opacity:.8; font-size:11px}
+
+  /* escape rail — the architectural guarantee */
+  .escape{
+    display:flex; align-items:center; gap:10px; margin-top:auto;
+    background:#2a1214; border:1.5px solid #7f2a2e; border-radius:13px; padding:12px 14px; cursor:pointer;
+    color:#ff9a9d; font-size:14px; font-weight:800; font-family:inherit; width:100%; text-align:left;
+  }
+  .escape .esc-ico{flex:none; width:34px; height:34px; border-radius:9px; background:rgba(255,77,77,.15); color:#ff6b6b; display:flex; align-items:center; justify-content:center; font-size:16px}
+  .escape small{display:block; font-weight:600; color:#c97e81; font-size:11px}
+  .escape:active{background:#391619}
+
+  /* deck */
+  .deck{flex:none; margin:10px -18px 0; background:#101823; border-top:1px solid #223041}
+  .deck-handle{display:flex; justify-content:center; padding:7px 0 3px}
+  .deck-handle i{width:36px; height:4px; border-radius:2px; background:#2a3644}
+  .deck-tabs{display:flex; gap:6px; padding:2px 14px 12px}
+  .deck-tabs button{flex:1; background:#151d29; border:1px solid #223041; color:#8fa0b3; border-radius:9px; padding:8px 4px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit}
+  .deck-tabs button.on{color:#e8f1fa; border-color:#3d5b82; background:#182335}
+  .deck-body{display:none; padding:0 16px 14px; max-height:250px; overflow-y:auto}
+  .deck.open .deck-body{display:block}
+  .say{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8fa0b3; font-weight:800; margin:6px 0 6px}
+  .script{background:#0d141d; border:1px solid #1d2a3a; border-radius:10px; padding:11px 13px; font-size:13.5px; line-height:1.6; color:#d9e6f2}
+  .script b{color:#fff}
+  .script .live{color:#3dd68c; font-weight:700}
+  .logrow{display:flex; gap:10px; font-size:12.5px; padding:6px 0; border-bottom:1px solid #182230; color:#c3d2e0}
+  .logrow .lt{color:#8fa0b3; font-weight:700; flex:none}
+
+  /* ======== LAYMAN ======== */
+  .lay-hero{font-size:34px; line-height:1.12; font-weight:800; letter-spacing:-.02em; margin:14px 0 10px; text-wrap:balance}
+  .lay-sub{font-size:17px; line-height:1.5; color:#b7c6d4}
+  .lay-999{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:#e5484d; border:none; color:#fff; border-radius:16px; padding:20px; margin-top:18px; font-size:20px; font-weight:800; cursor:pointer; font-family:inherit}
+  .lay-999 small{display:block; font-size:12px; font-weight:600; opacity:.85}
+  .lay-done{display:flex; align-items:center; justify-content:center; width:100%; background:#151d29; border:1.5px solid #2a3644; color:#f2f6fa; border-radius:16px; padding:17px; margin-top:10px; font-size:17px; font-weight:700; cursor:pointer; font-family:inherit}
+  .lay-voice{margin-top:14px; display:flex; align-items:center; gap:10px; justify-content:center; color:#8fa0b3; font-size:13px; font-weight:600}
+  .lay-voice .vdot{width:8px; height:8px; border-radius:50%; background:#54c1ff; animation:vpulse 1.6s infinite}
+  @keyframes vpulse{0%,100%{opacity:1}50%{opacity:.25}}
+  @media (prefers-reduced-motion: reduce){ .lay-voice .vdot{animation:none} }
+
+  /* ======== CLINICIAN ======== */
+  .clin{font-size:12.5px}
+  .clin .t-body{padding:12px 14px 14px; overflow-y:auto}
+  .algo{display:flex; flex-direction:column; gap:4px; margin-top:10px}
+  .algo .arow{display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:9px; border:1px solid #1c2735; background:#101823; color:#9fb0c2; font-size:12.5px; font-weight:600}
+  .algo .arow .n{flex:none; width:18px; height:18px; border-radius:5px; background:#1a2534; color:#8fa0b3; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800}
+  .algo .arow.done{opacity:.55}
+  .algo .arow.done .n{background:#123324; color:#3dd68c}
+  .algo .arow.now{border-color:#3d5b82; background:#14213a; color:#e8f1fa}
+  .algo .arow.now .n{background:#54c1ff; color:#06121f}
+  .algo .arow .meta{margin-left:auto; color:#8fa0b3; font-weight:700}
+  .dosetable{margin-top:12px; border:1px solid #223041; border-radius:11px; overflow:hidden}
+  .dosetable .dt-h{background:#121a24; padding:8px 12px; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8fa0b3; font-weight:800}
+  .dosetable table{width:100%; border-collapse:collapse; font-size:12.5px}
+  .dosetable td{padding:7px 12px; border-top:1px solid #182230; color:#c3d2e0}
+  .dosetable td:last-child{text-align:right; color:#e8f1fa; font-weight:700}
+  .clin-actions{display:flex; gap:8px; margin-top:12px}
+  .clin-actions button{flex:1; background:#151d29; border:1px solid #2a3644; color:#c3d2e0; border-radius:10px; padding:10px 6px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit}
+  .clin-actions .given{background:#123324; border-color:#1d5c3c; color:#7fe0af}
+
+  /* CPR */
+  .cpr-body{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0 20px}
+  .beat{width:180px; height:180px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; border:3px solid #24405c; position:relative}
+  .beat::after{content:""; position:absolute; inset:-3px; border-radius:50%; border:3px solid #ff4d4d; opacity:0; animation:beat .545s infinite}
+  @keyframes beat{0%{opacity:.9; transform:scale(1)} 60%{opacity:0; transform:scale(1.1)} 100%{opacity:0}}
+  @media (prefers-reduced-motion: reduce){ .beat::after{animation:none} }
+  .count{font-size:68px; font-weight:800; line-height:1}
+  .count-lbl{font-size:11px; letter-spacing:.14em; color:#8fa0b3; font-weight:700; text-transform:uppercase}
+  .cpr-stats{display:flex; gap:26px; margin-top:20px}
+  .stat{text-align:center}
+  .stat .v{font-size:20px; font-weight:800}
+  .stat .k{font-size:10px; letter-spacing:.12em; color:#8fa0b3; font-weight:700; text-transform:uppercase}
+  .cpr-actions{display:flex; gap:8px; padding:0 14px 16px}
+  .cpr-actions button{flex:1; border-radius:12px; padding:14px 8px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; border:1.5px solid #2a3644; background:#151d29; color:#f2f6fa}
+  .cpr-actions .aed{border-color:#ffb224; color:#ffd58a}
+
+  .toast{position:absolute; left:50%; bottom:110px; transform:translateX(-50%) translateY(8px); background:#1c2836; color:#d9e6f2; border:1px solid #33445a; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:all .18s ease; white-space:nowrap; z-index:5}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .toast .ok{color:#3dd68c}
+
+  .modenote{max-width:740px; width:100%; background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:14px; padding:16px 20px; font-size:13.5px; line-height:1.6; color:var(--pg-sub)}
+  .modenote h2{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 8px}
+  .modenote b{color:var(--pg-ink)}
+</style>
+
+<header class="pitch">
+  <h1>ResusIQ · the console model, three lenses</h1>
+  <p>One protocol graph, three renderings. <b>Dental console</b> = guided thread + pinned timers + escape rail + slide-up 999 deck. <b>Street</b> = pure spoken wizard for a bystander. <b>Clinician</b> = the whole algorithm on one card. All four screens below show the <b>same moment</b>: anaphylaxis, five minutes in, second adrenaline due.</p>
+</header>
+
+<nav class="rail" aria-label="Mockup screens">
+  <button data-s="home" class="on">Home</button>
+  <span class="grp">Same moment →</span>
+  <button data-s="console">Dental console</button>
+  <button data-s="lay">Street / layman</button>
+  <button data-s="clin">Clinician</button>
+  <span class="grp">Escape →</span>
+  <button data-s="cpr">CPR</button>
+</nav>
+
+<div class="phone">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen ward on" id="s-home">
+    <div class="apphead">
+      <div class="brand">Resus<em>IQ</em></div>
+      <div class="headtools"><span>🔊</span><span>⚙︎</span></div>
+    </div>
+    <button class="modechip">🏥 Dental practice mode <i>· change</i></button>
+    <div class="grid">
+      <button class="tile crit" data-s="cpr"><span class="ti">🫀</span><span><span class="tn">Cardiac arrest</span><br><span class="tc">Not breathing · start CPR</span></span></button>
+      <button class="tile crit" data-s="console"><span class="ti">⚠️</span><span><span class="tn">Anaphylaxis</span><br><span class="tc">Severe allergic reaction</span></span></button>
+      <button class="tile"><span class="ti">🫁</span><span><span class="tn">Choking</span><br><span class="tc">Airway blocked</span></span></button>
+      <button class="tile"><span class="ti">💨</span><span><span class="tn">Asthma attack</span><br><span class="tc">Wheeze · can’t speak</span></span></button>
+      <button class="tile"><span class="ti">💔</span><span><span class="tn">Chest pain</span><br><span class="tc">Suspected heart attack</span></span></button>
+      <button class="tile"><span class="ti">🩸</span><span><span class="tn">Low blood sugar</span><br><span class="tc">Diabetic · confused</span></span></button>
+      <button class="tile"><span class="ti">🧠</span><span><span class="tn">Seizure</span><br><span class="tc">Convulsions</span></span></button>
+      <button class="tile"><span class="ti">😵</span><span><span class="tn">Fainting</span><br><span class="tc">Collapse · pale</span></span></button>
+      <button class="tile"><span class="ti">⚡</span><span><span class="tn">Stroke</span><br><span class="tc">Face · arm · speech</span></span></button>
+      <button class="tile"><span class="ti">🛑</span><span><span class="tn">Adrenal crisis</span><br><span class="tc">On steroids · collapsed</span></span></button>
+    </div>
+    <div class="morelinks"><span>Library</span><span>SBAR</span><span>Reports</span><span>Training</span></div>
+    <div class="footer">
+      <button class="btn-triage"><span>Not sure? Answer a few questions</span><span>→</span></button>
+      <button class="btn-999">📞 Call 999 <small>ambulance — emergency services</small></button>
+    </div>
+  </section>
+
+  <!-- ============ DENTAL CONSOLE ============ -->
+  <section class="screen theatre" id="s-console">
+    <div class="t-head">
+      <div class="t-toprow">
+        <button class="t-back" data-s="home" aria-label="Back">‹</button>
+        <div class="t-proto">Anaphylaxis</div>
+        <div class="t-clock mono">05:04<span class="lbl">elapsed</span></div>
+      </div>
+      <div class="timerstrip">
+        <div class="tchip due"><span class="k">Adrenaline · dose 2</span><span class="v mono" id="rpt">DUE NOW</span></div>
+        <div class="tchip ok"><span class="k">999 called</span><span class="v mono">01:12</span></div>
+        <div class="tchip"><span class="k">Oxygen</span><span class="v mono">15 L/min</span></div>
+      </div>
+    </div>
+
+    <div class="t-body">
+      <div class="eyebrow" style="margin-top:14px"><span class="dot red"></span><span>The thread · drug · adrenaline</span></div>
+      <h2 class="hero">No better — repeat the adrenaline</h2>
+      <p class="support">Same dose, outer mid-thigh. Every 5 minutes — there is no upper limit.</p>
+      <div class="dosecard">
+        <div class="dc-main">
+          <div class="dose mono">500 <span class="unit">micrograms IM</span></div>
+          <div class="dosemeta"><b>1:1000</b> · <b>0.5 ml</b> · child doses one tap away</div>
+        </div>
+        <div class="dc-warn">⚠︎ Still no better after this dose = refractory — tell 999 they need IV adrenaline you cannot give.</div>
+      </div>
+      <button class="btn-given" id="c-given">✓ Given — restarts 5-min timer <small class="mono">14:37</small></button>
+
+      <button class="escape" data-s="cpr">
+        <span class="esc-ico">🫀</span>
+        <span>Unresponsive & not breathing?<small>Tap any time — switches straight to CPR</small></span>
+      </button>
+
+      <div class="deck" id="deck">
+        <div class="deck-handle" id="deckgrab" role="button" tabindex="0" aria-label="Open deck"><i></i></div>
+        <div class="deck-tabs">
+          <button class="on" data-tab="script">📞 999 script</button>
+          <button data-tab="drugs">💉 Drugs</button>
+          <button data-tab="log">📋 Log</button>
+        </div>
+        <div class="deck-body" id="deck-script">
+          <div class="say">Read this to the call handler</div>
+          <div class="script">
+            “We have <b>anaphylaxis</b> at a dental practice —
+            <b>adult patient</b>, sudden collapse with airway swelling.<br>
+            <span class="live">Adrenaline 500 micrograms IM given at 14:32.</span><br>
+            <span class="live">Second dose just given at 14:37.</span><br>
+            Patient is flat with legs raised, on 15 litres oxygen.
+            We need an ambulance — <b>this may be refractory anaphylaxis needing IV adrenaline</b>.”
+          </div>
+        </div>
+        <div class="deck-body" id="deck-log">
+          <div class="say">Event log — feeds the 999 script & SBAR</div>
+          <div class="logrow"><span class="lt mono">14:31</span><span>Emergency started — anaphylaxis</span></div>
+          <div class="logrow"><span class="lt mono">14:32</span><span>Adrenaline 500 mcg IM given (dose 1)</span></div>
+          <div class="logrow"><span class="lt mono">14:33</span><span>999 called</span></div>
+          <div class="logrow"><span class="lt mono">14:34</span><span>Oxygen 15 L/min started</span></div>
+          <div class="logrow"><span class="lt mono">14:37</span><span>Reassessed — not improving</span></div>
+        </div>
+        <div class="deck-body" id="deck-drugs">
+          <div class="say">Given so far · tap for full drug card</div>
+          <div class="logrow"><span class="lt mono">×1</span><span>Adrenaline 1:1000 — 500 mcg IM · next due now</span></div>
+          <div class="logrow"><span class="lt mono">on</span><span>Oxygen 15 L/min, non-rebreathe mask</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="c-toast"><span class="ok">✓</span> Dose 2 logged 14:37 — timer restarted 05:00</div>
+  </section>
+
+  <!-- ============ STREET / LAYMAN ============ -->
+  <section class="screen theatre" id="s-lay">
+    <div class="t-head">
+      <div class="t-toprow">
+        <button class="t-back" data-s="home" aria-label="Back">‹</button>
+        <div class="t-proto">Severe allergic reaction</div>
+        <div class="t-clock mono">05:04<span class="lbl">elapsed</span></div>
+      </div>
+    </div>
+    <div class="t-body" style="justify-content:center; padding-bottom:30px">
+      <div class="eyebrow"><span class="dot"></span><span>Street mode · spoken guide</span></div>
+      <h2 class="lay-hero">Do they have an allergy pen?</h2>
+      <p class="lay-sub">An EpiPen or Jext, often in a bag or pocket. Press it hard against their outer thigh and hold for 3 seconds. Clothes are fine.</p>
+      <button class="lay-999">📞 999 is on speaker <small>keep talking to them</small></button>
+      <button class="lay-done" id="lay-done">✓ Done — used the pen</button>
+      <button class="lay-done" style="font-size:15px; color:#9fb0c2">There’s no pen</button>
+      <div class="lay-voice"><span class="vdot"></span> Listening — just say “done” or “no pen”</div>
+    </div>
+  </section>
+
+  <!-- ============ CLINICIAN ============ -->
+  <section class="screen theatre clin" id="s-clin">
+    <div class="t-head">
+      <div class="t-toprow">
+        <button class="t-back" data-s="home" aria-label="Back">‹</button>
+        <div class="t-proto">Anaphylaxis · RCUK 2021</div>
+        <div class="t-clock mono">05:04<span class="lbl">elapsed</span></div>
+      </div>
+      <div class="timerstrip">
+        <div class="tchip due"><span class="k">Adrenaline #2</span><span class="v mono">DUE</span></div>
+        <div class="tchip ok"><span class="k">999</span><span class="v mono">✓ 14:33</span></div>
+        <div class="tchip"><span class="k">O₂</span><span class="v mono">15 L</span></div>
+      </div>
+    </div>
+    <div class="t-body">
+      <div class="eyebrow" style="margin-top:10px"><span class="dot"></span><span>Clinician mode · full pathway</span></div>
+      <div class="algo">
+        <div class="arow done"><span class="n">✓</span>Remove trigger · call for help<span class="meta mono">14:31</span></div>
+        <div class="arow done"><span class="n">✓</span>Adrenaline 500 mcg IM (1:1000)<span class="meta mono">14:32</span></div>
+        <div class="arow done"><span class="n">✓</span>999 · lie flat, raise legs · O₂ 15 L<span class="meta mono">14:34</span></div>
+        <div class="arow done"><span class="n">✓</span>Reassess at 5 min — not improving<span class="meta mono">14:37</span></div>
+        <div class="arow now"><span class="n">5</span><b>Repeat adrenaline IM — no max</b><span class="meta">now</span></div>
+        <div class="arow"><span class="n">6</span>No better after 2 doses = refractory → handover</div>
+        <div class="arow"><span class="n">7</span>Monitor · arrest watch → ALS</div>
+      </div>
+      <div class="dosetable">
+        <div class="dt-h">Adrenaline IM 1:1000 · RCUK bands</div>
+        <table>
+          <tr><td>Adult / >12 y</td><td class="mono">500 mcg · 0.5 ml</td></tr>
+          <tr><td>6–12 y</td><td class="mono">300 mcg · 0.3 ml</td></tr>
+          <tr><td>6 m – 6 y</td><td class="mono">150 mcg · 0.15 ml</td></tr>
+          <tr><td>&lt;6 m</td><td class="mono">100–150 mcg</td></tr>
+        </table>
+      </div>
+      <div class="clin-actions">
+        <button class="given" id="clin-given">✓ Adrenaline given</button>
+        <button>+ Log event</button>
+        <button data-s="cpr" style="border-color:#7f2a2e; color:#ff9a9d">Arrest → ALS</button>
+      </div>
+    </div>
+    <div class="toast" id="clin-toast"><span class="ok">✓</span> Dose 2 · 14:37 · timer reset</div>
+  </section>
+
+  <!-- ============ CPR (escape target) ============ -->
+  <section class="screen theatre" id="s-cpr">
+    <div class="t-head">
+      <div class="t-toprow">
+        <button class="t-back" data-s="console" aria-label="Back">‹</button>
+        <div class="t-proto">Cardiac arrest · CPR</div>
+        <div class="t-clock mono">05:20<span class="lbl">elapsed</span></div>
+      </div>
+    </div>
+    <div class="cpr-body">
+      <div class="eyebrow" style="margin-bottom:16px"><span class="dot red"></span><span>Compressions — push hard, push fast</span></div>
+      <div class="beat">
+        <div class="count mono" id="ccount">27</div>
+        <div class="count-lbl">of 30</div>
+      </div>
+      <div class="cpr-stats">
+        <div class="stat"><div class="v mono">110</div><div class="k">per min</div></div>
+        <div class="stat"><div class="v mono">30:2</div><div class="k">cycle</div></div>
+        <div class="stat"><div class="v mono">5–6</div><div class="k">cm deep</div></div>
+      </div>
+    </div>
+    <div class="cpr-actions">
+      <button class="aed">AED ready</button>
+      <button>Signs of life?</button>
+    </div>
+  </section>
+</div>
+
+<section class="modenote">
+  <h2>What the mode dial changes — one graph, three renders</h2>
+  <b>Street / layman:</b> giant type, no jargon or ml, drugs only as “their allergy pen”, 999 first and pinned, voice loop on by default, no deck. ·
+  <b>Dental practice:</b> the console above — guided thread, real doses, pinned repeat timers, escape rail, 999-script deck fed by the event log. ·
+  <b>Clinician / hospital:</b> whole algorithm visible with completed-step timestamps, dose bands table, one-tap logging — narration off.
+  <br><br><b>The invariants that never change with mode:</b> the protocol graph, the safety gates, the escape rail to CPR, and the event log.
+</section>
+
+<script>
+  const screens = document.querySelectorAll('.screen');
+  const railBtns = document.querySelectorAll('.rail button');
+  function show(id){
+    screens.forEach(s=>s.classList.toggle('on', s.id==='s-'+id));
+    railBtns.forEach(b=>b.classList.toggle('on', b.dataset.s===id));
+  }
+  document.querySelectorAll('[data-s]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation(); show(el.dataset.s);}));
+
+  // deck
+  const deck=document.getElementById('deck');
+  const tabs=deck.querySelectorAll('.deck-tabs button');
+  const bodies={script:document.getElementById('deck-script'),drugs:document.getElementById('deck-drugs'),log:document.getElementById('deck-log')};
+  function openTab(name){
+    deck.classList.add('open');
+    tabs.forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
+    Object.entries(bodies).forEach(([k,el])=>el.style.display=k===name?'block':'none');
+  }
+  tabs.forEach(t=>t.addEventListener('click',()=>openTab(t.dataset.tab)));
+  const grab=document.getElementById('deckgrab');
+  grab.addEventListener('click',()=>{ deck.classList.contains('open')?deck.classList.remove('open'):openTab('script'); });
+  grab.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault(); grab.click();} });
+
+  // given buttons -> toast + timer restart demo
+  function toast(id){ const t=document.getElementById(id); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1700); }
+  let due=true, left=300;
+  document.getElementById('c-given').addEventListener('click',()=>{ toast('c-toast'); due=false; left=300; });
+  document.getElementById('clin-given').addEventListener('click',()=>toast('clin-toast'));
+  document.getElementById('lay-done').addEventListener('click',()=>{});
+  setInterval(()=>{
+    const el=document.getElementById('rpt');
+    if(due){ el.textContent='DUE NOW'; el.parentElement.classList.add('due'); return; }
+    left--; if(left<=0){ due=true; return; }
+    const m=String(Math.floor(left/60)).padStart(2,'0'), s=String(left%60).padStart(2,'0');
+    el.textContent=m+':'+s;
+  },1000);
+
+  // CPR counter
+  let c=27; setInterval(()=>{ c=c>=30?1:c+1; document.getElementById('ccount').textContent=c; },545);
+</script>
