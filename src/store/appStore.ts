@@ -114,12 +114,23 @@ export const useAppStore = create<AppState>()(
       },
       
       // Mid-emergency deterioration: swap the active protocol WITHOUT starting a
-      // new event — the log and elapsed clock continue. This is the single code
-      // path for a `switch_protocol:<id>` action (EscapeRail calls it directly;
-      // ProtocolRunner routes step actions through it too). Applies the same
+      // new event — the log and elapsed clock continue (a second event would
+      // fracture the medico-legal record). The single code path for switching
+      // protocols mid-emergency; EscapeRail calls it directly. Applies the same
       // leading-recognition skip a decisive tile entry uses, so e.g.
       // cardiac_arrest lands on its first action step, not a recognition step.
+      // Unknown ids are a silent no-op — target validity is owned by the
+      // data-integrity tests (every switch_protocol action targets a real
+      // protocol), not re-checked at runtime.
       switchProtocol: (protocolId) => {
+        const { activeEvent, activeProtocol } = get();
+        // A switch outside a live emergency is a programming error: refuse it
+        // rather than silently no-op the log or fabricate a fresh event here
+        // (that would double startEmergency's semantics).
+        if (!activeEvent) return;
+        // No-op if we're already running this protocol (also absorbs a
+        // double-fire race before the button unmounts).
+        if (activeProtocol?.id === protocolId) return;
         const protocol = protocols.find(p => p.id === protocolId);
         if (!protocol) return;
         set({
@@ -128,7 +139,7 @@ export const useAppStore = create<AppState>()(
           currentStepIndex: firstActionStepIndex(protocol.steps),
           currentScreen: 'protocol',
         });
-        // Records the switch on the SAME event log (no-op if none is active).
+        // Records the switch on the SAME event log.
         get().addEventLog('custom', `Switched to: ${protocol.title}`);
       },
 

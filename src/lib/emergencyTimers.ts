@@ -42,6 +42,13 @@ export function nextDoseCountdown(
   return { due: secondsLeft === 0, secondsLeft };
 }
 
+/** Local wall-clock HH:MM (24h) for the instant an ISO timestamp names — the
+ *  time an event was logged, as read off the strip/deck rows. */
+export function hhmm(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
 /** MM:SS, zero-padded. Minutes roll past 60 (no hours field); negatives floor to 00:00. */
 export function formatClock(totalSeconds: number): string {
   const safe = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;

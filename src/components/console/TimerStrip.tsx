@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { Check } from 'lucide-react';
 import type { EventLogEntry, ProtocolStep } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getDrugById } from '../../data/drugs';
-import { elapsedSeconds, nextDoseCountdown, formatClock } from '../../lib/emergencyTimers';
+import { elapsedSeconds, nextDoseCountdown, formatClock, hhmm } from '../../lib/emergencyTimers';
 
 // Pinned timer strip — timers are first-class in the console (999 asks elapsed
 // time first; drug repeats are clinically load-bearing). Everything derives from
@@ -38,14 +39,9 @@ const chipVal: CSSProperties = {
   color: 'var(--text-1)',
 };
 
-// Local wall-clock HH:MM (24h) for the moment an event was logged.
-function hhmm(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-}
-
 export function TimerStrip() {
-  const { activeEvent, activeProtocol } = useAppStore();
+  const activeEvent = useAppStore((s) => s.activeEvent);
+  const activeProtocol = useAppStore((s) => s.activeProtocol);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -77,8 +73,9 @@ export function TimerStrip() {
       <div style={chipBase}>
         <span style={chipKey}>999 called</span>
         {call999 ? (
-          <span className="riq-data" style={{ ...chipVal, color: 'var(--green-bright)' }}>
-            ✓ {hhmm(call999.timestamp)}
+          <span className="riq-data flex items-center" style={{ ...chipVal, gap: 4, color: 'var(--green-bright)' }}>
+            <Check className="w-4 h-4" aria-hidden style={{ flexShrink: 0 }} />
+            {hhmm(call999.timestamp)}
           </span>
         ) : (
           <span className="riq-data" style={{ ...chipVal, fontSize: 13, color: 'var(--text-3)' }}>

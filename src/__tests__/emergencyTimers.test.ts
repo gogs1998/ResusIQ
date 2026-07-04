@@ -4,6 +4,7 @@ import {
   elapsedSeconds,
   nextDoseCountdown,
   formatClock,
+  hhmm,
 } from '../lib/emergencyTimers';
 
 // Pure time math for the console's pinned timer strip. Every test passes an
@@ -93,6 +94,15 @@ describe('nextDoseCountdown', () => {
     const events = [drugEvent(300_000, drugId)];
     const r = nextDoseCountdown(events, drugId, fiveMin, new Date(0));
     expect(r).toEqual({ due: false, secondsLeft: 300 });
+  });
+});
+
+describe('hhmm', () => {
+  it('formats a local wall-clock time as zero-padded HH:MM', () => {
+    // Built from local components, then round-tripped through ISO, so the
+    // assertion is independent of the runner's timezone.
+    const d = new Date(2026, 0, 1, 9, 5, 0);
+    expect(hhmm(d.toISOString())).toBe('09:05');
   });
 });
 

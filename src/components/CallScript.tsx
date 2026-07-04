@@ -1,7 +1,8 @@
 import { Phone, MapPin, ArrowLeft, Copy, Check, Clock } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
+import { elapsedSeconds } from '../lib/emergencyTimers';
 
 const backBtn: CSSProperties = {
   width: 56,
@@ -178,15 +179,20 @@ export function CallScriptContent() {
 }
 
 export function CallScript() {
-  const { practiceSetup, setScreen } = useAppStore();
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const { practiceSetup, setScreen, activeEvent } = useAppStore();
+  const [now, setNow] = useState(() => new Date());
+  // Fallback start when this screen is opened outside a live emergency: the
+  // clock then counts from mount (0-based), preserving the old behaviour.
+  const mountRef = useRef(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds(s => s + 1);
-    }, 1000);
+    const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Anchor the elapsed clock to the emergency's real start (999 asks this
+  // first), not this screen's mount — so it reads the same as the runner strip.
+  const elapsed = elapsedSeconds(activeEvent?.timestamp ?? mountRef.current.toISOString(), now);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -212,7 +218,7 @@ export function CallScript() {
           style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 600, color: 'var(--text-2)' }}
         >
           <Clock className="w-5 h-5" />
-          {formatTime(elapsedSeconds)}
+          {formatTime(elapsed)}
         </div>
       </header>
 

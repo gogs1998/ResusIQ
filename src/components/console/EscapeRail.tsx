@@ -8,8 +8,11 @@ import { useAppStore } from '../../store/appStore';
 // Routes through the store's switchProtocol (the single switch_protocol path).
 
 export function EscapeRail() {
-  const { activeProtocol, switchProtocol } = useAppStore();
+  const activeProtocol = useAppStore((s) => s.activeProtocol);
+  const switchProtocol = useAppStore((s) => s.switchProtocol);
 
+  // Hidden while already in cardiac arrest; switchProtocol also no-ops on a
+  // double-fire race, so a rapid double-tap can never re-log the switch.
   if (activeProtocol?.id === 'cardiac_arrest') return null;
 
   const wrap: CSSProperties = {

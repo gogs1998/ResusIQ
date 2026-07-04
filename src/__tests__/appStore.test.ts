@@ -93,6 +93,15 @@ describe('appStore emergency lifecycle', () => {
     expect(useAppStore.getState().activeProtocol?.id).toBe('asthma');
   });
 
+  it('switchProtocol outside a live emergency changes NOTHING (no fabricated event)', () => {
+    // Fresh state (beforeEach reset): no activeEvent, not active.
+    useAppStore.getState().switchProtocol('cardiac_arrest');
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.activeEvent).toBeNull();
+  });
+
   it('does NOT skip recognition where clinical kept it (anaphylaxis) even on tile entry', () => {
     useAppStore.getState().startEmergency('anaphylaxis', 'tile');
     const s = useAppStore.getState();

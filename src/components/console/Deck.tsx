@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { Phone, Syringe, ClipboardList } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { getDrugById } from '../../data/drugs';
+import { hhmm } from '../../lib/emergencyTimers';
 import { CallScriptContent } from '../CallScript';
 
 // The deck — a slide-up sheet inside the runner. Dissolves the "999 script / log
@@ -9,23 +12,23 @@ import { CallScriptContent } from '../CallScript';
 // runner (CLAUDE.md: ProtocolRunner must stay reachable — the deck lives inside
 // it). Collapsed it is just a handle + three tabs; a tab opens the sheet.
 
+const PANEL_ID = 'console-deck-panel';
+
 type DeckTab = 'script' | 'drugs' | 'log';
 
-const TABS: { id: DeckTab; label: string }[] = [
-  { id: 'script', label: '📞 999 script' },
-  { id: 'drugs', label: '💉 Drugs' },
-  { id: 'log', label: '📋 Log' },
+const TABS: { id: DeckTab; label: string; Icon: LucideIcon }[] = [
+  { id: 'script', label: '999 script', Icon: Phone },
+  { id: 'drugs', label: 'Drugs', Icon: Syringe },
+  { id: 'log', label: 'Log', Icon: ClipboardList },
 ];
-
-// Local wall-clock HH:MM (24h) for the moment an event was logged.
-function hhmm(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-}
 
 const tabBtnBase: CSSProperties = {
   flex: 1,
   minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
   background: 'var(--surface-1)',
   border: '1px solid var(--border)',
   color: 'var(--text-3)',
@@ -61,7 +64,7 @@ const sayLabel: CSSProperties = {
 };
 
 export function Deck() {
-  const { activeEvent } = useAppStore();
+  const activeEvent = useAppStore((s) => s.activeEvent);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<DeckTab>('script');
 
@@ -73,6 +76,17 @@ export function Deck() {
     setOpen(true);
   };
 
+  // Escape closes the sheet (matches the platform expectation for a transient
+  // overlay; the runner underneath stays put).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
     <div style={{ background: 'var(--surface-inset)', borderTop: '1px solid var(--border)' }}>
       <div className="flex justify-center" style={{ padding: '7px 0 3px' }}>
@@ -80,6 +94,7 @@ export function Deck() {
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-controls={PANEL_ID}
           aria-label={open ? 'Close deck' : 'Open deck'}
           style={{
             border: 'none',
@@ -101,7 +116,8 @@ export function Deck() {
               key={t.id}
               type="button"
               onClick={() => openTab(t.id)}
-                  aria-pressed={active}
+              aria-pressed={active}
+              aria-controls={PANEL_ID}
               style={{
                 ...tabBtnBase,
                 ...(active
@@ -109,6 +125,7 @@ export function Deck() {
                   : null),
               }}
             >
+              <t.Icon className="w-4 h-4" aria-hidden style={{ flexShrink: 0 }} />
               {t.label}
             </button>
           );
@@ -116,7 +133,7 @@ export function Deck() {
       </div>
 
       {open && (
-        <div style={{ padding: '0 16px 14px', maxHeight: '40vh', overflowY: 'auto' }}>
+        <div id={PANEL_ID} style={{ padding: '0 16px 14px', maxHeight: '40vh', overflowY: 'auto' }}>
           {tab === 'script' && <CallScriptContent />}
 
           {tab === 'drugs' && (
