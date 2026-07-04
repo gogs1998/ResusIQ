@@ -271,7 +271,8 @@ export const protocols: Protocol[] = [
         id: 'continue_monitor',
         type: 'instruction',
         say: 'They are improving — stay with them. Keep the oxygen on, watch for any deterioration, and be ready to start CPR if they stop responding.',
-        show: 'Keep monitoring\n\nKeep the oxygen on and watch for deterioration.\nBe ready to start CPR if they stop responding, and wait for the ambulance.'
+        show: 'Keep monitoring\n\nKeep the oxygen on and watch for deterioration.\nBe ready to start CPR if they stop responding, and wait for the ambulance.',
+        next: 'cardiac_arrest_check'
       },
       {
         id: 'cardiac_arrest_check',
@@ -996,7 +997,7 @@ export const protocols: Protocol[] = [
         show: 'Ask them to smile.\n\nHas one side of their face dropped?',
         question: 'Has their face dropped on one side?',
         answers: [
-          { label: 'Yes — face has dropped', next: 'arm_check' },
+          { label: 'Yes — face has dropped', next: 'time_call' },
           { label: 'No — face looks even', next: 'arm_check' }
         ]
       },
@@ -1007,7 +1008,7 @@ export const protocols: Protocol[] = [
         show: 'Ask them to raise both arms.\n\nCan they hold both up, or does one drift down?',
         question: 'Is one arm weak?',
         answers: [
-          { label: 'Yes — one arm is weak', next: 'speech_check' },
+          { label: 'Yes — one arm is weak', next: 'time_call' },
           { label: 'No — both arms hold up', next: 'speech_check' }
         ]
       },
