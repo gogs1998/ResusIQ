@@ -187,6 +187,17 @@ input, select, textarea, button {
   outline-offset: 2px;
 }
 
+/* Ward home keyboard focus. The global :focus-visible indicator (base.css) is a
+   box-shadow; the tiles and the Call 999 anchor carry an inline box-shadow, and
+   inline styles override the stylesheet box-shadow — leaving those controls with
+   no visible focus. Use outline here (a different property inline can't clobber),
+   same idiom as .theatre above. */
+.riq-ward-focus a:focus-visible,
+.riq-ward-focus button:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
 /* ── Clear Signal shared primitives ─────────────────────────── */
 .cs-card {
   background: var(--surface-1);
