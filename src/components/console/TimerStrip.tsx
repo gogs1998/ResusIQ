@@ -39,15 +39,19 @@ const chipVal: CSSProperties = {
   color: 'var(--text-1)',
 };
 
-export function TimerStrip() {
+export function TimerStrip({ now: nowProp }: { now?: Date } = {}) {
   const activeEvent = useAppStore((s) => s.activeEvent);
   const activeProtocol = useAppStore((s) => s.activeProtocol);
-  const [now, setNow] = useState(() => new Date());
-
+  // Prefer a `now` supplied by the runner so the header clock and this strip
+  // read the SAME second (elapsed is the value a 999 handler is told). Only
+  // self-tick when used standalone with no prop.
+  const [selfNow, setSelfNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    if (nowProp) return;
+    const id = setInterval(() => setSelfNow(new Date()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [nowProp]);
+  const now = nowProp ?? selfNow;
 
   if (!activeEvent) return null;
 

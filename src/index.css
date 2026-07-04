@@ -177,6 +177,16 @@ input, select, textarea, button {
   padding: 14px;
 }
 
+/* Keyboard focus ring for the console's inline-styled controls — :focus-visible
+   can't be expressed in an inline style prop. Uses outline (not the --focus-ring
+   box-shadow) so the 100dvh overflow:hidden shell and the scrolling <main> can't
+   clip it; --focus-color is the bright theatre blue, visible on the dark ground. */
+.theatre a:focus-visible,
+.theatre button:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
 /* ── Clear Signal shared primitives ─────────────────────────── */
 .cs-card {
   background: var(--surface-1);

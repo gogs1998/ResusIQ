@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import {
   ArrowLeft,
   Phone,
@@ -56,7 +56,6 @@ export function ProtocolRunner() {
   const {
     activeProtocol,
     currentStepIndex,
-    nextStep,
     prevStep,
     goToStep,
     endEmergency,
@@ -82,9 +81,18 @@ export function ProtocolRunner() {
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
 
-  // Speak current step when it changes
+  // Speak each step once when it becomes current. Guard on the step id so a
+  // change in `speak` identity alone — it is recreated on the `voiceschanged`
+  // event as voices load — can't re-speak the same step (the first-step
+  // double-speak). Muting resets the guard so a later unmute re-reads the step.
+  const lastSpokenStepId = useRef<string | null>(null);
   useEffect(() => {
-    if (currentStep && !isMuted) {
+    if (isMuted) {
+      lastSpokenStepId.current = null;
+      return;
+    }
+    if (currentStep && lastSpokenStepId.current !== currentStep.id) {
+      lastSpokenStepId.current = currentStep.id;
       speak(currentStep.say);
     }
   }, [currentStep, isMuted, speak]);
@@ -93,23 +101,25 @@ export function ProtocolRunner() {
   // completion (leaving the step) — not on render — so back-navigation can't
   // re-fire them and they run only after the user did the thing.
   const advance = useCallback(() => {
-    if (!currentStep) return;
+    if (!currentStep || !activeProtocol) return;
+    // Log this step's completion exactly once. All navigation below goes through
+    // goToStep, which does NOT log — the store's nextStep() would emit a SECOND
+    // 'step_completed' (for the destination step) on the same advance.
     addEventLog('step_completed', currentStep.show.split('\n')[0]);
     runStepActions(currentStep);
-    // A switch_protocol action has already moved us to the new protocol + step;
-    // linear navigation below would read the NEW protocol and mis-advance.
+    // A switch_protocol action has already moved us to the new protocol + step.
     if (switchTargetId(currentStep)) return;
-    if (currentStep.next) {
-      const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === currentStep.next);
-      if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
-      else nextStep();
-    } else {
-      nextStep();
-    }
-  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep, nextStep]);
+    const byId = currentStep.next
+      ? activeProtocol.steps.findIndex(s => s.id === currentStep.next)
+      : -1;
+    if (byId >= 0) goToStep(byId);
+    else if (currentStepIndex < activeProtocol.steps.length - 1) goToStep(currentStepIndex + 1);
+    // else: terminal step with no successor — nothing to advance to.
+  }, [currentStep, activeProtocol, currentStepIndex, addEventLog, runStepActions, goToStep]);
 
   // Decision steps resolve in ONE tap: choosing an answer logs the choice, runs
-  // any step actions, and jumps straight to that branch's target step.
+  // any step actions, and jumps straight to that branch's target step. Navigation
+  // is goToStep-only for the same single-log reason as advance().
   const chooseAnswer = useCallback((answer: { label: string; next: string }) => {
     if (currentStep) {
       addEventLog('step_completed', `${currentStep.show.split('\n')[0]} → ${answer.label}`);
@@ -118,10 +128,10 @@ export function ProtocolRunner() {
       // owns navigation — don't also jump to answer.next.
       if (switchTargetId(currentStep)) return;
     }
-    const nextStepIndex = activeProtocol?.steps.findIndex(s => s.id === answer.next);
-    if (nextStepIndex !== undefined && nextStepIndex >= 0) goToStep(nextStepIndex);
-    else nextStep();
-  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep, nextStep]);
+    const byId = activeProtocol?.steps.findIndex(s => s.id === answer.next) ?? -1;
+    if (byId >= 0) goToStep(byId);
+    // answer.next always resolves (data-integrity test); no fallback jump.
+  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep]);
 
   // On a require_confirm (drug) step one press logs the drug as given and
   // advances — keeps the event log honest without a two-tap dance.
@@ -154,6 +164,8 @@ export function ProtocolRunner() {
   const handleVoiceCommand = useCallback((command: string) => {
     const c = command.toLowerCase();
     if (c.includes('next') || c.includes('continue') || c.includes('done') || c.includes('given') || c.includes('confirm')) {
+      // Voice can advance/confirm, but NEVER selects a decision answer: choosing
+      // a clinical branch by voice stays a deliberate safety gate until native STT.
       if (currentStep?.type !== 'decision') handleNext();
     } else if (c.includes('back') || c.includes('previous')) {
       prevStep();
@@ -210,6 +222,12 @@ export function ProtocolRunner() {
   const supportText = isDuplicateSupport(heroText, rawSupport) ? '' : rawSupport;
   const eyebrow = EYEBROW[currentStep.type] ?? EYEBROW.instruction;
 
+  // Screen-reader announcement mirrors what sighted users see: the question on a
+  // decision, otherwise the hero plus any visible (non-suppressed) support line.
+  const announceText = isDecision && currentStep.question
+    ? currentStep.question
+    : supportText ? `${heroText}. ${supportText}` : heroText;
+
   const elapsed = activeEvent ? elapsedSeconds(activeEvent.timestamp, now) : 0;
   const progressPct = totalSteps > 1 ? Math.round((currentStepIndex / (totalSteps - 1)) * 100) : 100;
 
@@ -235,9 +253,9 @@ export function ProtocolRunner() {
           >
             {currentStepIndex === 0 ? <X className="w-6 h-6" style={{ color: 'var(--text-3)' }} /> : <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />}
           </button>
-          <div className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)' }}>
+          <h1 className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', margin: 0 }}>
             {activeProtocol.title}
-          </div>
+          </h1>
           <div className="text-right flex-shrink-0">
             <div className="riq-data font-bold" style={{ fontSize: 15, color: 'var(--text-1)', lineHeight: 1 }}>{formatClock(elapsed)}</div>
             <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>Elapsed</div>
@@ -252,17 +270,19 @@ export function ProtocolRunner() {
           <span className="riq-data flex-shrink-0" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>{currentStepIndex + 1} / {totalSteps}</span>
         </div>
 
-        {/* Pinned timers — first-class */}
+        {/* Pinned timers — first-class. One tick source: the runner owns `now`
+            and passes it so the header clock and strip never differ by a second. */}
         <div style={{ marginTop: 10 }}>
-          <TimerStrip />
+          <TimerStrip now={now} />
         </div>
       </header>
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto" style={{ padding: '16px 18px 8px', minHeight: 0 }}>
-        {/* SR announcement */}
-        <div aria-live="assertive" role="status" className="sr-only">
-          {`Step ${currentStepIndex + 1} of ${totalSteps}. ${currentStep.show}`}
+        {/* SR announcement — role="alert" is implicitly assertive (no role/aria-live
+            contradiction); reads what sighted users see for this step. */}
+        <div role="alert" className="sr-only">
+          {`Step ${currentStepIndex + 1} of ${totalSteps}. ${announceText}`}
         </div>
 
         {/* Eyebrow: semantic dot + tracked label · reading-aloud indicator */}

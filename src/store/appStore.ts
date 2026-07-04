@@ -74,7 +74,12 @@ function firstActionStepIndex(steps: Protocol['steps']): number {
 // time). Lets runStepActions tell a `log:<label>` whose label names a real event
 // type (e.g. log:999_called) — which must be logged AS that type so the 999 chip
 // / 999 script / SBAR recognise it — from a free-text label logged as 'custom'.
-const EVENT_TYPES = new Set<EventType>([
+//
+// Locked to the union in BOTH directions so the list can never silently drift
+// from EventType: `satisfies readonly EventType[]` rejects a value that isn't an
+// EventType, and `_ExhaustiveEventTypes` fails to compile if a union member is
+// missing from the list below.
+const EVENT_TYPE_LIST = [
   'protocol_started',
   'step_completed',
   'drug_given',
@@ -88,7 +93,13 @@ const EVENT_TYPES = new Set<EventType>([
   'ambulance_arrived',
   'handover',
   'custom',
-]);
+] as const satisfies readonly EventType[];
+type _ExhaustiveEventTypes = Exclude<EventType, (typeof EVENT_TYPE_LIST)[number]> extends never
+  ? true
+  : never;
+const _eventTypesAreExhaustive: _ExhaustiveEventTypes = true;
+void _eventTypesAreExhaustive;
+const EVENT_TYPES: ReadonlySet<EventType> = new Set(EVENT_TYPE_LIST);
 
 // Human-readable labels for the typed log verbs that appear in protocols.ts
 // actions. Falls back to the raw label for any typed event without an entry.

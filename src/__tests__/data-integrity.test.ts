@@ -45,6 +45,20 @@ describe('protocol step graph integrity', () => {
       }
     });
 
+    it(`${protocol.id}: every timer_block's auto-advance target matches on_timer_end_next`, () => {
+      // When a timer_block's countdown ends, the runner runs advance(), which
+      // navigates via `next` when set, otherwise the next sequential step. Pin
+      // that this EFFECTIVE target equals the declared on_timer_end_next so the
+      // two can't silently drift — a `next` that disagrees, OR a reorder that
+      // moves a next-less step's sequential neighbour, would strand the timer.
+      protocol.steps.forEach((step, i) => {
+        if (step.type !== 'timer_block') return;
+        expect(step.on_timer_end_next, `${protocol.id}.${step.id}: timer_block has no on_timer_end_next`).toBeDefined();
+        const effectiveTarget = step.next ?? protocol.steps[i + 1]?.id;
+        expect(effectiveTarget, `${protocol.id}.${step.id} timer target`).toBe(step.on_timer_end_next);
+      });
+    });
+
     it(`${protocol.id}: every step is reachable from the first step (no orphans)`, () => {
       // An orphaned step is dead clinical content: it renders in no flow, so a
       // user can never reach it mid-emergency even though it looks implemented.
