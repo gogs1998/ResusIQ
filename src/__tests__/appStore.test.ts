@@ -60,20 +60,28 @@ describe('appStore emergency lifecycle', () => {
     expect(useAppStore.getState().currentStepIndex).toBe(0); // recognition shown
   });
 
-  it('switchProtocol swaps the active protocol on the SAME event, logging the switch', () => {
+  it('switchProtocol swaps the active protocol on the SAME event, appending a switch log entry', () => {
     const store = useAppStore.getState();
     store.startEmergency('anaphylaxis');
-    const eventId = useAppStore.getState().activeEvent?.id;
+    const before = useAppStore.getState().activeEvent!;
+    const eventId = before.id;
+    const countBefore = before.events.length;
 
     store.switchProtocol('cardiac_arrest');
     const s = useAppStore.getState();
     expect(s.activeProtocol?.id).toBe('cardiac_arrest');
     expect(s.isEmergencyActive).toBe(true);
     expect(s.currentScreen).toBe('protocol');
-    // Same event continues (elapsed clock + log survive the switch).
+
+    // Mid-emergency continuity: the SAME event object continues (elapsed clock +
+    // full log survive the switch — medico-legally we never start a second event).
     expect(s.activeEvent?.id).toBe(eventId);
-    const switched = s.activeEvent?.events.some((e) => /^Switched to:/.test(e.label));
-    expect(switched).toBe(true);
+    // The switch is APPENDED, not replacing prior entries.
+    expect(s.activeEvent!.events.length).toBe(countBefore + 1);
+    const last = s.activeEvent!.events[s.activeEvent!.events.length - 1];
+    expect(last.type).toBe('custom');
+    expect(last.label).toBe(`Switched to: ${s.activeProtocol!.title}`);
+
     // Lands on the first action step, not a leading recognition step.
     expect(s.activeProtocol?.steps[s.currentStepIndex].recognition).toBeFalsy();
   });

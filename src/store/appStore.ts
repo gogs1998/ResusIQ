@@ -55,6 +55,19 @@ interface AppState {
   setTrainingMode: (enabled: boolean) => void;
 }
 
+// The leading-recognition skip predicate. Decisive entry — a tile tap OR a
+// mid-emergency protocol switch — lands on the first non-`recognition` step so
+// the user leads with the action, not a symptom-recognition prompt. Recognition
+// steps are never deleted (Back still reaches them). ONE definition so tile
+// entry and switchProtocol can never diverge on which steps are skippable; this
+// predicate is adversarially verified by the safety tests (e.g. stroke FAST /
+// adrenal steroid gates carry no recognition flag, so they can never be skipped).
+function firstActionStepIndex(steps: Protocol['steps']): number {
+  let i = 0;
+  while (i < steps.length - 1 && steps[i].recognition) i++;
+  return i;
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -72,17 +85,8 @@ export const useAppStore = create<AppState>()(
         if (protocol) {
           // Decisive entry (tile tap) skips leading recognition/symptom steps —
           // the user already chose the condition, so lead with the action.
-          // Triage/library keep them (arrived via uncertainty). Steps are not
-          // deleted — Back still reaches them.
-          let startIndex = 0;
-          if (source === 'tile') {
-            while (
-              startIndex < protocol.steps.length - 1 &&
-              protocol.steps[startIndex].recognition
-            ) {
-              startIndex++;
-            }
-          }
+          // Triage/library keep them (arrived via uncertainty).
+          const startIndex = source === 'tile' ? firstActionStepIndex(protocol.steps) : 0;
           const event: EmergencyEvent = {
             id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
@@ -118,17 +122,10 @@ export const useAppStore = create<AppState>()(
       switchProtocol: (protocolId) => {
         const protocol = protocols.find(p => p.id === protocolId);
         if (!protocol) return;
-        let startIndex = 0;
-        while (
-          startIndex < protocol.steps.length - 1 &&
-          protocol.steps[startIndex].recognition
-        ) {
-          startIndex++;
-        }
         set({
           isEmergencyActive: true,
           activeProtocol: protocol,
-          currentStepIndex: startIndex,
+          currentStepIndex: firstActionStepIndex(protocol.steps),
           currentScreen: 'protocol',
         });
         // Records the switch on the SAME event log (no-op if none is active).
