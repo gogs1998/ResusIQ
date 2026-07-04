@@ -169,10 +169,11 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           </div>
         )}
 
-        {/* Stats row — rate · ratio · depth */}
+        {/* Stats row — rate · ratio · depth. Rate is the RCUK guideline range
+            (100–120/min), NOT the metronome tick rate — see the pill below. */}
         <div className="flex items-start justify-center" style={{ gap: 28, marginTop: 24 }}>
           <div className="text-center">
-            <div className="riq-data" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1 }}>{rate}</div>
+            <div className="riq-data" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1 }}>100–120</div>
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', fontWeight: 700, marginTop: 4 }}>per min</div>
           </div>
           <div className="text-center">
@@ -193,6 +194,7 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           {isPlaying ? 'Pause metronome' : 'Resume metronome'}
+          <span className="riq-data" style={{ color: 'var(--text-3)', fontWeight: 700 }}>· {rate} bpm</span>
         </button>
       </main>
 
