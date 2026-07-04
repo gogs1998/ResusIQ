@@ -6,14 +6,25 @@ import { useAppStore } from '../../store/appStore';
 // cardiac_arrest / CPR. Deterioration is no longer per-protocol hand-wiring — it
 // lives here, on every runner screen. Hidden only when already in cardiac arrest.
 // Routes through the store's switchProtocol (the single switch_protocol path).
+//
+// `onEscape` overrides the default tap behaviour for callers that run BEFORE an
+// emergency exists — TriageWizard mounts the same rail but there is no activeEvent
+// yet, so switchProtocol would no-op; it passes startEmergency('cardiac_arrest',
+// 'tile') instead. One rail component, one set of styles, two entry points.
 
-export function EscapeRail() {
+interface EscapeRailProps {
+  onEscape?: () => void;
+}
+
+export function EscapeRail({ onEscape }: EscapeRailProps = {}) {
   const activeProtocol = useAppStore((s) => s.activeProtocol);
   const switchProtocol = useAppStore((s) => s.switchProtocol);
 
   // Hidden while already in cardiac arrest; switchProtocol also no-ops on a
   // double-fire race, so a rapid double-tap can never re-log the switch.
   if (activeProtocol?.id === 'cardiac_arrest') return null;
+
+  const handleEscape = onEscape ?? (() => switchProtocol('cardiac_arrest'));
 
   const wrap: CSSProperties = {
     display: 'flex',
@@ -32,7 +43,7 @@ export function EscapeRail() {
   return (
     <button
       type="button"
-      onClick={() => switchProtocol('cardiac_arrest')}
+      onClick={handleEscape}
       className="active:scale-[0.99] transition-transform"
       style={wrap}
       aria-label="Patient unresponsive and not breathing — switch to CPR now"

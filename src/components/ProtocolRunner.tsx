@@ -103,8 +103,9 @@ export function ProtocolRunner() {
   const advance = useCallback(() => {
     if (!currentStep || !activeProtocol) return;
     // Log this step's completion exactly once. All navigation below goes through
-    // goToStep, which does NOT log — the store's nextStep() would emit a SECOND
-    // 'step_completed' (for the destination step) on the same advance.
+    // goToStep, which does NOT log — advancing via any store helper that logs on
+    // arrival would emit a SECOND 'step_completed' (for the destination step) on
+    // the same advance.
     addEventLog('step_completed', currentStep.show.split('\n')[0]);
     runStepActions(currentStep);
     // A switch_protocol action has already moved us to the new protocol + step.

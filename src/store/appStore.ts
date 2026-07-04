@@ -25,7 +25,6 @@ interface AppState {
   switchProtocol: (protocolId: string) => void;
   runStepActions: (step: ProtocolStep) => void;
   setProtocol: (protocol: Protocol | null) => void;
-  nextStep: () => void;
   prevStep: () => void;
   goToStep: (index: number) => void;
   endEmergency: () => void;
@@ -229,16 +228,7 @@ export const useAppStore = create<AppState>()(
       },
 
       setProtocol: (protocol) => set({ activeProtocol: protocol, currentStepIndex: 0 }),
-      
-      nextStep: () => {
-        const { activeProtocol, currentStepIndex } = get();
-        if (activeProtocol && currentStepIndex < activeProtocol.steps.length - 1) {
-          const newIndex = currentStepIndex + 1;
-          set({ currentStepIndex: newIndex });
-          get().addEventLog('step_completed', `Step: ${activeProtocol.steps[newIndex].id}`);
-        }
-      },
-      
+
       prevStep: () => {
         const { currentStepIndex } = get();
         if (currentStepIndex > 0) {

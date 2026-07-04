@@ -2,18 +2,19 @@ import { useState } from 'react';
 import {
   ArrowLeft,
   ChevronRight,
-  CircleHelp,
   Check,
   X,
   Phone,
+  HeartPulse,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useAppStore } from '../store/appStore';
 import { triageQuestions, protocols } from '../data/protocols';
+import { EscapeRail } from './console/EscapeRail';
 
 const backBtn: CSSProperties = {
-  width: 56,
-  height: 56,
+  width: 44,
+  height: 44,
   borderRadius: 'var(--radius-md)',
   display: 'flex',
   alignItems: 'center',
@@ -24,14 +25,14 @@ const backBtn: CSSProperties = {
 };
 
 export function TriageWizard() {
-  const { 
-    setScreen, 
-    startEmergency, 
-    triageAnswers, 
-    setTriageAnswer, 
+  const {
+    setScreen,
+    startEmergency,
+    triageAnswers,
+    setTriageAnswer,
     clearTriageAnswers
   } = useAppStore();
-  
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showResult, setShowResult] = useState(false);
 
@@ -40,7 +41,7 @@ export function TriageWizard() {
 
   const handleAnswer = (answer: boolean) => {
     setTriageAnswer(currentQuestion.id, answer);
-    
+
     // Check for immediate routing
     if (currentQuestion.id === 'conscious' && !answer) {
       // Not conscious - check breathing
@@ -128,33 +129,65 @@ export function TriageWizard() {
     }
   };
 
+  // The "If in doubt" panel — the pre-emergency safety exits, shared by both the
+  // question and result screens. CARDIAC ARREST keeps its existing no-source
+  // routing (starts at step 0); the EscapeRail above uses the 'tile' fast-path.
+  const inDoubtPanel = (
+    <div style={{ padding: '12px 14px', borderRadius: 13, background: 'var(--red-tint-2)', border: '1.5px solid var(--red)' }}>
+      <p className="font-bold" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red-strong)', opacity: 0.9, marginBottom: 10 }}>
+        If in doubt, go straight to
+      </p>
+      <div className="grid grid-cols-2" style={{ gap: 10 }}>
+        <button
+          onClick={() => startEmergency('cardiac_arrest')}
+          className="flex items-center justify-center active:scale-[0.98] transition-transform"
+          style={{ gap: 8, minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--surface-1)', border: '1.5px solid var(--red)', color: 'var(--red-strong)', fontSize: 'var(--fs-body-sm)', fontWeight: 700 }}
+        >
+          <HeartPulse className="w-5 h-5" /> Cardiac arrest
+        </button>
+        <a
+          href="tel:999"
+          className="flex items-center justify-center active:scale-[0.98] transition-transform"
+          style={{ gap: 8, minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--red)', color: '#fff', fontSize: 'var(--fs-body-sm)', fontWeight: 700, textDecoration: 'none', boxShadow: 'var(--shadow-999)' }}
+        >
+          <Phone className="w-5 h-5" /> Call 999
+        </a>
+      </div>
+    </div>
+  );
+
   if (showResult) {
     const recommendedProtocol = getRecommendedProtocol();
-    
+
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-        <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
+      <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <header className="flex items-center" style={{ gap: 10, padding: '14px 16px 0', flexShrink: 0 }}>
           <button onClick={handleBack} aria-label="Back" style={backBtn}>
-            <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
+            <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />
           </button>
-          <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Guided help</h1>
+          <h1 className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', margin: 0 }}>
+            Guided help
+          </h1>
         </header>
 
-        <main className="flex-1 flex flex-col justify-center" style={{ padding: '8px 24px 24px' }}>
-          <p className="font-bold" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)', marginBottom: 12 }}>
-            Based on your answers
-          </p>
-          <h2 className="font-semibold" style={{ fontSize: 'var(--fs-step)', lineHeight: 'var(--lh-snug)', letterSpacing: 'var(--ls-tight)', color: 'var(--ink-900)' }}>
+        <main className="flex-1 overflow-y-auto flex flex-col justify-center" style={{ padding: '16px 18px', minHeight: 0 }}>
+          <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', flexShrink: 0 }} />
+            <span className="font-extrabold" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+              Based on your answers
+            </span>
+          </div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.14, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', margin: 0 }}>
             Start the {recommendedProtocol?.title} guide.
           </h2>
-          <p style={{ fontSize: 'var(--fs-lead)', color: 'var(--ink-600)', marginTop: 16, lineHeight: 'var(--lh-relaxed)' }}>
+          <p style={{ fontSize: 14.5, color: 'var(--text-2)', marginTop: 12, lineHeight: 1.45 }}>
             If that doesn’t match what you’re seeing, you can pick a different emergency instead.
           </p>
 
           <button
             onClick={handleStartProtocol}
             className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
-            style={{ gap: 12, marginTop: 32, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 'var(--fs-subtitle)', boxShadow: 'var(--shadow-btn)', border: 'none' }}
+            style={{ gap: 10, marginTop: 28, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 'var(--fs-subtitle)', boxShadow: 'var(--shadow-btn)', border: 'none' }}
           >
             Start guide
             <ChevronRight className="w-6 h-6" />
@@ -162,7 +195,7 @@ export function TriageWizard() {
           <button
             onClick={() => setScreen('emergency')}
             className="w-full active:opacity-70 transition-opacity"
-            style={{ marginTop: 12, minHeight: 'var(--touch-min)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', color: 'var(--text-2)', fontWeight: 600, fontSize: 'var(--fs-body-sm)', border: 'none' }}
+            style={{ marginTop: 10, minHeight: 'var(--touch-min)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border)', color: 'var(--text-2)', fontWeight: 600, fontSize: 'var(--fs-body-sm)' }}
           >
             Choose a different emergency
           </button>
@@ -172,82 +205,62 @@ export function TriageWizard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      {/* Header */}
-      <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
-        <button onClick={handleBack} aria-label="Back" style={backBtn}>
-          <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
-        </button>
-        <div className="flex items-center gap-2">
-          <CircleHelp className="w-5 h-5" style={{ color: 'var(--amber-700)' }} />
-          <div>
-            <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)', lineHeight: 1.1 }}>Guided help</h1>
-            <p style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', marginTop: 2 }}>
-              Question {currentQuestionIndex + 1} of {essentialQuestions.length}
-            </p>
+    <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
+      {/* Header — back · title · progress */}
+      <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+        <div className="flex items-center" style={{ gap: 10 }}>
+          <button onClick={handleBack} aria-label="Back" style={backBtn}>
+            <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />
+          </button>
+          <h1 className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', margin: 0 }}>
+            Guided help
+          </h1>
+        </div>
+
+        <div className="flex items-center" style={{ gap: 10, marginTop: 12 }}>
+          <div style={{ flex: 1, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--surface-inset)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', width: `${((currentQuestionIndex + 1) / essentialQuestions.length) * 100}%`, transition: 'width 0.3s ease' }} />
           </div>
+          <span className="riq-data flex-shrink-0" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }} aria-label={`Question ${currentQuestionIndex + 1} of ${essentialQuestions.length}`}>
+            {currentQuestionIndex + 1} / {essentialQuestions.length}
+          </span>
         </div>
       </header>
 
-      {/* Progress */}
-      <div style={{ height: 6, margin: '0 24px', borderRadius: 'var(--radius-pill)', background: 'var(--ink-100)', overflow: 'hidden' }}>
-        <div
-          className="h-full transition-all duration-300"
-          style={{ width: `${((currentQuestionIndex + 1) / essentialQuestions.length) * 100}%`, background: 'var(--brand)' }}
-        />
-      </div>
-
-      {/* Question */}
-      <main className="flex-1 flex flex-col justify-center" style={{ padding: '8px 24px 16px' }}>
-        <h2 className="font-semibold" style={{ fontSize: 'var(--fs-step)', lineHeight: 'var(--lh-snug)', letterSpacing: 'var(--ls-tight)', color: 'var(--ink-900)', marginBottom: 32 }}>
+      {/* Question — the hero, with one-tap Yes / No answer cards */}
+      <main className="flex-1 overflow-y-auto flex flex-col justify-center" style={{ padding: '16px 18px', minHeight: 0 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.16, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', margin: 0 }}>
           {currentQuestion?.text}
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 26 }}>
           <button
             onClick={() => handleAnswer(true)}
             className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
-            style={{ gap: 18, minHeight: 'var(--touch-comfort)', padding: '18px 22px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)', border: '2px solid var(--green-600)', boxShadow: 'var(--shadow-sm)' }}
+            style={{ gap: 14, minHeight: 70, padding: '14px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border)' }}
           >
-            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--green-100)' }}>
-              <Check className="w-6 h-6" style={{ color: 'var(--green-700)' }} />
+            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--green-tint)' }}>
+              <Check className="w-6 h-6" style={{ color: 'var(--green-bright)' }} />
             </span>
-            <span className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>Yes</span>
+            <span className="font-bold" style={{ fontSize: 18.5, color: 'var(--text-1)' }}>Yes</span>
           </button>
           <button
             onClick={() => handleAnswer(false)}
             className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
-            style={{ gap: 18, minHeight: 'var(--touch-comfort)', padding: '18px 22px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)', border: '2px solid var(--red-600)', boxShadow: 'var(--shadow-sm)' }}
+            style={{ gap: 14, minHeight: 70, padding: '14px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border)' }}
           >
-            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--red-100)' }}>
-              <X className="w-6 h-6" style={{ color: 'var(--red-700)' }} />
+            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--red-tint)' }}>
+              <X className="w-6 h-6" style={{ color: 'var(--red)' }} />
             </span>
-            <span className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>No</span>
+            <span className="font-bold" style={{ fontSize: 18.5, color: 'var(--text-1)' }}>No</span>
           </button>
         </div>
       </main>
 
-      {/* Emergency shortcut */}
-      <footer className="safe-area-bottom" style={{ padding: '12px 24px 24px' }}>
-        <p className="text-center" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)', marginBottom: 10 }}>
-          If in doubt, go straight to
-        </p>
-        <div className="grid grid-cols-2" style={{ gap: 10 }}>
-          <button
-            onClick={() => startEmergency('cardiac_arrest')}
-            className="font-bold active:scale-[0.98] transition-transform"
-            style={{ minHeight: 'var(--touch-min)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '1.5px solid var(--red-200)', color: 'var(--red-700)', fontSize: 'var(--fs-body-sm)' }}
-          >
-            Cardiac arrest
-          </button>
-          <a
-            href="tel:999"
-            className="flex items-center justify-center gap-1.5 font-bold active:scale-[0.98] transition-transform"
-            style={{ minHeight: 'var(--touch-min)', borderRadius: 'var(--radius-lg)', background: 'var(--red)', color: '#fff', fontSize: 'var(--fs-body-sm)', textDecoration: 'none', boxShadow: 'var(--shadow-999)' }}
-          >
-            <Phone className="w-4 h-4" /> Call 999
-          </a>
-        </div>
+      {/* Footer — escape rail (the architectural guarantee) + if-in-doubt exits */}
+      <footer className="safe-area-bottom" style={{ flexShrink: 0, padding: '10px 18px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <EscapeRail onEscape={() => startEmergency('cardiac_arrest', 'tile')} />
+        {inDoubtPanel}
       </footer>
     </div>
   );
