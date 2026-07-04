@@ -141,9 +141,9 @@ export function TrainingMode() {
     const score = getScore();
 
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex flex-col items-center justify-center" style={{ height: 'var(--appbar-h)', paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}>
-          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training mode</p>
+          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)' }}>Training mode</p>
           <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Drill complete</h1>
         </header>
 
@@ -214,7 +214,7 @@ export function TrainingMode() {
             <button
               onClick={handleBackToList}
               className="font-bold active:opacity-80 transition-opacity"
-              style={{ background: 'var(--surface)', border: '2px solid var(--brand)', color: 'var(--teal-700)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
+              style={{ background: 'var(--surface)', border: '2px solid var(--brand)', color: 'var(--brand)', borderRadius: 'var(--radius-xl)', minHeight: 'var(--touch-comfort)', fontSize: 'var(--fs-body)' }}
             >
               Back to drills
             </button>
@@ -228,18 +228,18 @@ export function TrainingMode() {
   if (selectedScenario) {
     const pct = (checkedActions.length / selectedScenario.key_actions.length) * 100;
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-        <header className="flex items-center justify-between" style={{ background: 'var(--teal-50)', borderBottom: '1px solid var(--border)', padding: 'var(--gutter)' }}>
+      <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+        <header className="flex items-center justify-between" style={{ background: 'var(--brand-tint)', borderBottom: '1px solid var(--border)', padding: 'var(--gutter)' }}>
           <div className="flex items-center gap-3">
             <GraduationCap className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--brand)' }} />
             <div>
-              <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training drill</p>
+              <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)' }}>Training drill</p>
               <p className="font-semibold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-1)' }}>{selectedScenario.title}</p>
             </div>
           </div>
           <div className="text-right">
             <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--text-1)' }}>{formattedTime}</p>
-            <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>
+            <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)' }}>
               Target {Math.floor(selectedScenario.time_target_seconds / 60)}m
             </p>
           </div>
@@ -325,7 +325,7 @@ export function TrainingMode() {
 
   // Drill Selection Screen
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       <header className="flex items-center gap-3" style={{ height: 'var(--appbar-h)', paddingLeft: 'var(--gutter)', paddingRight: 'var(--gutter)' }}>
         <button
           onClick={() => setScreen('home')}
@@ -336,7 +336,7 @@ export function TrainingMode() {
           <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
         </button>
         <div>
-          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--teal-700)' }}>Training mode</p>
+          <p style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)' }}>Training mode</p>
           <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Training drills</h1>
         </div>
       </header>

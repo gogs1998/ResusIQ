@@ -112,14 +112,14 @@ For audit and training purposes only.
     fontWeight: 700,
     letterSpacing: 'var(--ls-label)',
     textTransform: 'uppercase' as const,
-    color: 'var(--teal-700)',
+    color: 'var(--brand)',
   };
 
   if (selectedEvent) {
     const protocol = protocols.find(p => p.id === selectedEvent.protocol_id);
 
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex items-center gap-3 px-6" style={{ height: 'var(--appbar-h)' }}>
           <button
             onClick={() => setSelectedEvent(null)}
@@ -182,7 +182,7 @@ For audit and training purposes only.
                   <div className="flex-1">
                     <p
                       className="cs-numeric"
-                      style={{ color: 'var(--teal-700)', fontSize: 'var(--fs-caption)', fontWeight: 700, letterSpacing: 'var(--ls-label)' }}
+                      style={{ color: 'var(--brand)', fontSize: 'var(--fs-caption)', fontWeight: 700, letterSpacing: 'var(--ls-label)' }}
                     >
                       {format(new Date(event.timestamp), 'HH:mm:ss')}
                     </p>
@@ -252,7 +252,7 @@ For audit and training purposes only.
   }
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       <header className="flex items-center gap-3 px-6" style={{ height: 'var(--appbar-h)' }}>
         <button
           onClick={() => setScreen('home')}
@@ -309,7 +309,7 @@ For audit and training purposes only.
                 <div className="flex gap-2 mt-3">
                   <span
                     className="px-3 py-1"
-                    style={{ background: 'var(--teal-50)', color: 'var(--teal-700)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                    style={{ background: 'var(--brand-tint)', color: 'var(--brand)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
                   >
                     {event.events.length} events
                   </span>

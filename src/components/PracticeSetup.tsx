@@ -165,7 +165,7 @@ export function PracticeSetupWizard() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center gap-2 px-4" style={{ height: 'var(--appbar-h)' }}>
         <button
@@ -180,7 +180,7 @@ export function PracticeSetupWizard() {
           <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Practice setup</h1>
           <p
             className="mt-0.5 uppercase"
-            style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', color: 'var(--teal-700)' }}
+            style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', color: 'var(--brand)' }}
           >
             Step {step} of {totalSteps}
           </p>

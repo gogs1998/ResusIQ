@@ -53,7 +53,7 @@ const eyebrow: CSSProperties = {
   fontWeight: 700,
   letterSpacing: 'var(--ls-label)',
   textTransform: 'uppercase',
-  color: 'var(--teal-700)',
+  color: 'var(--brand)',
 };
 
 type ViewMode = 'protocols' | 'drugs';
@@ -79,7 +79,7 @@ export function ProtocolLibrary() {
     const IconComponent = iconMap[selectedProtocol.icon];
 
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
           <button
             onClick={() => setSelectedProtocol(null)}
@@ -92,9 +92,9 @@ export function ProtocolLibrary() {
           <div className="flex items-center flex-1 min-w-0" style={{ gap: 12 }}>
             <div
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--brand-tint)' }}
             >
-              {IconComponent && <IconComponent className="w-6 h-6" style={{ color: 'var(--teal-700)' }} />}
+              {IconComponent && <IconComponent className="w-6 h-6" style={{ color: 'var(--brand)' }} />}
             </div>
             <div className="min-w-0">
               <h1 className="font-bold truncate" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{selectedProtocol.title}</h1>
@@ -131,7 +131,7 @@ export function ProtocolLibrary() {
             <div className="space-y-3">
               {selectedProtocol.steps.map((step, idx) => (
                 <div key={step.id} className="flex" style={{ gap: 12, padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
-                  <span className="cs-numeric flex items-center justify-center flex-shrink-0" style={{ width: 28, height: 28, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', background: 'var(--teal-50)', color: 'var(--teal-700)' }}>
+                  <span className="cs-numeric flex items-center justify-center flex-shrink-0" style={{ width: 28, height: 28, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', background: 'var(--brand-tint)', color: 'var(--brand)' }}>
                     {idx + 1}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -169,7 +169,7 @@ export function ProtocolLibrary() {
   // Drug Detail View
   if (selectedDrug) {
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
           <button
             onClick={() => setSelectedDrug(null)}
@@ -182,9 +182,9 @@ export function ProtocolLibrary() {
           <div className="flex items-center flex-1 min-w-0" style={{ gap: 12 }}>
             <div
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--brand-tint)' }}
             >
-              <Pill className="w-6 h-6" style={{ color: 'var(--teal-700)' }} />
+              <Pill className="w-6 h-6" style={{ color: 'var(--brand)' }} />
             </div>
             <div className="min-w-0">
               <h1 className="font-bold truncate" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{selectedDrug.name}</h1>
@@ -270,7 +270,7 @@ export function ProtocolLibrary() {
 
   // Main Library View
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
         <button
           onClick={() => setScreen('home')}
@@ -320,7 +320,7 @@ export function ProtocolLibrary() {
               fontSize: 'var(--fs-label)',
               border: 'none',
               ...(viewMode === 'protocols'
-                ? { background: 'var(--surface)', color: 'var(--teal-700)', boxShadow: 'var(--shadow-sm)' }
+                ? { background: 'var(--surface)', color: 'var(--brand)', boxShadow: 'var(--shadow-sm)' }
                 : { background: 'transparent', color: 'var(--text-3)' }),
             }}
           >
@@ -335,7 +335,7 @@ export function ProtocolLibrary() {
               fontSize: 'var(--fs-label)',
               border: 'none',
               ...(viewMode === 'drugs'
-                ? { background: 'var(--surface)', color: 'var(--teal-700)', boxShadow: 'var(--shadow-sm)' }
+                ? { background: 'var(--surface)', color: 'var(--brand)', boxShadow: 'var(--shadow-sm)' }
                 : { background: 'transparent', color: 'var(--text-3)' }),
             }}
           >
@@ -367,9 +367,9 @@ export function ProtocolLibrary() {
                 >
                   <div
                     className="flex items-center justify-center flex-shrink-0"
-                    style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+                    style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--brand-tint)' }}
                   >
-                    {IconComponent && <IconComponent className="w-7 h-7" style={{ color: 'var(--teal-700)' }} />}
+                    {IconComponent && <IconComponent className="w-7 h-7" style={{ color: 'var(--brand)' }} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold" style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.15, color: 'var(--text-1)' }}>{protocol.title}</h3>
@@ -401,7 +401,7 @@ export function ProtocolLibrary() {
               >
                 <div
                   className="cs-numeric flex items-center justify-center flex-shrink-0"
-                  style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)', color: 'var(--teal-700)' }}
+                  style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--brand-tint)', color: 'var(--brand)' }}
                 >
                   <span className="font-bold" style={{ fontSize: 'var(--fs-label)' }}>{drug.route}</span>
                 </div>

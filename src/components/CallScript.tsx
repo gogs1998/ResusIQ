@@ -165,7 +165,7 @@ export function CallScriptContent() {
           padding: 20,
         }}
       >
-        <h3 style={{ ...eyebrow, color: 'var(--teal-700)', marginBottom: 12 }}>Remember</h3>
+        <h3 style={{ ...eyebrow, color: 'var(--brand)', marginBottom: 12 }}>Remember</h3>
         <ul className="flex flex-col" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', gap: 10, listStyle: 'none', padding: 0, margin: 0, lineHeight: 'var(--lh-normal)' }}>
           <li>Put the phone on speaker mode</li>
           <li>Do not hang up — let them hang up first</li>
@@ -206,7 +206,7 @@ export function CallScript() {
   const practiceName = practiceSetup?.name || 'Dental Practice';
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center" style={{ gap: 8, padding: '8px 12px', height: 'var(--appbar-h)' }}>
         <button onClick={() => setScreen('home')} aria-label="Back" style={backBtn} className="active:opacity-70 transition-opacity">
@@ -250,14 +250,14 @@ export function CallScript() {
             background: 'var(--surface)',
             boxShadow: 'var(--shadow-sm)',
             borderRadius: 'var(--radius-lg)',
-            border: '1.5px solid var(--teal-100)',
+            border: '1px solid var(--brand-100)',
             padding: 20,
           }}
         >
           <div className="flex items-start" style={{ gap: 16 }}>
             <MapPin className="w-7 h-7 flex-shrink-0" style={{ color: 'var(--brand)', marginTop: 2 }} />
             <div>
-              <p style={{ ...eyebrow, color: 'var(--teal-700)' }}>Practice address</p>
+              <p style={{ ...eyebrow, color: 'var(--brand)' }}>Practice address</p>
               <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)', marginTop: 6 }}>{practiceName}</p>
               <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>{address}</p>
               <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--brand)', marginTop: 6 }}>{postcode}</p>
@@ -311,7 +311,7 @@ function ScriptStep({ number, instruction, children }: { number: number; instruc
       <div className="flex items-start" style={{ gap: 16 }}>
         <div
           className="cs-numeric flex items-center justify-center font-bold flex-shrink-0"
-          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--teal-50)', color: 'var(--brand)' }}
+          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--brand-tint)', color: 'var(--brand)' }}
         >
           {number}
         </div>
