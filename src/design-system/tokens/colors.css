@@ -1,20 +1,41 @@
-/* ResusIQ — Colour system (light "Clear Signal", 2026 rebuild)
-   Calm, warm, high-contrast. Teal is the confident co-pilot voice (every
-   primary action). Red is reserved almost entirely for Call 999 + genuinely
-   critical alerts so it never loses meaning. Amber = caution / "not sure".
-   The canvas is warm sand, not stark white, to cut glare under stress.
+/* ResusIQ — Colour system (the "Instrument" console, 2026 rebuild)
+   Colour is a four-meaning language, nothing more. Every hue on screen means
+   exactly one thing, so a glance is unambiguous under stress:
+     • RED   = life threat / Call 999 / contraindication — reserved, never decorative.
+     • AMBER = safety gate — "stop and check", a decision the user must make.
+     • GREEN = confirmed done — a step completed, a dose given.
+     • BLUE  = information / voice / the app talking — brand + AI + timed cues.
+   Everything else is a cool, near-neutral ink on a precise ward-grey canvas.
+   The step-type rainbow is gone: structural accents are ink, not colour, so the
+   four meanings above keep their signal.
 
-   Both the new raw scales (--teal-600, --ink-900, --canvas …) AND the existing
-   semantic names the screens already consume (--bg, --text-1, --brand, --red …)
-   are defined here, the latter remapped onto the new palette — so the whole app
-   adopts the light/calm look without every component changing at once. */
+   Two surface worlds share this one semantic layer:
+     • WARD  (:root) — cool light surfaces for routine, pre-emergency screens.
+     • THEATRE (.theatre) — dark surfaces applied on the root of ProtocolRunner /
+       CPRMode / TriageWizard during an active emergency. It redefines the SAME
+       semantic names for dark; components keep consuming the same tokens.
+
+   Both the raw scales (--ink-900, --canvas …) AND the semantic names the screens
+   consume inline (--bg, --text-1, --brand, --red …) are defined here. */
 
 :root {
-  /* ---- Brand teal (the guiding voice) ---- */
+  /* ---- Brand blue (information / voice — the app talking) ---- */
+  --brand-900: #0B2E6B;
+  --brand-800: #103A82;
+  --brand-700: #12459E;
+  --brand-600: #175CD3; /* primary */
+  --brand-500: #2E70E0;
+  --brand-400: #5B92EA;
+  --brand-200: #B9D0F6;
+  --brand-100: #D6E3FA;
+  --brand-50:  #EAF1FC;
+
+  /* ---- Teal raw scale — retained so nothing dangling breaks, but nothing
+         semantic points at it any more (kept out of the four-meaning language). ---- */
   --teal-900: #063B3B;
   --teal-800: #084B4A;
   --teal-700: #0A5757;
-  --teal-600: #0C6E6E; /* primary */
+  --teal-600: #0C6E6E;
   --teal-500: #14857F;
   --teal-400: #2AA09A;
   --teal-200: #B7DBD6;
@@ -22,56 +43,56 @@
   --teal-50:  #ECF5F3;
 
   /* ---- Emergency red (999 + critical only) ---- */
-  --red-800: #861C13;
-  --red-700: #A82318;
-  --red-600: #D23B2E; /* call 999 */
-  --red-200: #F2C4BE;
-  --red-100: #F7DBD7;
-  --red-50:  #FCEEEB;
+  --red-800: #912018;
+  --red-700: #B42318;
+  --red-600: #D92D20; /* call 999 */
+  --red-200: #F6C6C1;
+  --red-100: #FAD9D5;
+  --red-50:  #FDECEA;
 
-  /* ---- Caution amber ("not sure", warnings) ---- */
-  --amber-700: #B9781D;
-  --amber-600: #E0972B;
-  --amber-100: #F8E8CC;
-  --amber-50:  #FBF3E2;
+  /* ---- Safety-gate amber ("stop and check", warnings) ---- */
+  --amber-700: #93400B;
+  --amber-600: #B54708; /* text-safe on light */
+  --amber-100: #FCE9D0;
+  --amber-50:  #FDF4E7;
 
-  /* ---- Success green (confirmations, "done") ---- */
-  --green-700: #226B43;
-  --green-600: #2E8B57;
-  --green-100: #D7EBDE;
-  --green-50:  #ECF6F0;
+  /* ---- Confirmed-done green ("done") ---- */
+  --green-700: #116B40;
+  --green-600: #178A53;
+  --green-100: #D3F1E1;
+  --green-50:  #E9F8F0;
 
-  /* ---- Warm neutrals ---- */
-  --ink-900: #14201F; /* primary text */
-  --ink-800: #21302E;
-  --ink-700: #33403E;
-  --ink-600: #475452;
-  --ink-500: #5C6A67; /* secondary text */
-  --ink-400: #7C8885; /* muted */
-  --ink-300: #A6AFAB;
-  --ink-200: #CDD3CF;
-  --ink-100: #E4E2DC; /* hairline borders */
-  --canvas:    #F4EFE8; /* app background — warm sand */
+  /* ---- Cool neutrals ---- */
+  --ink-900: #101720; /* primary text */
+  --ink-800: #1D2733;
+  --ink-700: #33404E;
+  --ink-600: #47555F;
+  --ink-500: #5B6873; /* secondary text */
+  --ink-400: #7E8B99; /* muted */
+  --ink-300: #A6B0BA;
+  --ink-200: #CDD5DD;
+  --ink-100: #E1E7EE; /* hairline borders */
+  --canvas:    #F4F6F9; /* app background — cool ward grey */
   --surface:   #FFFFFF; /* cards */
-  --surface-2sand: #FBF8F3; /* sunken / inset surfaces */
+  --surface-2sand: #FAFBFD; /* sunken / inset surfaces */
   --white:     #FFFFFF;
 
   /* ─────────────────────────────────────────────────────────────────────────
-     Compatibility layer: existing semantic names → new palette values.
+     Compatibility layer: semantic names → Ward palette values.
      ───────────────────────────────────────────────────────────────────────── */
 
   /* ---- Base surfaces ---- */
   --bg:            var(--canvas);
-  --surface-1:     var(--surface);     /* default card */
+  --surface-1:     var(--surface);       /* default card */
   --surface-2:     var(--surface-2sand); /* elevated card / input */
-  --surface-3:     #F1ECE4;            /* hover / pressed surface */
-  --surface-inset: #EDE7DD;            /* recessed wells, progress track */
-  --scrim:         rgba(20, 32, 31, 0.45); /* modal backdrop */
+  --surface-3:     #EDF1F6;              /* hover / pressed surface */
+  --surface-inset: #E8EDF3;              /* recessed wells, progress track */
+  --scrim:         rgba(16, 23, 32, 0.45); /* modal backdrop */
 
   /* ---- Borders ---- */
   --border:         var(--ink-100);
   --border-strong:  var(--ink-200);
-  --border-faint:   #EEEAE2;
+  --border-faint:   #EBF0F5;
 
   /* ---- Text ---- */
   --text-1:        var(--ink-900);   /* primary / instructions */
@@ -79,12 +100,12 @@
   --text-3:        var(--ink-400);   /* muted / meta */
   --text-disabled: var(--ink-300);
   --text-on-color: #FFFFFF;          /* on saturated fills */
-  --text-on-light: #FFFFFF;          /* on teal/green fills — now white */
+  --text-on-light: #FFFFFF;          /* on brand/green fills — white */
 
-  /* ---- Brand ---- */
-  --brand:         var(--teal-600);
-  --brand-strong:  var(--teal-700);
-  --brand-tint:    var(--teal-50);
+  /* ---- Brand (information / voice) ---- */
+  --brand:         #175CD3;
+  --brand-strong:  #12459E;
+  --brand-tint:    #EAF1FC;
 
   /* ---- Emergency / critical (red) ---- */
   --red:           var(--red-600);
@@ -97,46 +118,95 @@
   --green:         var(--green-600);
   --green-strong:  var(--green-700);
   --green-tint:    var(--green-50);
+  --green-bright:  var(--green-600);
 
-  /* ---- Step-type accents (kept for the runner badges; calmer hues) ---- */
-  --drug:          #7A5AF0;          /* DRUG step (violet) */
-  --drug-tint:     rgba(122, 90, 240, 0.10);
-  --decision:      var(--amber-600); /* DECISION step (amber) */
-  --decision-tint: var(--amber-50);
-  --timed:         var(--teal-500);  /* TIMED step (teal) */
-  --timed-tint:    var(--teal-50);
-  --roles:         #2E6BD6;          /* ROLES step (blue) */
-  --roles-tint:    rgba(46, 107, 214, 0.10);
-  --instruction:   var(--ink-900);   /* INSTRUCTION (ink) */
+  /* ---- Step-type accents — rainbow killed; structure is ink, not colour ---- */
+  --drug:          var(--ink-700);
+  --drug-tint:     var(--surface-3);
+  --decision:      var(--ink-700);
+  --decision-tint: var(--surface-3);
+  --timed:         var(--ink-700);
+  --timed-tint:    var(--surface-3);
+  --roles:         var(--ink-700);
+  --roles-tint:    var(--surface-3);
+  --instruction:   var(--ink-700);
 
-  /* ---- AI / voice (retained, mapped to teal; tile removed from web) ---- */
-  --ai-from:       var(--amber-600);
-  --ai-to:         var(--amber-700);
-  --ai-tint:       var(--amber-50);
+  /* ---- AI / voice — mapped onto the brand blues ---- */
+  --ai-from:       var(--brand);
+  --ai-to:         var(--brand-strong);
+  --ai-tint:       var(--brand-tint);
 
-  /* ---- Warning (amber) ---- */
+  /* ---- Warning (amber safety gate) ---- */
   --warn:          var(--amber-600);
   --warn-tint:     var(--amber-50);
 
-  /* ---- Glows / shadows used inline by components ---- */
-  --glow-green:    var(--shadow-btn, 0 6px 16px rgba(12, 110, 110, 0.22));
-  --glow-red:      var(--shadow-999, 0 8px 22px rgba(210, 59, 46, 0.28));
-  --glow-ai:       0 6px 16px rgba(224, 151, 43, 0.22);
+  /* ---- Glows / shadows used inline by components (toned down) ---- */
+  --glow-green:    0 4px 12px rgba(23, 138, 83, 0.18);
+  --glow-red:      0 6px 16px rgba(217, 45, 32, 0.22);
+  --glow-ai:       none;
 
   /* ---- Focus ring (light) ---- */
-  --focus-color:   #16857F;
-  --focus-ring:    0 0 0 4px rgba(22, 133, 127, 0.35);
-  --focus-ring-tight: 0 0 0 3px rgba(22, 133, 127, 0.35);
+  --focus-color:   #175CD3;
+  --focus-ring:    0 0 0 4px rgba(23, 92, 211, 0.35);
+  --focus-ring-tight: 0 0 0 3px rgba(23, 92, 211, 0.35);
 
-  /* ---- Per-condition tile hues (soft, used for tile icon circles) ---- */
-  --cond-cardiac:  #D23B2E;
-  --cond-anaphyl:  #C2410C;
-  --cond-choking:  #B9781D;
-  --cond-asthma:   #2E6BD6;
-  --cond-chest:    #C2304F;
-  --cond-hypo:     #7A5AF0;
-  --cond-seizure:  #6D4AF0;
-  --cond-faint:    #5C6A67;
-  --cond-stroke:   #0C6E6E;
-  --cond-adrenal:  #B9781D;
+  /* ---- Per-condition tile hues — only genuinely-critical tiles get red ---- */
+  --cond-cardiac:  #D92D20;
+  --cond-anaphyl:  #D92D20;
+  --cond-choking:  var(--ink-500);
+  --cond-asthma:   var(--ink-500);
+  --cond-chest:    var(--ink-500);
+  --cond-hypo:     var(--ink-500);
+  --cond-seizure:  var(--ink-500);
+  --cond-faint:    var(--ink-500);
+  --cond-stroke:   var(--ink-500);
+  --cond-adrenal:  var(--ink-500);
+}
+
+/* ── Theatre: dark emergency surfaces. Applied as a class on the root of
+   ProtocolRunner / CPRMode / TriageWizard. Redefines the semantic layer only —
+   components keep consuming the same names. ── */
+.theatre {
+  --bg: #0C1118;
+  --surface-1: #151D29;
+  --surface-2: #121A24;
+  --surface-3: #1A2534;
+  --surface-inset: #101823;
+  --scrim: rgba(2, 6, 12, 0.6);
+  --border: #2A3644;
+  --border-strong: #3D5B82;
+  --border-faint: #1D2733;
+  --text-1: #F2F6FA;
+  --text-2: #9FB0C2;
+  --text-3: #8FA0B3;
+  --text-disabled: #5B6873;
+  --text-on-color: #FFFFFF;
+  --brand: #54C1FF;
+  --brand-strong: #7FD1FF;
+  --brand-tint: rgba(84, 193, 255, 0.10);
+  --red: #E5484D;
+  --red-strong: #FF6B6B;
+  --red-deep: #B42318;
+  --red-tint: rgba(255, 77, 77, 0.12);
+  --red-tint-2: #2A1214;
+  --green: #178A53;
+  --green-strong: #3DD68C;
+  --green-tint: rgba(61, 214, 140, 0.14);
+  --green-bright: #3DD68C;
+  --warn: #FFB224;
+  --warn-tint: rgba(255, 178, 36, 0.08);
+  --drug: var(--text-1);
+  --decision: var(--warn);
+  --timed: var(--brand);
+  --roles: var(--text-2);
+  --instruction: var(--text-1);
+  --drug-tint: var(--surface-3);
+  --decision-tint: var(--surface-3);
+  --timed-tint: var(--surface-3);
+  --roles-tint: var(--surface-3);
+  --focus-color: #54C1FF;
+  --focus-ring: 0 0 0 4px rgba(84, 193, 255, 0.35);
+  --focus-ring-tight: 0 0 0 3px rgba(84, 193, 255, 0.35);
+  --glow-green: none;
+  --glow-red: 0 6px 18px rgba(229, 72, 77, 0.30);
 }
