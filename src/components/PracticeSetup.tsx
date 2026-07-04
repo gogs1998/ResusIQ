@@ -11,6 +11,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { newId } from '../lib/ids';
 import type { PracticeSetup, StaffRole, EquipmentItem } from '../types';
 
 const defaultEquipment: EquipmentItem[] = [
@@ -77,7 +78,7 @@ export function PracticeSetupWizard() {
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<PracticeSetup>>({
-    id: practiceSetup?.id || crypto.randomUUID(),
+    id: practiceSetup?.id || newId(),
     name: practiceSetup?.name || '',
     address: practiceSetup?.address || '',
     postcode: practiceSetup?.postcode || '',

@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
+import { newId } from '../lib/ids';
 
 interface AppState {
   // Navigation
@@ -129,13 +130,13 @@ export const useAppStore = create<AppState>()(
           // Triage/library keep them (arrived via uncertainty).
           const startIndex = source === 'tile' ? firstActionStepIndex(protocol.steps) : 0;
           const event: EmergencyEvent = {
-            id: crypto.randomUUID(),
+            id: newId(),
             timestamp: new Date().toISOString(),
             protocol_id: protocolId,
             protocol_version: '2026.1',
             practice_id: get().practiceSetup?.id || 'unknown',
             events: [{
-              id: crypto.randomUUID(),
+              id: newId(),
               timestamp: new Date().toISOString(),
               type: 'protocol_started',
               label: `Started: ${protocol.title}`
@@ -275,7 +276,7 @@ export const useAppStore = create<AppState>()(
       
       createEvent: (protocolId) => {
         const event: EmergencyEvent = {
-          id: crypto.randomUUID(),
+          id: newId(),
           timestamp: new Date().toISOString(),
           protocol_id: protocolId,
           protocol_version: '2026.1',
@@ -290,7 +291,7 @@ export const useAppStore = create<AppState>()(
         const { activeEvent } = get();
         if (activeEvent) {
           const entry: EventLogEntry = {
-            id: crypto.randomUUID(),
+            id: newId(),
             timestamp: new Date().toISOString(),
             type,
             label,
