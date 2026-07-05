@@ -43,6 +43,32 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Desktop shell ─────────────────────────────────────────────
+   ResusIQ is a phone instrument. On wide viewports we present it as one:
+   the app renders at phone width, centred on a quiet dark backdrop, instead
+   of stretching tiles across a monitor (which reads as a dated web page).
+   Phones/small tablets (<720px) are untouched — the app fills the screen. */
+@media (min-width: 720px) {
+  body {
+    background:
+      radial-gradient(1200px 800px at 50% -10%, #232b36 0%, #14181e 55%, #0e1116 100%);
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+  #root {
+    width: 430px;
+    max-width: 430px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 24px 80px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+}
+@media (min-width: 720px) and (min-height: 960px) {
+  /* Plenty of vertical room: float the instrument with rounded corners. */
+  body { align-items: center; }
+  #root { height: 900px; border-radius: 40px; }
+}
+
 /* ── iOS PWA: prevent zoom on double-tap / input ──────────── */
 input, select, textarea, button {
   font-size: 16px;
