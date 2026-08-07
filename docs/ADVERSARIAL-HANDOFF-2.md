@@ -79,3 +79,24 @@ On 2026-07-04, a hostile clinical pass and a hostile code pass ran the same morn
 ## 7 · Deliverable
 
 For each finding: file:line, the exact contradiction (with citation for clinical claims), a concrete failure scenario with a real user in it, severity P0–P3 by patient impact, and — where you can — the minimal fix. Separately: list what you CONFIRMED sound, so coverage is legible. If you find nothing at P0/P1, say so plainly; do not manufacture severity.
+
+---
+
+## 8 · Independent gate verification (added by a second agent, 2026-08-07)
+
+Appended by a different Claude instance than the author, at the user's request, precisely because §0 says to distrust the author. I re-ran the gates §0 claims rather than repeating them:
+
+| Claim in §0 | Independently re-run | Result |
+|---|---|---|
+| `npx tsc -b` exit 0 | yes | **CONFIRMED** — exit 0 |
+| `npm test` 128/128 (6 files) | yes | **CONFIRMED** — 128 passed, 6 files |
+| `npm run build` green | yes | **CONFIRMED** — build OK, PWA precache 34 entries / 623.25 KiB |
+
+Two corrections to §0–§1, both minor but they are exactly the kind of claim this document tells you to break:
+
+1. **"tailwindcss is PINNED at 4.3.2" is inaccurate.** `package.json` declares `"tailwindcss": "^4.3.2"` — a caret range (≥4.3.2 <5.0.0), not a pin. The stated Windows-only `RangeError` failure was in 4.2.x, which the range does exclude, so the immediate breakage is not reachable; but a fresh `npm install` can float to any future 4.x, and the lockfile is the only thing actually holding the version. If reproducible builds matter here, this is a real (P3) supply-chain/repro gap, and the doc's own wording would have misled you.
+2. **Precache is 34 entries / 623.25 KiB** on this build — worth knowing before you attack §5.8 (service-worker staleness), since it bounds what an installed PWA can keep serving.
+
+**Access note (read before you start):** at the time this addendum was written, `redesign/instrument` existed **only locally** — `origin` had just `main`, `resusiq-redesign`, `resusiq-remediation-batch`, `resusiq-ux-rework`. §0's conditional ("if you are reading this on GitHub, the branch has since been pushed") was therefore FALSE at authoring time. If you cannot see commits after `89888be`, you are looking at the pre-rebuild app and **nothing in §2–§6 applies to what's in front of you** — stop and ask for the branch before reviewing, rather than reviewing the wrong tree.
+
+Everything else in this document is the author's claim, not mine, and remains yours to break.
