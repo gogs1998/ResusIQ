@@ -5,11 +5,11 @@ import {
   Volume2,
   VolumeX,
   Check,
-  X,
   Timer,
   Pill,
   Users,
   ChevronRight,
+  ChevronDown,
   Mic,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
@@ -20,6 +20,10 @@ import { getDrugById } from '../data/drugs';
 import { DrugCard } from './DrugCard';
 import { ChildDoseBands } from './ChildDoseBands';
 import { CPRMode } from './CPRMode';
+import { EscapeRail } from './console/EscapeRail';
+import { TimerStrip } from './console/TimerStrip';
+import { Deck } from './console/Deck';
+import { elapsedSeconds, formatClock } from '../lib/emergencyTimers';
 
 const KICKER: Record<string, string> = {
   instruction: 'Action',
@@ -28,6 +32,11 @@ const KICKER: Record<string, string> = {
   timer_block: 'Reassess',
   role_assignment: 'Assign roles',
 };
+
+function canCollapseDetail(step: { id: string; recognition?: boolean }): boolean {
+  if (step.id === 'fast') return false;
+  return Boolean(step.recognition) || step.id === 'recognition';
+}
 
 export function ProtocolRunner() {
   const {
@@ -42,13 +51,28 @@ export function ProtocolRunner() {
     addEventLog,
     practiceSetup,
     isTrainingMode,
+    activeEvent,
   } = useAppStore();
 
   const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
-  const [handsFree, setHandsFree] = useState(false);
+  const [handsFree, setHandsFree] = useState(voiceCommandsSupported);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [signsOpen, setSignsOpen] = useState(false);
+  const [, setTick] = useState(0);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    setSignsOpen(false);
+    setShowDrugCard(false);
+    setConfirmEnd(false);
+  }, [currentStepIndex]);
 
   useEffect(() => {
     if (currentStep && !isMuted) {
@@ -144,6 +168,8 @@ export function ProtocolRunner() {
   const [stepHero, ...stepRest] = currentStep.show.split('\n\n');
   const stepDetail = stepRest.join('\n\n');
   const kicker = KICKER[currentStep.type] ?? 'Action';
+  const collapse = canCollapseDetail(currentStep) && !!stepDetail;
+  const elapsed = activeEvent ? formatClock(elapsedSeconds(activeEvent.timestamp, new Date())) : '00:00';
 
   return (
     <div className="riq-screen theatre safe-area-top">
@@ -152,64 +178,84 @@ export function ProtocolRunner() {
       )}
 
       <header className="flex items-center" style={{ gap: 4, padding: '4px 8px' }}>
-        <button
-          onClick={endEmergency}
-          className="flex items-center justify-center gap-1 flex-shrink-0"
-          style={{
-            minWidth: 56,
-            height: 48,
-            padding: '0 10px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--red-tint)',
-            border: '1px solid var(--red-border)',
-            color: 'var(--red)',
-            fontWeight: 800,
-            fontSize: 12,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-          }}
-          aria-label="End emergency"
-        >
-          End
-        </button>
-        <div className="flex-1 min-w-0 text-center">
-          <div
-            className="truncate"
-            style={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--text-2)',
-            }}
-          >
-            {activeProtocol.title}
+        {confirmEnd ? (
+          <div className="flex-1 flex items-center" style={{ gap: 8, padding: '0 4px' }}>
+            <span className="flex-1 font-bold" style={{ fontSize: 13, color: 'var(--text-1)' }}>End this emergency?</span>
+            <button
+              onClick={() => setConfirmEnd(false)}
+              style={{ minHeight: 44, padding: '0 12px', borderRadius: 8, background: 'var(--surface-3)', border: 'none', color: 'var(--text-1)', fontWeight: 700, fontSize: 13 }}
+            >
+              Keep going
+            </button>
+            <button
+              onClick={endEmergency}
+              style={{ minHeight: 44, padding: '0 12px', borderRadius: 8, background: 'var(--red)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 13 }}
+            >
+              End now
+            </button>
           </div>
-          <div className="riq-data" style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-            {currentStepIndex + 1} / {totalSteps}
-          </div>
-        </div>
-        {voiceCommandsSupported && (
-          <button
-            onClick={() => setHandsFree(h => !h)}
-            className="riq-icon-btn"
-            aria-label={handsFree ? 'Turn off hands-free voice' : 'Turn on hands-free voice'}
-            aria-pressed={handsFree}
-          >
-            <Mic className="w-5 h-5" style={{ color: handsFree ? 'var(--brand)' : 'var(--text-3)' }} />
-          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setConfirmEnd(true)}
+              className="flex items-center justify-center gap-1 flex-shrink-0"
+              style={{
+                minWidth: 56,
+                height: 48,
+                padding: '0 10px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--red-tint)',
+                border: '1px solid var(--red-border)',
+                color: 'var(--red)',
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+              aria-label="End emergency"
+            >
+              End
+            </button>
+            <div className="flex-1 min-w-0 text-center">
+              <div
+                className="truncate"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-2)',
+                }}
+              >
+                {activeProtocol.title}
+              </div>
+              <div className="riq-data" style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                {currentStepIndex + 1} / {totalSteps} · {elapsed}
+              </div>
+            </div>
+            {voiceCommandsSupported && (
+              <button
+                onClick={() => setHandsFree(h => !h)}
+                className="riq-icon-btn"
+                aria-label={handsFree ? 'Turn off hands-free voice' : 'Turn on hands-free voice'}
+                aria-pressed={handsFree}
+              >
+                <Mic className="w-5 h-5" style={{ color: handsFree ? 'var(--brand)' : 'var(--text-3)' }} />
+              </button>
+            )}
+            <button
+              onClick={toggleMute}
+              className="riq-icon-btn"
+              aria-label={isMuted ? 'Unmute voice' : 'Mute voice'}
+              aria-pressed={isMuted}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-5 h-5" />}
+            </button>
+          </>
         )}
-        <button
-          onClick={toggleMute}
-          className="riq-icon-btn"
-          aria-label={isMuted ? 'Unmute voice' : 'Mute voice'}
-          aria-pressed={isMuted}
-        >
-          {isMuted ? <VolumeX className="w-5 h-5" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-5 h-5" />}
-        </button>
       </header>
 
-      <div className="flex" style={{ gap: 3, padding: '0 16px 8px' }}>
+      <div className="flex" style={{ gap: 3, padding: '0 16px 4px' }}>
         {Array.from({ length: totalSteps }, (_, i) => (
           <div
             key={i}
@@ -237,7 +283,9 @@ export function ProtocolRunner() {
         )}
       </a>
 
-      <main className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 20px 12px', minHeight: 0 }}>
+      <TimerStrip />
+
+      <main className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '8px 20px 12px', minHeight: 0 }}>
         <div aria-live="assertive" role="status" className="sr-only">
           {`Step ${currentStepIndex + 1} of ${totalSteps}. ${currentStep.show}`}
         </div>
@@ -281,7 +329,27 @@ export function ProtocolRunner() {
           >
             {isDecision && currentStep.question ? currentStep.question : stepHero}
           </h2>
-          {stepDetail && (
+
+          {collapse ? (
+            <button
+              onClick={() => setSignsOpen((o) => !o)}
+              className="flex items-center gap-2"
+              style={{
+                marginTop: 12,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                color: 'var(--brand)',
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+              aria-expanded={signsOpen}
+            >
+              <ChevronDown className="w-4 h-4" style={{ transform: signsOpen ? 'rotate(180deg)' : undefined }} />
+              Signs to look for
+            </button>
+          ) : null}
+          {stepDetail && (!collapse || signsOpen) && (
             <p
               className="whitespace-pre-line"
               style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.4, marginTop: 12 }}
@@ -322,11 +390,6 @@ export function ProtocolRunner() {
           {isDecision && currentStep.answers && (
             <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {currentStep.answers.map((answer, idx) => {
-                const isYes = /^yes/i.test(answer.label);
-                const isNo = /^no/i.test(answer.label);
-                const ring = isYes ? 'var(--green-bright)' : isNo ? 'var(--red)' : 'var(--border-strong)';
-                const iconBg = isYes ? 'var(--green-tint)' : isNo ? 'var(--red-tint)' : 'var(--brand-tint)';
-                const iconColor = isYes ? 'var(--green-bright)' : isNo ? 'var(--red)' : 'var(--brand)';
                 const [main, ...subParts] = answer.label.split(' — ');
                 const sub = subParts.join(' — ');
                 return (
@@ -340,14 +403,14 @@ export function ProtocolRunner() {
                       padding: '14px 16px',
                       borderRadius: 'var(--radius-lg)',
                       background: 'var(--surface-1)',
-                      border: `2px solid ${ring}`,
+                      border: '2px solid var(--border-strong)',
                     }}
                   >
                     <span
                       className="flex items-center justify-center flex-shrink-0"
-                      style={{ width: 44, height: 44, borderRadius: 10, background: iconBg }}
+                      style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--surface-3)' }}
                     >
-                      {isYes ? <Check className="w-6 h-6" style={{ color: iconColor }} /> : isNo ? <X className="w-6 h-6" style={{ color: iconColor }} /> : <ChevronRight className="w-6 h-6" style={{ color: iconColor }} />}
+                      <ChevronRight className="w-6 h-6" style={{ color: 'var(--text-1)' }} />
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block font-bold" style={{ fontSize: 18, color: 'var(--text-1)', lineHeight: 1.2 }}>{main}</span>
@@ -361,7 +424,7 @@ export function ProtocolRunner() {
 
           {currentStep.type === 'drug' && drug && (
             <button
-              onClick={() => setShowDrugCard(true)}
+              onClick={() => setShowDrugCard((o) => !o)}
               className="w-full text-left active:scale-[0.99] transition-transform"
               style={{
                 marginTop: 20,
@@ -370,6 +433,7 @@ export function ProtocolRunner() {
                 background: 'var(--surface-1)',
                 border: '1px solid var(--border)',
               }}
+              aria-expanded={showDrugCard}
             >
               <span className="flex items-center" style={{ gap: 12 }}>
                 <span
@@ -390,6 +454,10 @@ export function ProtocolRunner() {
             </button>
           )}
 
+          {currentStep.type === 'drug' && showDrugCard && drug && (
+            <DrugCard drug={drug} onClose={() => setShowDrugCard(false)} variant="inline" />
+          )}
+
           {currentStep.type === 'drug' && drug?.child_dose_bands && (
             <div style={{ marginTop: 12 }}>
               <ChildDoseBands drug={drug} />
@@ -403,6 +471,12 @@ export function ProtocolRunner() {
           )}
         </div>
       </main>
+
+      <div style={{ padding: '0 16px 8px' }}>
+        <EscapeRail />
+      </div>
+
+      <Deck />
 
       <footer className="safe-area-bottom" style={{ padding: '8px 16px 16px' }}>
         {!isDecision && (
@@ -424,8 +498,6 @@ export function ProtocolRunner() {
           </button>
         )}
       </footer>
-
-      {showDrugCard && drug && <DrugCard drug={drug} onClose={() => setShowDrugCard(false)} />}
     </div>
   );
 }

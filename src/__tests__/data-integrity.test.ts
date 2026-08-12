@@ -61,4 +61,11 @@ describe('home condition tiles', () => {
       expect(tileIds, protocol.id).toContain(protocol.id);
     }
   });
+
+  it('ranks life-threats (stroke, chest pain) above fainting', () => {
+    const ids = CONDITIONS.map((c) => c.id);
+    expect(ids.indexOf('stroke')).toBeLessThan(ids.indexOf('syncope'));
+    expect(ids.indexOf('chest_pain')).toBeLessThan(ids.indexOf('syncope'));
+    expect(ids.indexOf('stroke')).toBeLessThan(ids.indexOf('asthma'));
+  });
 });

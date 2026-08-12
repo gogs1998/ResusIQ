@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { triageQuestions, protocols } from '../data/protocols';
+import { EscapeRail } from './console/EscapeRail';
 
 export function TriageWizard() {
   const {
@@ -180,11 +181,11 @@ export function TriageWizard() {
               padding: '14px 16px',
               borderRadius: 'var(--radius-lg)',
               background: 'var(--surface-1)',
-              border: '2px solid var(--green-bright)',
+              border: '2px solid var(--border-strong)',
             }}
           >
-            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--green-tint)' }}>
-              <Check className="w-6 h-6" style={{ color: 'var(--green-bright)' }} />
+            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--surface-3)' }}>
+              <Check className="w-6 h-6" style={{ color: 'var(--text-1)' }} />
             </span>
             <span className="font-bold" style={{ fontSize: 20 }}>Yes</span>
           </button>
@@ -197,11 +198,11 @@ export function TriageWizard() {
               padding: '14px 16px',
               borderRadius: 'var(--radius-lg)',
               background: 'var(--surface-1)',
-              border: '2px solid var(--red)',
+              border: '2px solid var(--border-strong)',
             }}
           >
-            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--red-tint)' }}>
-              <X className="w-6 h-6" style={{ color: 'var(--red)' }} />
+            <span className="flex items-center justify-center flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--surface-3)' }}>
+              <X className="w-6 h-6" style={{ color: 'var(--text-1)' }} />
             </span>
             <span className="font-bold" style={{ fontSize: 20 }}>No</span>
           </button>
@@ -212,21 +213,8 @@ export function TriageWizard() {
         <p className="text-center" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 8 }}>
           If in doubt, go straight to
         </p>
-        <div className="grid grid-cols-2" style={{ gap: 8 }}>
-          <button
-            onClick={() => startEmergency('cardiac_arrest')}
-            className="font-extrabold active:scale-[0.98] transition-transform"
-            style={{
-              minHeight: 56,
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--red-tint)',
-              border: '1.5px solid var(--red-border)',
-              color: 'var(--red)',
-              fontSize: 14,
-            }}
-          >
-            Cardiac arrest
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <EscapeRail />
           <a
             href="tel:999"
             className="flex items-center justify-center gap-1.5 font-extrabold active:scale-[0.98] transition-transform"

@@ -21,6 +21,7 @@ interface AppState {
   activeProtocol: Protocol | null;
   currentStepIndex: number;
   startEmergency: (protocolId: string, source?: 'tile' | 'triage' | 'library') => void;
+  switchProtocol: (protocolId: string) => void;
   setProtocol: (protocol: Protocol | null) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -77,7 +78,8 @@ export const useAppStore = create<AppState>()(
           if (source === 'tile') {
             while (
               startIndex < protocol.steps.length - 1 &&
-              protocol.steps[startIndex].recognition
+              protocol.steps[startIndex].recognition &&
+              protocol.steps[startIndex].id !== 'fast'
             ) {
               startIndex++;
             }
@@ -109,6 +111,18 @@ export const useAppStore = create<AppState>()(
       },
       
       setProtocol: (protocol) => set({ activeProtocol: protocol, currentStepIndex: 0 }),
+
+      // Mid-emergency switch (wrong-protocol escape). Keeps the same incident
+      // log so 999/SBAR still see what happened before the switch.
+      switchProtocol: (protocolId) => {
+        const protocol = protocols.find(p => p.id === protocolId);
+        if (!protocol || !get().isEmergencyActive) return;
+        get().addEventLog('protocol_started', `Switched to: ${protocol.title}`);
+        set({
+          activeProtocol: protocol,
+          currentStepIndex: 0,
+        });
+      },
       
       nextStep: () => {
         const { activeProtocol, currentStepIndex } = get();

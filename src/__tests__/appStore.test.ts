@@ -63,8 +63,26 @@ describe('appStore emergency lifecycle', () => {
   it('does NOT skip recognition where clinical kept it (anaphylaxis) even on tile entry', () => {
     useAppStore.getState().startEmergency('anaphylaxis', 'tile');
     const s = useAppStore.getState();
-    // anaphylaxis recognition is intentionally NOT flagged — must still show first
     expect(s.currentStepIndex).toBe(0);
     expect(s.activeProtocol?.steps[0].id).toBe('recognition');
+  });
+
+  it('does NOT skip FAST on tile entry — it is a diagnostic gate, not a symptom list', () => {
+    useAppStore.getState().startEmergency('stroke', 'tile');
+    const s = useAppStore.getState();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeProtocol?.steps[0].id).toBe('fast');
+  });
+
+  it('switchProtocol keeps the incident log and jumps to the new graph', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const eventId = useAppStore.getState().activeEvent?.id;
+    store.switchProtocol('cardiac_arrest');
+    const s = useAppStore.getState();
+    expect(s.activeProtocol?.id).toBe('cardiac_arrest');
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeEvent?.id).toBe(eventId);
+    expect(s.activeEvent?.events.some((e) => e.label.includes('Switched to'))).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 /**
  * UI identity for the 10 emergencies — labels, scan-cues, and colour marks.
  * Not clinical content: protocol wording and doses live in data/protocols.ts.
+ * Ranked by acuity so the home grid can put life-threats above the rest.
  */
 export type ConditionTone = 'critical' | 'severe' | 'urgent' | 'standard';
 
@@ -14,18 +15,17 @@ export interface ConditionTile {
 
 export const CONDITIONS: ConditionTile[] = [
   { id: 'cardiac_arrest', label: 'Cardiac arrest', cue: 'Unresponsive, not breathing', icon: 'HeartPulse', tone: 'critical' },
-  { id: 'anaphylaxis', label: 'Anaphylaxis', cue: 'Swelling, rash, wheeze', icon: 'ShieldAlert', tone: 'severe' },
+  { id: 'anaphylaxis', label: 'Anaphylaxis', cue: 'Sudden swelling, rash, or wheeze', icon: 'ShieldAlert', tone: 'severe' },
   { id: 'choking', label: 'Choking', cue: 'Cannot speak or cough', icon: 'Wind', tone: 'severe' },
-  { id: 'asthma', label: 'Asthma attack', cue: 'Cannot finish a sentence', icon: 'Stethoscope', tone: 'urgent' },
-  { id: 'chest_pain', label: 'Chest pain', cue: 'Suspected heart attack', icon: 'Heart', tone: 'severe' },
-  { id: 'hypoglycaemia', label: 'Low blood sugar', cue: 'Confused, sweaty, diabetic', icon: 'Droplet', tone: 'urgent' },
-  { id: 'seizure', label: 'Seizure', cue: 'Shaking or unresponsive', icon: 'Brain', tone: 'urgent' },
-  { id: 'syncope', label: 'Fainting', cue: 'Collapsed, now recovering', icon: 'CircleOff', tone: 'standard' },
+  { id: 'chest_pain', label: 'Chest pain', cue: 'Pain, tightness, or crushing', icon: 'Heart', tone: 'severe' },
   { id: 'stroke', label: 'Stroke', cue: 'Face, arm, or speech', icon: 'Zap', tone: 'severe' },
-  { id: 'adrenal_crisis', label: 'Adrenal crisis', cue: 'On steroids, very unwell', icon: 'AlertOctagon', tone: 'urgent' },
+  { id: 'asthma', label: 'Asthma attack', cue: 'Wheeze, tight chest', icon: 'Stethoscope', tone: 'urgent' },
+  { id: 'hypoglycaemia', label: 'Low blood sugar', cue: 'Confused, sweaty, known diabetic', icon: 'Droplet', tone: 'urgent' },
+  { id: 'seizure', label: 'Seizure', cue: 'Shaking or unresponsive', icon: 'Brain', tone: 'urgent' },
+  { id: 'adrenal_crisis', label: 'Adrenal crisis', cue: 'On steroids and collapsed', icon: 'AlertOctagon', tone: 'urgent' },
+  { id: 'syncope', label: 'Fainting', cue: 'Collapsed, now recovering', icon: 'CircleOff', tone: 'standard' },
 ];
 
-/** CSS custom property for each condition's mark colour. */
 export const CONDITION_MARK: Record<string, string> = {
   cardiac_arrest: 'var(--cond-cardiac)',
   anaphylaxis: 'var(--cond-anaphyl)',

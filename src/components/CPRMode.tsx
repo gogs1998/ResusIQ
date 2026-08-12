@@ -44,6 +44,7 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
   const { formattedTime, start: startTimer } = useStopwatch();
   const [shockCount, setShockCount] = useState(0);
   const [showAEDPrompt, setShowAEDPrompt] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   useEffect(() => {
     if (!isMuted) {
@@ -91,26 +92,43 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
 
       <header className="flex items-center justify-between" style={{ padding: '4px 8px' }}>
         <div className="flex items-center gap-2 min-w-0">
-          <button
-            onClick={onEnd}
-            aria-label="End emergency"
-            className="flex items-center justify-center flex-shrink-0"
-            style={{
-              minWidth: 56,
-              height: 48,
-              padding: '0 10px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--red-tint)',
-              border: '1px solid var(--red-border)',
-              color: 'var(--red)',
-              fontWeight: 800,
-              fontSize: 12,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
-            End
-          </button>
+          {confirmEnd ? (
+            <>
+              <button
+                onClick={() => setConfirmEnd(false)}
+                style={{ minHeight: 44, padding: '0 12px', borderRadius: 8, background: 'var(--surface-3)', border: 'none', color: 'var(--text-1)', fontWeight: 700, fontSize: 13 }}
+              >
+                Keep going
+              </button>
+              <button
+                onClick={onEnd}
+                style={{ minHeight: 44, padding: '0 12px', borderRadius: 8, background: 'var(--red)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 13 }}
+              >
+                End now
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirmEnd(true)}
+              aria-label="End emergency"
+              className="flex items-center justify-center flex-shrink-0"
+              style={{
+                minWidth: 56,
+                height: 48,
+                padding: '0 10px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--red-tint)',
+                border: '1px solid var(--red-border)',
+                color: 'var(--red)',
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              End
+            </button>
+          )}
           <div className="min-w-0">
             <h1 className="font-extrabold flex items-center gap-2" style={{ color: 'var(--red)', fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1.1 }}>
               <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--red)' }} aria-hidden />

@@ -2,6 +2,7 @@ import { Phone, MapPin, ArrowLeft, Copy, Check, Clock } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { buildScriptLines, getPatientState } from '../lib/callScript';
 
 const backBtn: CSSProperties = {
   width: 56,
@@ -47,60 +48,15 @@ export function CallScript() {
 
   const emergencyType = activeProtocol?.title || 'Medical Emergency';
 
-  const scriptLines = [
-    { label: 'Service', text: 'AMBULANCE' },
-    { label: 'Location', text: `${practiceName}, ${address}, ${postcode}` },
-    { label: 'Phone', text: phone },
-    { label: 'Emergency', text: emergencyType },
-    { label: 'Patient', text: 'Adult patient at dental practice' },
-    { label: 'State', text: getPatientState() },
-  ];
-
-  // Only assert a drug was administered when it was actually confirmed in-flow.
-  // Reading from the event log (as SBARHandover does) prevents the 999 script
-  // from telling a dispatcher a drug was given when the step was skipped.
-  function drugGiven(match: string): boolean {
-    return (activeEvent?.events ?? []).some(
-      (e) =>
-        e.type === 'drug_given' &&
-        (e.drug_id?.toLowerCase().includes(match) ||
-          e.label.toLowerCase().includes(match))
-    );
-  }
-
-  function getPatientState(): string {
-    if (!activeProtocol) return 'Unwell — requires emergency assessment';
-    switch (activeProtocol.id) {
-      case 'cardiac_arrest':
-        return 'Unconscious and not breathing. CPR in progress.';
-      case 'anaphylaxis':
-        return drugGiven('adrenaline')
-          ? 'Suspected anaphylaxis. Adrenaline given IM.'
-          : 'Suspected anaphylaxis — adrenaline not yet given.';
-      case 'asthma':
-        return drugGiven('salbutamol')
-          ? 'Severe asthma. Salbutamol given.'
-          : 'Severe asthma — salbutamol not yet given.';
-      case 'hypoglycaemia':
-        return 'Hypoglycaemia. Known diabetic.';
-      case 'syncope':
-        return 'Collapsed / fainted. Lying flat.';
-      case 'seizure':
-        return 'Having a seizure / post-seizure.';
-      case 'chest_pain':
-        return drugGiven('aspirin')
-          ? 'Chest pain, suspected heart attack. Aspirin given.'
-          : 'Chest pain, suspected heart attack — aspirin not yet given.';
-      case 'choking':
-        return 'Choking. Back blows and abdominal thrusts being given.';
-      case 'stroke':
-        return 'Suspected stroke. FAST positive.';
-      case 'adrenal_crisis':
-        return 'Suspected adrenal crisis. Patient on steroids.';
-      default:
-        return 'Unwell — requires emergency assessment';
-    }
-  }
+  const scriptLines = buildScriptLines({
+    protocolId: activeProtocol?.id,
+    protocolTitle: activeProtocol?.title,
+    practiceName: practiceSetup?.name,
+    address: practiceSetup?.address,
+    postcode: practiceSetup?.postcode,
+    phone: practiceSetup?.phone,
+    events: activeEvent?.events,
+  });
 
   const fullScript = scriptLines.map(l => `${l.label}: ${l.text}`).join('\n');
 
@@ -217,7 +173,7 @@ export function CallScript() {
           </ScriptStep>
 
           <ScriptStep number={4} instruction="Patient status">
-            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState()}"</p>
+            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState(activeProtocol?.id, activeEvent?.events)}"</p>
           </ScriptStep>
 
           <ScriptStep number={5} instruction="Answer their questions">
