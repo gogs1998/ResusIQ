@@ -1,10 +1,13 @@
-/* ResusIQ webfont — Lexend, self-hosted via @fontsource (offline-safe).
-   Lexend is engineered to reduce visual stress and improve reading proficiency
-   — exactly what a panicking user needs at arm's length. Single family, used at
-   every size. Weights 300–800 cover the calm/big/obvious ramp. */
+/* ResusIQ webfonts — self-hosted, offline-safe.
+   Lexend: engineered to reduce visual stress (UI + instructions).
+   IBM Plex Mono: doses, timers, counters — like print on a syringe driver. */
 @import '@fontsource/lexend/300.css';
 @import '@fontsource/lexend/400.css';
 @import '@fontsource/lexend/500.css';
 @import '@fontsource/lexend/600.css';
 @import '@fontsource/lexend/700.css';
 @import '@fontsource/lexend/800.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/ibm-plex-mono/700.css';

@@ -105,7 +105,7 @@ export function SBARHandover() {
     fontWeight: 700,
     letterSpacing: 'var(--ls-label)',
     textTransform: 'uppercase' as const,
-    color: 'var(--teal-700)',
+            color: 'var(--brand-strong)',
   };
 
   const inputStyle = {
@@ -120,7 +120,7 @@ export function SBARHandover() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-screen safe-area-top">
       {/* Header */}
       <header className="flex items-center gap-2 px-2" style={{ height: 'var(--appbar-h)' }}>
         <button
@@ -137,9 +137,9 @@ export function SBARHandover() {
 
       <div className="flex-1 overflow-y-auto" style={{ padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* What is SBAR */}
-        <div style={{ background: 'var(--teal-50)', borderRadius: 'var(--radius-lg)', padding: 16 }}>
+        <div style={{ background: 'var(--brand-tint)', borderRadius: 'var(--radius-lg)', padding: 16 }}>
           <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}>
-            <strong style={{ color: 'var(--teal-700)' }}>SBAR</strong> = Situation, Background, Assessment, Recommendation.
+            <strong style={{ color: 'var(--brand-strong)' }}>SBAR</strong> = Situation, Background, Assessment, Recommendation.
             Use this to hand over to the ambulance crew.
           </p>
         </div>

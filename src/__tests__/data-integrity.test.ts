@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import { PROTOCOL_MAP } from '../components/AIAssistant';
+import { CONDITIONS } from '../lib/conditions';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -43,5 +44,28 @@ describe('AIAssistant PROTOCOL_MAP integrity', () => {
     for (const localId of Object.values(PROTOCOL_MAP)) {
       expect(protocolIds, localId).toContain(localId);
     }
+  });
+});
+
+describe('home condition tiles', () => {
+  it('every tile id matches a real protocol', () => {
+    const protocolIds = new Set(protocols.map((p) => p.id));
+    for (const tile of CONDITIONS) {
+      expect(protocolIds, tile.id).toContain(tile.id);
+    }
+  });
+
+  it('every protocol has a home tile', () => {
+    const tileIds = new Set(CONDITIONS.map((c) => c.id));
+    for (const protocol of protocols) {
+      expect(tileIds, protocol.id).toContain(protocol.id);
+    }
+  });
+
+  it('ranks life-threats (stroke, chest pain) above fainting', () => {
+    const ids = CONDITIONS.map((c) => c.id);
+    expect(ids.indexOf('stroke')).toBeLessThan(ids.indexOf('syncope'));
+    expect(ids.indexOf('chest_pain')).toBeLessThan(ids.indexOf('syncope'));
+    expect(ids.indexOf('stroke')).toBeLessThan(ids.indexOf('asthma'));
   });
 });

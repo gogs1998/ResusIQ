@@ -2,6 +2,7 @@ import { Phone, MapPin, ArrowLeft, Copy, Check, Clock } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { buildScriptLines, getPatientState } from '../lib/callScript';
 
 const backBtn: CSSProperties = {
   width: 56,
@@ -47,60 +48,15 @@ export function CallScript() {
 
   const emergencyType = activeProtocol?.title || 'Medical Emergency';
 
-  const scriptLines = [
-    { label: 'Service', text: 'AMBULANCE' },
-    { label: 'Location', text: `${practiceName}, ${address}, ${postcode}` },
-    { label: 'Phone', text: phone },
-    { label: 'Emergency', text: emergencyType },
-    { label: 'Patient', text: 'Adult patient at dental practice' },
-    { label: 'State', text: getPatientState() },
-  ];
-
-  // Only assert a drug was administered when it was actually confirmed in-flow.
-  // Reading from the event log (as SBARHandover does) prevents the 999 script
-  // from telling a dispatcher a drug was given when the step was skipped.
-  function drugGiven(match: string): boolean {
-    return (activeEvent?.events ?? []).some(
-      (e) =>
-        e.type === 'drug_given' &&
-        (e.drug_id?.toLowerCase().includes(match) ||
-          e.label.toLowerCase().includes(match))
-    );
-  }
-
-  function getPatientState(): string {
-    if (!activeProtocol) return 'Unwell — requires emergency assessment';
-    switch (activeProtocol.id) {
-      case 'cardiac_arrest':
-        return 'Unconscious and not breathing. CPR in progress.';
-      case 'anaphylaxis':
-        return drugGiven('adrenaline')
-          ? 'Suspected anaphylaxis. Adrenaline given IM.'
-          : 'Suspected anaphylaxis — adrenaline not yet given.';
-      case 'asthma':
-        return drugGiven('salbutamol')
-          ? 'Severe asthma. Salbutamol given.'
-          : 'Severe asthma — salbutamol not yet given.';
-      case 'hypoglycaemia':
-        return 'Hypoglycaemia. Known diabetic.';
-      case 'syncope':
-        return 'Collapsed / fainted. Lying flat.';
-      case 'seizure':
-        return 'Having a seizure / post-seizure.';
-      case 'chest_pain':
-        return drugGiven('aspirin')
-          ? 'Chest pain, suspected heart attack. Aspirin given.'
-          : 'Chest pain, suspected heart attack — aspirin not yet given.';
-      case 'choking':
-        return 'Choking. Back blows and abdominal thrusts being given.';
-      case 'stroke':
-        return 'Suspected stroke. FAST positive.';
-      case 'adrenal_crisis':
-        return 'Suspected adrenal crisis. Patient on steroids.';
-      default:
-        return 'Unwell — requires emergency assessment';
-    }
-  }
+  const scriptLines = buildScriptLines({
+    protocolId: activeProtocol?.id,
+    protocolTitle: activeProtocol?.title,
+    practiceName: practiceSetup?.name,
+    address: practiceSetup?.address,
+    postcode: practiceSetup?.postcode,
+    phone: practiceSetup?.phone,
+    events: activeEvent?.events,
+  });
 
   const fullScript = scriptLines.map(l => `${l.label}: ${l.text}`).join('\n');
 
@@ -115,7 +71,7 @@ export function CallScript() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-screen safe-area-top">
       {/* Header */}
       <header className="flex items-center" style={{ gap: 8, padding: '8px 12px', height: 'var(--appbar-h)' }}>
         <button onClick={() => setScreen('home')} aria-label="Back" style={backBtn} className="active:opacity-70 transition-opacity">
@@ -166,7 +122,7 @@ export function CallScript() {
           <div className="flex items-start" style={{ gap: 16 }}>
             <MapPin className="w-7 h-7 flex-shrink-0" style={{ color: 'var(--brand)', marginTop: 2 }} />
             <div>
-              <p style={{ ...eyebrow, color: 'var(--teal-700)' }}>Practice address</p>
+              <p style={{ ...eyebrow, color: 'var(--brand-strong)' }}>Practice address</p>
               <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)', marginTop: 6 }}>{practiceName}</p>
               <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>{address}</p>
               <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--brand)', marginTop: 6 }}>{postcode}</p>
@@ -217,7 +173,7 @@ export function CallScript() {
           </ScriptStep>
 
           <ScriptStep number={4} instruction="Patient status">
-            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState()}"</p>
+            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState(activeProtocol?.id, activeEvent?.events)}"</p>
           </ScriptStep>
 
           <ScriptStep number={5} instruction="Answer their questions">
@@ -238,7 +194,7 @@ export function CallScript() {
             padding: 20,
           }}
         >
-          <h3 style={{ ...eyebrow, color: 'var(--teal-700)', marginBottom: 12 }}>Remember</h3>
+          <h3 style={{ ...eyebrow, color: 'var(--brand-strong)', marginBottom: 12 }}>Remember</h3>
           <ul className="flex flex-col" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', gap: 10, listStyle: 'none', padding: 0, margin: 0, lineHeight: 'var(--lh-normal)' }}>
             <li>Put the phone on speaker mode</li>
             <li>Do not hang up — let them hang up first</li>
@@ -286,7 +242,7 @@ function ScriptStep({ number, instruction, children }: { number: number; instruc
       <div className="flex items-start" style={{ gap: 16 }}>
         <div
           className="cs-numeric flex items-center justify-center font-bold flex-shrink-0"
-          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--teal-50)', color: 'var(--brand)' }}
+          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--brand-tint)', color: 'var(--brand)' }}
         >
           {number}
         </div>

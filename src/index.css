@@ -1,7 +1,3 @@
-/* Clear Signal design system first, so its :root tokens + base element
-   defaults land before Tailwind's preflight + utilities. Token files are
-   imported directly (not via design-system/styles.css) because Vite's
-   postcss-import does not rebase styles.css's nested relative @imports. */
 @import "./design-system/tokens/fonts.css";
 @import "./design-system/tokens/colors.css";
 @import "./design-system/tokens/typography.css";
@@ -12,13 +8,10 @@
 @import "./design-system/tokens/base.css";
 @import "tailwindcss";
 
-/* ── Base ─────────────────────────────────────────────────────── */
 :root {
-  /* Font family is provided by the DS base (var(--font-sans) = IBM Plex Sans). */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
-  /* iOS safe area CSS env vars */
   --sat: env(safe-area-inset-top);
   --sab: env(safe-area-inset-bottom);
   --sal: env(safe-area-inset-left);
@@ -26,7 +19,6 @@
 }
 
 html {
-  /* Prevent overscroll bounce on iOS */
   overscroll-behavior: none;
 }
 
@@ -37,22 +29,160 @@ html, body, #root {
 }
 
 body {
-  /* Background + text colour come from the DS base (var(--bg) #08090B,
-     var(--text-1)) — pure #000 is explicitly rejected by Clear Signal. */
-  /* iOS: smooth momentum scrolling */
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── iOS PWA: prevent zoom on double-tap / input ──────────── */
 input, select, textarea, button {
   font-size: 16px;
   touch-action: manipulation;
 }
 
 * {
-  /* Prevent callout on long-press */
   -webkit-touch-callout: none;
 }
+
+/* ── Phone instrument shell ─────────────────────────────────── */
+.riq-desk {
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--desk);
+}
+
+.riq-device {
+  min-height: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.riq-device > * {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+@media (min-width: 540px) {
+  .riq-desk {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .riq-device {
+    width: 430px;
+    height: min(920px, calc(100dvh - 48px));
+    min-height: 0;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 40px 80px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.riq-screen {
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text-1);
+}
+
+.riq-icon-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.riq-icon-btn:active { opacity: 0.7; }
+
+.riq-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--touch-hero);
+  border-radius: var(--radius-xl);
+  background: var(--brand);
+  color: var(--text-on-color);
+  font-weight: 700;
+  font-size: var(--fs-subtitle);
+  box-shadow: var(--shadow-btn);
+  border: none;
+  text-decoration: none;
+  line-height: 1.1;
+}
+.riq-hero:active { transform: scale(0.98); }
+.riq-hero-999 {
+  background: var(--red);
+  box-shadow: var(--shadow-999);
+}
+
+.riq-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.riq-kicker {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.riq-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.riq-training {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  background: var(--amber-600);
+  color: #101614;
+  font-size: var(--fs-label);
+  font-weight: 800;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+}
+
+.riq-999-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 16px;
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--red-tint);
+  border: 1.5px solid var(--red-border);
+  text-decoration: none;
+  color: var(--red);
+  font-weight: 700;
+  font-size: var(--fs-body-sm);
+}
+.riq-999-strip:active { transform: scale(0.99); }
 
 /* ── Safe areas ───────────────────────────────────────────── */
 .safe-area-top {
@@ -71,7 +201,7 @@ input, select, textarea, button {
   padding-right: env(safe-area-inset-right);
 }
 
-/* ── Scrollbar (desktop) ─────────────────────────────────── */
+/* ── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -81,12 +211,8 @@ input, select, textarea, button {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-3) 40%, transparent);
   border-radius: 2px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Animations ──────────────────────────────────────────── */
@@ -102,11 +228,9 @@ input, select, textarea, button {
 }
 
 .animate-pulse-cpr {
-  /* 0.545s = 60/110s, one pulse per compression at 110 BPM (RCUK rate) */
   animation: pulse-cpr 0.545s ease-in-out infinite;
 }
 
-/* "Reading aloud" equaliser — a calm 4-bar indicator (respects reduced motion) */
 .riq-eq { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
 .riq-eq span { width: 3px; background: currentColor; border-radius: 2px; animation: riq-eq 900ms ease-in-out infinite; }
 .riq-eq span:nth-child(1) { height: 40%; animation-delay: 0ms; }
@@ -116,23 +240,15 @@ input, select, textarea, button {
 @keyframes riq-eq { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .riq-eq span { animation: none; } }
 
-/* Subtle fade-in for screens */
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-up {
   animation: fade-up 0.25s ease-out;
 }
 
-/* ── Utility classes ─────────────────────────────────────── */
 .no-select {
   -webkit-user-select: none;
   user-select: none;
@@ -143,41 +259,36 @@ input, select, textarea, button {
   min-width: 44px;
 }
 
-/* iOS standalone: fill status bar area */
 @media all and (display-mode: standalone) {
   body {
-    /* Extra safety for standalone mode */
-    padding-top: env(safe-area-inset-top);
+    padding-top: 0;
   }
 }
 
-/* Tabular numbers for timers/counters */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Clear Signal shared primitives ─────────────────────────── */
 .cs-card {
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--elev-1);
 }
-.cs-eyebrow {                 /* STEP 4 OF 9 · ADULT DOSE · CYCLE 2 */
-  font-family: var(--font-mono);
+.cs-eyebrow {
+  font-family: var(--font-sans);
   font-size: var(--fs-eyebrow);
+  font-weight: 700;
   letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
   color: var(--text-3);
 }
-.cs-instruction {             /* the primary protocol step — largest body element */
+.cs-instruction {
   font: var(--text-instruction);
   color: var(--text-1);
 }
 .cs-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-/* Step-type left accent: set --step-accent per type, then add .cs-step-card */
 .cs-step-card { border-left: 4px solid var(--step-accent, var(--instruction)); }
-/* Token form input (SBAR, Practice Setup, Library search) */
 .cs-input {
   width: 100%;
   background: var(--surface-2);
