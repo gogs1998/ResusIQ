@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useAppStore } from './store/appStore';
 import { EmergencyDashboard } from './components/EmergencyDashboard';
 import { ProtocolRunner } from './components/ProtocolRunner';
@@ -7,10 +7,6 @@ import { CallScript } from './components/CallScript';
 import { SBARHandover } from './components/SBARHandover';
 import './index.css';
 
-// Non-emergency routes are code-split so they (and heavy deps like `motion`)
-// stay out of the initial/emergency bundle. Emergency-path screens — dashboard,
-// runner, triage, 999 call script, SBAR handover — stay EAGER so they never
-// show a loading state mid-emergency.
 const PracticeSetupWizard = lazy(() =>
   import('./components/PracticeSetup').then((m) => ({ default: m.PracticeSetupWizard }))
 );
@@ -29,7 +25,7 @@ const AIAssistant = lazy(() =>
 
 function ScreenLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-screen items-center justify-center">
       <p className="text-sm" style={{ color: 'var(--text-3)' }}>Loading…</p>
     </div>
   );
@@ -65,13 +61,29 @@ function renderScreen(currentScreen: ReturnType<typeof useAppStore.getState>['cu
 
 function App() {
   const { currentScreen, isEmergencyActive, activeProtocol } = useAppStore();
+  const theatre = Boolean(isEmergencyActive && activeProtocol);
 
-  // If emergency is active and we have a protocol, show the protocol runner.
-  if (isEmergencyActive && activeProtocol) {
-    return <ProtocolRunner />;
-  }
+  useEffect(() => {
+    document.documentElement.classList.toggle('theatre-root', theatre);
+    const theme = theatre ? '#0C1210' : '#E8EDE9';
+    document.querySelectorAll('meta[name="theme-color"]').forEach((el) => {
+      if (!el.getAttribute('media')) el.setAttribute('content', theme);
+    });
+    const status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    status?.setAttribute('content', theatre ? 'black-translucent' : 'default');
+  }, [theatre]);
 
-  return <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>;
+  return (
+    <div className={`riq-desk${theatre ? ' theatre' : ''}`}>
+      <div className="riq-device">
+        {theatre ? (
+          <ProtocolRunner />
+        ) : (
+          <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default App

@@ -78,7 +78,7 @@ export function Sheet({ open, onClose, title, accent = 'var(--text-1)', icon, ch
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:mx-4"
+        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:mx-4"
         style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', boxShadow: 'var(--elev-modal)' }}
       >
         <div
@@ -92,8 +92,8 @@ export function Sheet({ open, onClose, title, accent = 'var(--text-1)', icon, ch
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 active:opacity-80"
-            style={{ background: 'var(--surface-2)' }}
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 active:opacity-80"
+            style={{ background: 'var(--surface-2)', minWidth: 44, minHeight: 44 }}
           >
             <X className="w-4 h-4" style={{ color: 'var(--text-2)' }} />
           </button>

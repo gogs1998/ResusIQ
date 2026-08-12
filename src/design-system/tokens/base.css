@@ -1,6 +1,4 @@
-/* ResusIQ — Base reset + element defaults.
-   Applies the dark theme, the type defaults, and the accessibility-critical
-   focus-ring on the document. Kept minimal; component styling is inline/token. */
+/* ResusIQ — Base reset + element defaults. */
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -11,7 +9,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--desk);
   color: var(--text-1);
   font-family: var(--font-sans);
   font-size: var(--fs-body);
@@ -22,28 +20,22 @@ body {
   font-synthesis: none;
 }
 
-/* Prevent iOS long-press callout / accidental text selection during emergency taps */
 button, [role="button"], .resus-no-select {
   -webkit-touch-callout: none;
   user-select: none;
 }
 
-/* Inputs forced to 16px to stop iOS auto-zoom on focus */
 input, textarea, select { font-size: 16px; font-family: inherit; }
 
 h1, h2, h3, h4, p { margin: 0; }
 
-/* Tabular numerics helper for stable big digits */
 .resus-tnum { font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
 
-/* ---- Accessibility: high-contrast focus ring on black AND on coloured fills.
-   Keyboard/switch-control only (focus-visible), so touch use stays clean. ---- */
 :where(a, button, input, select, textarea, [role="button"], [role="radio"], [role="tab"], [tabindex]):focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-/* Safe-area helpers (iOS notch + home indicator) */
 .safe-area-top    { padding-top: var(--safe-top); }
 .safe-area-bottom { padding-bottom: var(--safe-bottom); }
 .safe-area-left   { padding-left: var(--safe-left); }

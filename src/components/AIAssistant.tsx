@@ -352,7 +352,7 @@ export function AIAssistant() {
   const protocolDisplay = activeProtocol ? getProtocolDisplay(activeProtocol) : null;
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'radial-gradient(120% 60% at 50% 35%, rgba(139,92,246,0.18), var(--bg))', color: 'var(--text-1)' }}>
+    <div className="riq-screen safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center justify-between px-4" style={{ height: 'var(--appbar-h)' }}>
         <div className="flex items-center gap-3">

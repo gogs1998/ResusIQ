@@ -1,29 +1,25 @@
-/* ResusIQ — Elevation (2026 rebuild, light)
-   On warm sand, depth reads from low, diffuse, warm-tinted shadows — a calm
-   lift, never a hard drop. Coloured "glows" are soft press-lifts on the one
-   primary control, not neon outlines. */
+/* ResusIQ — Elevation
+   Clinic: 1px borders do the work; shadows are a quiet lift.
+   Theatre: no drop shadows — panels are bordered, not floating. */
 
 :root {
-  /* Neutral elevation */
-  --shadow-sm:  0 1px 2px rgba(20, 32, 31, 0.06);
-  --shadow-md:  0 4px 14px rgba(20, 32, 31, 0.08);
-  --shadow-lg:  0 10px 30px rgba(20, 32, 31, 0.10);
+  --shadow-sm:  0 1px 2px rgba(16, 22, 20, 0.05);
+  --shadow-md:  0 2px 8px rgba(16, 22, 20, 0.06);
+  --shadow-lg:  0 8px 24px rgba(16, 22, 20, 0.08);
 
   --elev-1: var(--shadow-md);
   --elev-2: var(--shadow-lg);
-  --elev-modal: 0 20px 60px rgba(20, 32, 31, 0.22);
+  --elev-modal: 0 20px 50px rgba(16, 22, 20, 0.22);
 
-  /* Coloured lifts — used on the ONE thing that matters */
-  --shadow-btn: 0 6px 16px rgba(12, 110, 110, 0.22);   /* teal */
-  --shadow-999: 0 8px 22px rgba(210, 59, 46, 0.28);    /* emergency */
+  --shadow-btn: 0 6px 18px rgba(12, 110, 98, 0.22);
+  --shadow-999: 0 8px 22px rgba(196, 30, 58, 0.28);
   --glow-red:    var(--shadow-999);
   --glow-green:  var(--shadow-btn);
   --glow-brand:  var(--shadow-btn);
-  --glow-ai:     0 6px 16px rgba(224, 151, 43, 0.22);
+  --glow-ai:     0 6px 16px rgba(196, 122, 0, 0.22);
 
-  --ring: 0 0 0 4px rgba(22, 133, 127, 0.35);
+  --ring: 0 0 0 4px rgba(12, 110, 98, 0.35);
 
-  /* Glass (used sparingly) */
   --blur-bar:    saturate(140%) blur(16px);
   --glass-bg:    rgba(255, 255, 255, 0.72);
 }

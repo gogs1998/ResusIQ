@@ -23,6 +23,7 @@ import type { Protocol, Drug } from '../types';
 import type { CSSProperties } from 'react';
 import { ChildDoseBands } from './ChildDoseBands';
 import { Callout } from './Callout';
+import { CONDITIONS, CONDITION_MARK } from '../lib/conditions';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; style?: CSSProperties }>> = {
   Heart,
@@ -53,7 +54,7 @@ const eyebrow: CSSProperties = {
   fontWeight: 700,
   letterSpacing: 'var(--ls-label)',
   textTransform: 'uppercase',
-  color: 'var(--teal-700)',
+  color: 'var(--brand-strong)',
 };
 
 type ViewMode = 'protocols' | 'drugs';
@@ -79,7 +80,7 @@ export function ProtocolLibrary() {
     const IconComponent = iconMap[selectedProtocol.icon];
 
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-screen safe-area-top">
         <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
           <button
             onClick={() => setSelectedProtocol(null)}
@@ -92,9 +93,9 @@ export function ProtocolLibrary() {
           <div className="flex items-center flex-1 min-w-0" style={{ gap: 12 }}>
             <div
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: `color-mix(in srgb, ${CONDITION_MARK[selectedProtocol.id] ?? 'var(--brand)'} 14%, white)` }}
             >
-              {IconComponent && <IconComponent className="w-6 h-6" style={{ color: 'var(--teal-700)' }} />}
+              {IconComponent && <IconComponent className="w-6 h-6" style={{ color: CONDITION_MARK[selectedProtocol.id] ?? 'var(--brand)' }} />}
             </div>
             <div className="min-w-0">
               <h1 className="font-bold truncate" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{selectedProtocol.title}</h1>
@@ -131,7 +132,7 @@ export function ProtocolLibrary() {
             <div className="space-y-3">
               {selectedProtocol.steps.map((step, idx) => (
                 <div key={step.id} className="flex" style={{ gap: 12, padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
-                  <span className="cs-numeric flex items-center justify-center flex-shrink-0" style={{ width: 28, height: 28, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', background: 'var(--teal-50)', color: 'var(--teal-700)' }}>
+                  <span className="cs-numeric flex items-center justify-center flex-shrink-0" style={{ width: 28, height: 28, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', background: 'var(--brand-tint)', color: 'var(--brand-strong)' }}>
                     {idx + 1}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -169,7 +170,7 @@ export function ProtocolLibrary() {
   // Drug Detail View
   if (selectedDrug) {
     return (
-      <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="riq-screen safe-area-top">
         <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
           <button
             onClick={() => setSelectedDrug(null)}
@@ -182,9 +183,9 @@ export function ProtocolLibrary() {
           <div className="flex items-center flex-1 min-w-0" style={{ gap: 12 }}>
             <div
               className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+              style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: 'var(--drug-tint)' }}
             >
-              <Pill className="w-6 h-6" style={{ color: 'var(--teal-700)' }} />
+              <Pill className="w-6 h-6" style={{ color: 'var(--drug)' }} />
             </div>
             <div className="min-w-0">
               <h1 className="font-bold truncate" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>{selectedDrug.name}</h1>
@@ -270,7 +271,7 @@ export function ProtocolLibrary() {
 
   // Main Library View
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-screen safe-area-top">
       <header className="flex items-center" style={{ gap: 8, padding: '8px 12px' }}>
         <button
           onClick={() => setScreen('home')}
@@ -320,7 +321,7 @@ export function ProtocolLibrary() {
               fontSize: 'var(--fs-label)',
               border: 'none',
               ...(viewMode === 'protocols'
-                ? { background: 'var(--surface)', color: 'var(--teal-700)', boxShadow: 'var(--shadow-sm)' }
+                ? { background: 'var(--surface)', color: 'var(--brand-strong)', boxShadow: 'var(--shadow-sm)' }
                 : { background: 'transparent', color: 'var(--text-3)' }),
             }}
           >
@@ -335,7 +336,7 @@ export function ProtocolLibrary() {
               fontSize: 'var(--fs-label)',
               border: 'none',
               ...(viewMode === 'drugs'
-                ? { background: 'var(--surface)', color: 'var(--teal-700)', boxShadow: 'var(--shadow-sm)' }
+                ? { background: 'var(--surface)', color: 'var(--brand-strong)', boxShadow: 'var(--shadow-sm)' }
                 : { background: 'transparent', color: 'var(--text-3)' }),
             }}
           >
@@ -349,6 +350,8 @@ export function ProtocolLibrary() {
           <div className="space-y-3">
             {filteredProtocols.map((protocol) => {
               const IconComponent = iconMap[protocol.icon];
+              const mark = CONDITION_MARK[protocol.id] ?? 'var(--brand)';
+              const cue = CONDITIONS.find((c) => c.id === protocol.id)?.cue;
 
               return (
                 <button
@@ -356,28 +359,31 @@ export function ProtocolLibrary() {
                   onClick={() => setSelectedProtocol(protocol)}
                   className="w-full text-left flex items-center active:scale-[0.98] transition-transform"
                   style={{
-                    gap: 16,
-                    padding: 18,
-                    minHeight: 'var(--touch-min)',
-                    borderRadius: 'var(--radius-xl)',
+                    gap: 14,
+                    padding: '14px 16px',
+                    minHeight: 72,
+                    borderRadius: 'var(--radius-lg)',
                     background: 'var(--surface)',
-                    boxShadow: 'var(--shadow-md)',
-                    border: 'none',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
+                  <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: mark }} />
                   <div
                     className="flex items-center justify-center flex-shrink-0"
-                    style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
+                    style={{ width: 44, height: 44, borderRadius: 10, background: `color-mix(in srgb, ${mark} 14%, white)` }}
                   >
-                    {IconComponent && <IconComponent className="w-7 h-7" style={{ color: 'var(--teal-700)' }} />}
+                    {IconComponent && <IconComponent className="w-5 h-5" style={{ color: mark }} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold" style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.15, color: 'var(--text-1)' }}>{protocol.title}</h3>
-                    <p className="truncate" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)', marginTop: 4 }}>
-                      {protocol.steps.length} steps · {protocol.references.join(', ')}
+                    <h3 className="font-bold" style={{ fontSize: 17, lineHeight: 1.15, color: 'var(--text-1)' }}>{protocol.title}</h3>
+                    <p className="truncate" style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                      {cue ?? `${protocol.steps.length} steps`}
                     </p>
                   </div>
-                  <ChevronRight className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
+                  <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
                 </button>
               );
             })}
@@ -401,7 +407,7 @@ export function ProtocolLibrary() {
               >
                 <div
                   className="cs-numeric flex items-center justify-center flex-shrink-0"
-                  style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)', color: 'var(--teal-700)' }}
+                  style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--drug-tint)', color: 'var(--drug)' }}
                 >
                   <span className="font-bold" style={{ fontSize: 'var(--fs-label)' }}>{drug.route}</span>
                 </div>

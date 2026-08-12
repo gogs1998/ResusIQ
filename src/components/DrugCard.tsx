@@ -21,7 +21,7 @@ export function DrugCard({ drug, onClose }: DrugCardProps) {
         <button
           onClick={onClose}
           className="w-full py-3.5 rounded-2xl font-bold text-sm active:opacity-80 transition-opacity"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)', minHeight: 'var(--touch-min)' }}
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-1)', minHeight: 'var(--touch-min)' }}
         >
           Close
         </button>

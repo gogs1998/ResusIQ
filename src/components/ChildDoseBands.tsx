@@ -16,11 +16,11 @@ export function ChildDoseBands({ drug }: { drug: Drug }) {
   return (
     <div
       className="rounded-2xl p-4"
-      style={{ background: 'var(--roles-tint)', border: '1px solid color-mix(in srgb, var(--roles) 20%, transparent)' }}
+      style={{ background: 'var(--roles-tint)', border: '1px solid color-mix(in srgb, var(--roles) 35%, transparent)' }}
     >
       <p className="cs-eyebrow mb-0.5" style={{ color: 'var(--roles)' }}>Child Dose — by age</p>
       {/* Concentration anchor — keep prominent + verbatim */}
-      <p className="text-[13px] font-semibold mb-2.5" style={{ color: 'color-mix(in srgb, var(--roles) 90%, white)' }}>{drug.name}</p>
+      <p className="text-[13px] font-semibold mb-2.5" style={{ color: 'var(--text-1)' }}>{drug.name}</p>
       <div>
         {bands.map((band, idx) => (
           <div
@@ -29,7 +29,7 @@ export function ChildDoseBands({ drug }: { drug: Drug }) {
             style={idx > 0 ? { borderTop: '1px solid color-mix(in srgb, var(--roles) 15%, transparent)' } : undefined}
           >
             <span className="text-sm" style={{ color: 'var(--text-2)' }}>{band.label}</span>
-            <span className="cs-numeric text-sm font-bold text-right whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--roles) 70%, white)' }}>
+            <span className="cs-numeric text-sm font-bold text-right whitespace-nowrap" style={{ color: 'var(--text-1)' }}>
               {band.dose}
               {band.volume_ml && (
                 <span className="font-medium" style={{ color: 'var(--text-3)' }}> · {band.volume_ml}</span>
