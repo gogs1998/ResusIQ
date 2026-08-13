@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
+import { doseLimitClass, isAtDoseLimit } from '../lib/doseLimits';
 import { newId } from '../lib/ids';
 
 interface AppState {
@@ -374,16 +375,20 @@ export const useAppStore = create<AppState>()(
       // The ONLY way a drug administration reaches the log. `max_doses` in
       // drugs.ts was previously metadata the execution path never read, so
       // "single dose — do not repeat" was a caption, not a rule: Back onto the
-      // step and Confirm given again appended a second dose. Here the ceiling is
-      // enforced where the dose is recorded, driven purely by the data — no
-      // drug-specific branches — so midazolam (1), glucagon (1), oral glucose
-      // (3) and GTN (3) are all covered, while adrenaline declares no max_doses
-      // and stays repeatable every 5 minutes as the anaphylaxis rule requires.
+      // step and Confirm given again appended a second dose.
+      //
+      // ONLY a true ceiling refuses (max_doses === 1 — midazolam, glucagon).
+      // A higher cap is an escalation threshold, not a ban, and logs normally so
+      // a clinician can still record a dose they judged necessary; the runner
+      // states the escalation instead. See doseLimitClass for the full reasoning
+      // and the clinical ruling behind it. Adrenaline declares no max_doses and
+      // stays repeatable every 5 minutes as the anaphylaxis rule requires.
       //
       // A refusal logs NOTHING: a refused attempt is not a clinical event, and
       // writing one would put a phantom dose in the medico-legal record.
       logDrugGiven: (drug, label) => {
-        if (drug.max_doses !== undefined && countDosesGiven(get().activeEvent, drug.id) >= drug.max_doses) {
+        const dosesGiven = countDosesGiven(get().activeEvent, drug.id);
+        if (doseLimitClass(drug) === 'hard_block' && isAtDoseLimit(drug, dosesGiven)) {
           return { ok: false, reason: 'max_doses_reached' };
         }
         get().addEventLog('drug_given', label, undefined, drug.id);

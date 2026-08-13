@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore, countDosesGiven } from '../store/appStore';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
+import { doseLimitClass } from '../lib/doseLimits';
 
 const reset = () =>
   useAppStore.setState({
@@ -191,20 +192,54 @@ describe('appStore logDrugGiven (max_doses enforcement)', () => {
     expect(dosesOf('glucagon_im')).toBe(1);
   });
 
-  it('allows oral glucose up to 3 and refuses the fourth', () => {
+  it('refuses a second glucagon — the kit holds one dose', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('hypoglycaemia');
+    const glucagon = drugById('glucagon_im');
+    expect(glucagon.max_doses).toBe(1);
+
+    expect(store.logDrugGiven(glucagon, 'Drug: glucagon_im').ok).toBe(true);
+    expect(store.logDrugGiven(glucagon, 'Drug: glucagon_im')).toEqual({
+      ok: false,
+      reason: 'max_doses_reached',
+    });
+    expect(dosesOf('glucagon_im')).toBe(1);
+  });
+
+  it('a FOURTH oral glucose still logs — 3 is an escalation threshold, not a ban', () => {
+    // Clinical ruling 2026-08-13: a cap above 1 says the treatment is not
+    // working, not that a further dose is forbidden. Blocking it would stop a
+    // clinician recording a dose they judged necessary once the patient is awake
+    // and swallowing safely — corrupting the record rather than protecting them.
     const store = useAppStore.getState();
     store.startEmergency('hypoglycaemia');
     const glucose = drugById('glucose_oral');
     expect(glucose.max_doses).toBe(3);
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       expect(store.logDrugGiven(glucose, 'Drug: glucose_oral').ok).toBe(true);
     }
-    expect(store.logDrugGiven(glucose, 'Drug: glucose_oral')).toEqual({
-      ok: false,
-      reason: 'max_doses_reached',
-    });
-    expect(dosesOf('glucose_oral')).toBe(3);
+    expect(dosesOf('glucose_oral')).toBe(4);
+  });
+
+  it('a FOURTH GTN spray still logs — same escalation class', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('chest_pain');
+    const gtn = drugById('gtn_sublingual');
+    expect(gtn.max_doses).toBe(3);
+
+    for (let i = 0; i < 4; i++) {
+      expect(store.logDrugGiven(gtn, 'Drug: gtn_sublingual').ok).toBe(true);
+    }
+    expect(dosesOf('gtn_sublingual')).toBe(4);
+  });
+
+  it('classifies ceilings and escalation thresholds from the data alone', () => {
+    expect(doseLimitClass(drugById('midazolam_buccal'))).toBe('hard_block');
+    expect(doseLimitClass(drugById('glucagon_im'))).toBe('hard_block');
+    expect(doseLimitClass(drugById('glucose_oral'))).toBe('escalation');
+    expect(doseLimitClass(drugById('gtn_sublingual'))).toBe('escalation');
+    expect(doseLimitClass(drugById('adrenaline_im_adult'))).toBeNull();
   });
 
   it('adrenaline has no ceiling — a fifth dose still logs', () => {

@@ -4,6 +4,7 @@ import { drugs } from '../data/drugs';
 import { PROTOCOL_MAP } from '../components/AIAssistant';
 import { TILES } from '../components/EmergencyDashboard';
 import { DETERIORATION_LANDING } from '../store/appStore';
+import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -134,6 +135,44 @@ describe('deterioration landing integrity', () => {
     for (const [protocolId, stepId] of Object.entries(DETERIORATION_LANDING)) {
       const step = protocols.find((p) => p.id === protocolId)!.steps.find((s) => s.id === stepId)!;
       expect(step.recognition, `${protocolId}.${stepId} is a recognition step`).toBeFalsy();
+    }
+  });
+});
+
+describe('dose limit notice integrity', () => {
+  // The runner shows these words at the moment a dose is refused or an
+  // escalation is reached. A capped drug with no entry would render a generic
+  // fallback in place of clinician-written instructions, so coverage is pinned
+  // in both directions.
+  const cappedDrugs = drugs.filter((d) => d.max_doses !== undefined);
+
+  it('every drug with max_doses has notice wording', () => {
+    expect(cappedDrugs.length).toBeGreaterThan(0);
+    for (const drug of cappedDrugs) {
+      expect(DOSE_LIMIT_NOTICES, `${drug.id} has max_doses but no notice`).toHaveProperty(drug.id);
+      expect(DOSE_LIMIT_NOTICES[drug.id].hero.length).toBeGreaterThan(0);
+      expect(DOSE_LIMIT_NOTICES[drug.id].detail.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every notice belongs to a drug that actually declares a cap', () => {
+    const cappedIds = new Set(cappedDrugs.map((d) => d.id));
+    for (const id of Object.keys(DOSE_LIMIT_NOTICES)) {
+      expect(cappedIds, `notice "${id}" has no capped drug`).toContain(id);
+    }
+  });
+
+  it('hard-block notices carry the {time} placeholder; escalation notices do not', () => {
+    // The time of the dose already on the record is the thing that decides what
+    // the operator does next on a single-dose drug ("has 10 minutes passed?").
+    // On an escalation it is the count that matters, not the clock.
+    for (const drug of cappedDrugs) {
+      const notice = DOSE_LIMIT_NOTICES[drug.id];
+      if (doseLimitClass(drug) === 'hard_block') {
+        expect(notice.hero, `${drug.id} hero`).toContain('{time}');
+      } else {
+        expect(notice.hero, `${drug.id} hero`).not.toContain('{time}');
+      }
     }
   });
 });

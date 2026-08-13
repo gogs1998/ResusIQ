@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { ProtocolRunner } from '../components/ProtocolRunner';
 import { useAppStore, countDosesGiven } from '../store/appStore';
 import { protocols } from '../data/protocols';
+import { drugs } from '../data/drugs';
 
 // F5: every advancing control writes to the medico-legal record. A gloved
 // double-tap fires both clicks before React re-renders with the new step, so
@@ -142,7 +143,7 @@ describe('ProtocolRunner double-submit guard', () => {
     unmount();
   });
 
-  it('a spent max-1 drug step shows the refusal instead of a confirm button', () => {
+  it('a spent max-1 drug step withdraws the confirm control (hard block)', () => {
     const seizure = protocols.find((p) => p.id === 'seizure')!;
     const midazolamIndex = seizure.steps.findIndex(
       (s) => s.type === 'drug' && s.drug_id === 'midazolam_buccal'
@@ -157,20 +158,54 @@ describe('ProtocolRunner double-submit guard', () => {
     expect(countDosesGiven(useAppStore.getState().activeEvent, 'midazolam_buccal')).toBe(1);
 
     // Back onto the same step: the confirm affordance is gone, replaced by the
-    // refusal and plain onward navigation.
+    // clinician's wording and plain onward navigation. No override gesture of
+    // any kind exists here — that was rejected clinically.
     act(() => useAppStore.getState().goToStep(midazolamIndex));
 
     expect(buttonWithText('Confirm given')).toBeUndefined();
-    expect(container.textContent).toContain('Already given — single dose only');
+    expect(buttonWithText('Record another dose')).toBeUndefined();
+    expect(container.textContent).toContain('Midazolam already given at');
+    expect(container.textContent).toContain('Single dose only — do not repeat.');
+    // The time of the recorded dose is shown, not a placeholder.
+    expect(container.textContent).not.toContain('{time}');
+    expect(container.textContent).toMatch(/already given at \d{2}:\d{2}/);
+
     const next = buttonWithText('Next step');
     expect(next).toBeDefined();
-
-    // Even hammering it cannot add a second dose.
     act(() => {
       next!.click();
       next!.click();
     });
     expect(countDosesGiven(useAppStore.getState().activeEvent, 'midazolam_buccal')).toBe(1);
+
+    unmount();
+  });
+
+  it('an escalation drug keeps a live confirm and states the escalation', () => {
+    // Clinical ruling 2026-08-13: 3 oral glucose is a threshold, not a ceiling.
+    const hypo = protocols.find((p) => p.id === 'hypoglycaemia')!;
+    const glucoseIndex = hypo.steps.findIndex(
+      (s) => s.type === 'drug' && s.drug_id === 'glucose_oral'
+    );
+    expect(glucoseIndex).toBeGreaterThan(-1);
+
+    const glucose = drugs.find((d) => d.id === 'glucose_oral')!;
+    useAppStore.getState().startEmergency('hypoglycaemia');
+    act(() => {
+      const store = useAppStore.getState();
+      for (let i = 0; i < 3; i++) store.logDrugGiven(glucose, 'Drug: glucose_oral');
+      store.goToStep(glucoseIndex);
+    });
+    render();
+
+    expect(container.textContent).toContain('3 doses given — this is not responding');
+    expect(container.textContent).toContain('Call 999 now.');
+
+    // The confirm is still live — demoted and relabelled, never blocked.
+    const record = buttonWithText('Record another dose');
+    expect(record).toBeDefined();
+    act(() => record!.click());
+    expect(countDosesGiven(useAppStore.getState().activeEvent, 'glucose_oral')).toBe(4);
 
     unmount();
   });

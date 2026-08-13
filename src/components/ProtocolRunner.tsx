@@ -13,9 +13,15 @@ import {
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useAppStore, countDosesGiven } from '../store/appStore';
+import {
+  doseLimitClass,
+  isAtDoseLimit,
+  lastDoseTimestamp,
+  DOSE_LIMIT_NOTICES,
+} from '../lib/doseLimits';
 import { voiceCommandsSupported } from '../lib/platform';
 import { switchTargetId, switchButtonLabel, splitHero, isDuplicateSupport } from '../lib/stepCopy';
-import { elapsedSeconds, formatClock } from '../lib/emergencyTimers';
+import { elapsedSeconds, formatClock, hhmm } from '../lib/emergencyTimers';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
@@ -82,14 +88,20 @@ export function ProtocolRunner() {
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
 
-  // Dose ceiling for this step, derived from the event log on every render
-  // rather than held in component state — so returning to a spent drug step by
-  // Back shows the same refusal the store would give, instead of a fresh-looking
+  // Dose limit for this step, derived from the event log on every render rather
+  // than held in component state — so returning to a spent drug step by Back
+  // shows the same verdict the store would give, instead of a fresh-looking
   // Confirm button.
+  //
+  // Two outcomes, because `max_doses` means two different things (see
+  // doseLimitClass): a hard block withdraws the confirm control, an escalation
+  // keeps it live and says the treatment is not working.
   const drug = currentStep?.drug_id ? getDrugById(currentStep.drug_id) : null;
-  const doseLimitReached =
-    drug?.max_doses !== undefined &&
-    countDosesGiven(activeEvent, currentStep?.drug_id) >= drug.max_doses;
+  const dosesGiven = countDosesGiven(activeEvent, currentStep?.drug_id);
+  const atDoseLimit = drug ? isAtDoseLimit(drug, dosesGiven) : false;
+  const limitClass = drug ? doseLimitClass(drug) : null;
+  const hardBlocked = atDoseLimit && limitClass === 'hard_block';
+  const escalated = atDoseLimit && limitClass === 'escalation';
 
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
@@ -214,14 +226,15 @@ export function ProtocolRunner() {
   }, [runOnce, currentStep, addEventLog, logDrugGiven, performAdvance]);
 
   const handleNext = useCallback(() => {
-    // A spent drug step offers plain onward navigation, not another confirm —
-    // including for the voice command, which must never stall on a refusal.
-    if (currentStep?.require_confirm && !doseLimitReached) {
+    // A hard-blocked drug step offers plain onward navigation, not another
+    // confirm — including for the voice command, which must never stall on a
+    // refusal. An escalated step still confirms: the dose is not forbidden.
+    if (currentStep?.require_confirm && !hardBlocked) {
       handleConfirm();
     } else {
       advance();
     }
-  }, [currentStep, doseLimitReached, handleConfirm, advance]);
+  }, [currentStep, hardBlocked, handleConfirm, advance]);
 
   const handleRepeat = useCallback(() => {
     if (currentStep) speak(currentStep.say);
@@ -312,12 +325,15 @@ export function ProtocolRunner() {
       ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done')
       : 'Done — next step';
 
-  // Spent dose: the confirm affordance is withdrawn entirely (an available
-  // button that refuses on tap still invites the tap under stress), replaced by
-  // a statement of what the record already holds plus plain onward navigation.
-  const doseLimitText = drug?.max_doses === 1
-    ? 'Already given — single dose only'
-    : `Maximum doses reached (${drug?.max_doses})`;
+  // The clinician's words for this limit, with the recorded time of the dose
+  // already given substituted in. Every capped drug has an entry (held by the
+  // data-integrity tests); the fallback only exists so a data change can never
+  // render an empty panel mid-emergency.
+  const doseNotice = drug ? DOSE_LIMIT_NOTICES[drug.id] : undefined;
+  const lastDoseIso = lastDoseTimestamp(activeEvent, currentStep?.drug_id);
+  const doseNoticeHero = (doseNotice?.hero ?? `${drug?.name ?? 'This medicine'} already given`)
+    .replace('{time}', lastDoseIso ? hhmm(lastDoseIso) : '—');
+  const doseNoticeDetail = doseNotice?.detail ?? '';
 
   return (
     <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
@@ -487,18 +503,56 @@ export function ProtocolRunner() {
       {/* Footer — one dominant CTA, persistent 999 + voice controls, escape rail, deck */}
       <footer style={{ flexShrink: 0 }}>
         <div style={{ padding: '10px 18px 12px' }}>
-          {!isDecision && doseLimitReached && (
-            <>
-              <div
-                role="status"
-                className="flex items-center"
-                style={{ gap: 10, minHeight: 'var(--touch-hero)', padding: '12px 16px', borderRadius: 'var(--radius-xl)', background: 'var(--warn-tint)', border: '1.5px solid var(--warn)' }}
-              >
-                <span aria-hidden style={{ flexShrink: 0, fontSize: 18, color: 'var(--warn)' }}>⚠︎</span>
-                <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--warn)', lineHeight: 1.3 }}>
-                  {doseLimitText}
+          {/* Dose limit reached — the notice is the same panel in both classes,
+              so the operator reads one consistent surface; what differs is
+              whether a confirm control sits under it. */}
+          {!isDecision && atDoseLimit && (
+            <div
+              role="status"
+              style={{ padding: '13px 16px', borderRadius: 'var(--radius-xl)', background: 'var(--warn-tint)', border: '1.5px solid var(--warn)' }}
+            >
+              <div className="flex items-start" style={{ gap: 10 }}>
+                <span aria-hidden style={{ flexShrink: 0, fontSize: 17, color: 'var(--warn)', lineHeight: 1.2 }}>⚠︎</span>
+                <span className="font-extrabold" style={{ fontSize: 16.5, color: 'var(--warn)', lineHeight: 1.25 }}>
+                  {doseNoticeHero}
                 </span>
               </div>
+              {doseNoticeDetail && (
+                <p style={{ fontSize: 13.5, color: 'var(--text-2)', lineHeight: 1.45, margin: '8px 0 0 27px' }}>
+                  {doseNoticeDetail}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Hard block: the confirm control is withdrawn entirely — an
+              available button that refuses on tap still invites the tap under
+              stress. Onward navigation is never blocked. */}
+          {!isDecision && hardBlocked && (
+            <button
+              onClick={advance}
+              className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+              style={{ gap: 10, marginTop: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
+            >
+              <ChevronRight className="w-6 h-6" />
+              <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Next step</span>
+            </button>
+          )}
+
+          {/* Escalation: the dose is not forbidden, so the confirm stays live —
+              but demoted below the warning, and labelled for what it actually
+              does, so it is a deliberate act rather than the obvious next tap.
+              Moving on without recording a dose stays available below it. */}
+          {!isDecision && escalated && (
+            <>
+              <button
+                onClick={handleConfirm}
+                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                style={{ gap: 10, marginTop: 10, minHeight: 'var(--touch-min)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', color: 'var(--text-2)', border: '1px solid var(--border-strong)' }}
+              >
+                <Check className="w-5 h-5" />
+                <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)' }}>Record another dose</span>
+              </button>
               <button
                 onClick={advance}
                 className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
@@ -510,7 +564,7 @@ export function ProtocolRunner() {
             </>
           )}
 
-          {!isDecision && !doseLimitReached && (
+          {!isDecision && !atDoseLimit && (
             <button
               onClick={handleNext}
               className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
