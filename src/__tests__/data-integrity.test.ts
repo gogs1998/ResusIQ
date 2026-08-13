@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import { PROTOCOL_MAP } from '../components/AIAssistant';
-import { TILES } from '../components/EmergencyDashboard';
+import { TILES } from '../lib/conditions';
 import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
@@ -120,6 +120,39 @@ describe('home tile <-> protocol integrity', () => {
   // The home grid must offer exactly one tile per protocol and no more: a tile
   // whose id has no protocol is a dead button (tap strands the user); a protocol
   // with no tile is unreachable from the home screen. Guard both directions.
+  // The array order IS the render order, and the tones decide which of the three
+  // tiers a condition lands in. Both are ranked by how fast an untreated case
+  // kills — which is exactly the property a well-meaning tidy-up (alphabetical,
+  // or most-common-first) destroys, silently, with every test still green.
+  it('ranks cardiac arrest first and alone in the critical tier', () => {
+    expect(TILES[0].id).toBe('cardiac_arrest');
+    expect(TILES[0].tone).toBe('critical');
+    expect(TILES.filter((t) => t.tone === 'critical')).toHaveLength(1);
+  });
+
+  it('puts every life-threat condition ahead of every lesser one', () => {
+    const rank: Record<string, number> = { critical: 0, severe: 1, urgent: 2, standard: 3 };
+    const ranks = TILES.map((t) => rank[t.tone]);
+    expect(ranks, 'tiles are not grouped by tone').toEqual([...ranks].sort((a, b) => a - b));
+    // Named explicitly, because these two are the pair that motivated the
+    // ranking: a time-critical stroke sat below fainting in the old grid.
+    const idx = (id: string) => TILES.findIndex((t) => t.id === id);
+    expect(idx('stroke')).toBeLessThan(idx('syncope'));
+    expect(idx('anaphylaxis')).toBeLessThan(idx('syncope'));
+  });
+
+  it('leaves fainting last — the most common thing is not the most urgent', () => {
+    expect(TILES[TILES.length - 1].id).toBe('syncope');
+  });
+
+  it('gives every tile a tone and a cue', () => {
+    for (const tile of TILES) {
+      expect(['critical', 'severe', 'urgent', 'standard'], tile.id).toContain(tile.tone);
+      expect(tile.cue.length, `${tile.id} has no cue`).toBeGreaterThan(0);
+      expect(tile.cond, `${tile.id} has no condition hue`).toMatch(/^var\(--cond-/);
+    }
+  });
+
   it('TILES id set equals the protocols[] id set exactly', () => {
     const tileIds = new Set(TILES.map((t) => t.id));
     const protocolIds = new Set(protocols.map((p) => p.id));
