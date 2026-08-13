@@ -1,21 +1,28 @@
-/* ResusIQ — Radii (2026 rebuild)
-   Generous, soft radii read as friendly and human rather than clinical.
-   Cards/buttons 24, tiles & hero buttons 32, pills fully round. */
+/* ResusIQ — Radii
+   Tight enough to read as equipment. The previous ladder (24 for cards, 32 for
+   tiles, 40 for sheets) was chosen to feel "friendly and human", and it is the
+   single loudest reason the app reads as a consumer wellness product rather
+   than something you reach for in an emergency — soft, pill-like cards are the
+   house style of every health startup. A defibrillator has corners.
+
+   One ladder, two spellings: the --r-* aliases exist for the newer components
+   and MUST track the --radius-* values, or two halves of the same screen round
+   differently. */
 
 :root {
-  --radius-xs:   10px;
-  --radius-sm:   14px;
-  --radius-md:   18px;   /* controls, inputs */
-  --radius-lg:   24px;   /* cards, buttons */
-  --radius-xl:   32px;   /* tiles, hero buttons */
-  --radius-2xl:  40px;   /* sheets */
+  --radius-xs:   8px;
+  --radius-sm:   10px;
+  --radius-md:   12px;   /* controls, inputs */
+  --radius-lg:   16px;   /* cards, buttons */
+  --radius-xl:   20px;   /* tiles, hero buttons */
+  --radius-2xl:  24px;   /* sheets */
   --radius-pill: 999px;
 
-  /* New-system aliases */
-  --r-sm:   12px;
-  --r-md:   18px;
-  --r-lg:   24px;
-  --r-xl:   32px;
-  --r-2xl:  40px;
+  /* Aliases — same ladder, kept in lockstep. */
+  --r-sm:   10px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-2xl:  24px;
   --r-pill: 999px;
 }

@@ -316,7 +316,10 @@ function ScriptStep({ number, instruction, children }: { number: number; instruc
           {number}
         </div>
         <div className="flex-1">
-          <p style={{ fontSize: 'var(--fs-label)', color: 'var(--text-3)', marginBottom: 6 }}>{instruction}</p>
+          {/* An instruction the caller reads while a dispatcher waits — body
+              text, not a kicker. It was on the label token, which now sizes
+              uppercase kickers at 12px. */}
+          <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginBottom: 6 }}>{instruction}</p>
           {children}
         </div>
       </div>

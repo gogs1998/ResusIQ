@@ -11,3 +11,13 @@
 @import '@fontsource/inter/600.css';
 @import '@fontsource/inter/700.css';
 @import '@fontsource/inter/800.css';
+
+/* Numerals — IBM Plex Mono, self-hosted for the same offline reason.
+   Every number this app shows is one a person reads back under pressure: a
+   dose, a countdown, a compression count, the time 999 was called. A
+   proportional face lets 1:1000 and 1:10,000 take nearly the same width, and
+   lets digits shuffle sideways as a timer counts down. A true mono with tabular
+   figures fixes both — the digits sit on a grid and only their shapes change.
+   Two weights: 500 for inline data, 700 for the display counters. */
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/700.css';

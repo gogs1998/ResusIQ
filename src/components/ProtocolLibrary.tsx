@@ -403,7 +403,7 @@ export function ProtocolLibrary() {
                   className="cs-numeric flex items-center justify-center flex-shrink-0"
                   style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--brand-tint)', color: 'var(--brand)' }}
                 >
-                  <span className="font-bold" style={{ fontSize: 'var(--fs-label)' }}>{drug.route}</span>
+                  <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)' }}>{drug.route}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold" style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.15, color: 'var(--text-1)' }}>{drug.name}</h3>

@@ -1,14 +1,25 @@
-/* ResusIQ — Typography (Inter, 2026 rebuild)
-   One family, used large. The instruction the user must act on is always the
-   biggest thing on screen. Sizes are deliberately generous — nothing functional
-   falls below 18px, step instructions run 34–44px so they read at arm's length.
-   Existing token names are kept and re-scaled up so every screen grows at once. */
+/* ResusIQ — Typography (Inter)
+   One family, used large where it matters. The instruction the user must act on
+   is always the biggest thing on screen, and step instructions run 34-44px so
+   they read at arm's length.
+
+   Hierarchy comes from RATIO, not from everything being big. The small end was
+   raised to 14-16px on the theory that bigger is always safer; the result was a
+   flat scale where a section kicker sat a couple of points under body text and
+   nothing looked deliberate — a large part of why the rebuild still read as
+   generic (Grok UX4). The small end now goes back down: kickers at 12, captions
+   at 13, with the large end untouched. Nothing an operator ACTS on lives down
+   there — labels name things, captions annotate them, and both sit beside
+   something larger that carries the meaning. */
 
 :root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* Data numerals (doses, timers, counters) render in a system mono stack with
-     tabular figures so digits sit on a fixed grid — see .riq-data / .cs-numeric. */
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  /* Data numerals (doses, timers, counters) — see .riq-data / .cs-numeric.
+     IBM Plex Mono, self-hosted: the system stack resolved to a different face on
+     every platform, so the one register that has to look like instrument
+     readout was the least predictable thing on screen. Tabular figures keep
+     digits on a fixed grid. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
 
   /* ---- Weights ---- */
   --fw-light:    300;
@@ -19,8 +30,8 @@
   --fw-extra:    800;
 
   /* ---- New semantic scale (px) ---- */
-  --fs-caption:  14px;
-  --fs-label:    16px;
+  --fs-caption:  13px;
+  --fs-label:    12px;   /* uppercase tracked kickers ONLY — not body text */
   --fs-body-sm:  18px;
   --fs-body:     20px;
   --fs-lead:     24px;
@@ -31,7 +42,7 @@
   --fs-display:  64px;
 
   /* ---- Compatibility: existing ramp names → re-scaled up ---- */
-  --fs-eyebrow:  14px;  /* uppercase, tracked labels */
+  --fs-eyebrow:  12px;  /* uppercase, tracked labels — sits with --fs-label */
   --fs-meta:     18px;  /* secondary / meta */
   --fs-h3:       22px;  /* section / modal titles */
   --fs-h2:       28px;  /* screen titles */
@@ -47,14 +58,14 @@
   --lh-relaxed: 1.5;
 
   /* ---- Letter spacing ---- */
-  --ls-eyebrow: 0.04em;
+  --ls-eyebrow: 0.08em;
   --ls-label:   0.04em;
   --ls-wide:    0.02em;
   --ls-normal:  0;
   --ls-tight:   -0.01em;
-  --ls-display: -0.02em;
+  --ls-display: -0.03em;
 
   /* ---- Semantic aliases ---- */
-  --text-instruction: var(--fw-semibold) var(--fs-instruction)/var(--lh-snug) var(--font-sans);
+  --text-instruction: var(--fw-bold) var(--fs-instruction)/var(--lh-snug) var(--font-sans);
   --text-eyebrow-ff:  var(--font-sans);
 }
