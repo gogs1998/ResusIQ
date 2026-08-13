@@ -277,6 +277,74 @@ describe('appStore logDrugGiven (max_doses enforcement)', () => {
   });
 });
 
+// F4 / clinical ruling R2: "999 called" is an assertion the team makes, never a
+// side effect of tapping past a screen — and however many controls they assert
+// it through, it happened once.
+describe('appStore log999Called (999 is asserted, not inferred)', () => {
+  beforeEach(reset);
+
+  const calls999 = () =>
+    useAppStore.getState().activeEvent!.events.filter((e) => e.type === '999_called');
+
+  it('logs one typed entry the 999 chip, script and SBAR can all read', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+
+    expect(store.log999Called()).toEqual({ ok: true });
+
+    expect(calls999().length).toBe(1);
+    expect(calls999()[0].label).toBe('999 called');
+  });
+
+  it('a second assertion does not add a second call to the record', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+
+    store.log999Called();
+    expect(store.log999Called()).toEqual({ ok: false, reason: 'already_logged' });
+
+    expect(calls999().length).toBe(1);
+  });
+
+  it('pill tap then step confirm on the same emergency is ONE call', () => {
+    // The realistic sequence: someone taps the 999 pill to dial, and the team
+    // then confirms on the "Call 999 now" step. Two controls, one call.
+    const store = useAppStore.getState();
+    store.startEmergency('chest_pain');
+
+    store.log999Called(); // pill
+    store.log999Called(); // confirm control
+
+    expect(calls999().length).toBe(1);
+  });
+
+  it('a new emergency can log its own call', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    store.log999Called();
+    store.endEmergency();
+
+    useAppStore.getState().startEmergency('stroke');
+    expect(useAppStore.getState().log999Called()).toEqual({ ok: true });
+    expect(calls999().length).toBe(1);
+  });
+
+  it('outside an emergency it writes nothing and says so', () => {
+    expect(useAppStore.getState().log999Called()).toEqual({ ok: false, reason: 'no_active_event' });
+    expect(useAppStore.getState().activeEvent).toBeNull();
+  });
+
+  it('a log:999_called step action, if data ever reintroduces one, is deduped too', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    store.log999Called();
+
+    store.runStepActions({ id: 't', type: 'instruction', say: '', show: '', actions: ['log:999_called'] });
+
+    expect(calls999().length).toBe(1);
+  });
+});
+
 // These assert step `actions` actually EXECUTE — the previous suite only proved
 // the action strings exist in the data. runStepActions is the bridge that was
 // missing; the anaphylaxis start_cpr step used to say "switching you to the

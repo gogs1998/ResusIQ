@@ -5,6 +5,7 @@ import { PROTOCOL_MAP } from '../components/AIAssistant';
 import { TILES } from '../components/EmergencyDashboard';
 import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
+import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -172,6 +173,34 @@ describe('dose limit notice integrity', () => {
         expect(notice.hero, `${drug.id} hero`).toContain('{time}');
       } else {
         expect(notice.hero, `${drug.id} hero`).not.toContain('{time}');
+      }
+    }
+  });
+});
+
+describe('999 confirm step integrity', () => {
+  // The runner replaces the generic Done with a two-control confirm on exactly
+  // these steps (clinical ruling R2, 2026-08-13). A renamed step id would
+  // silently restore the generic Done — the very control that used to log a 999
+  // call nobody had made — so the list is pinned to the data here.
+  it('every listed step exists in its protocol and still suggests 999', () => {
+    expect(CALL_999_CONFIRM_STEPS.length).toBe(4);
+    for (const { protocol: protocolId, step: stepId } of CALL_999_CONFIRM_STEPS) {
+      const protocol = protocols.find((p) => p.id === protocolId);
+      expect(protocol, `no protocol "${protocolId}"`).toBeDefined();
+      const step = protocol!.steps.find((s) => s.id === stepId);
+      expect(step, `${protocolId} has no step "${stepId}"`).toBeDefined();
+      expect(step!.actions ?? [], `${protocolId}.${stepId} actions`).toContain('suggest:call_999');
+    }
+  });
+
+  it('no step anywhere logs a 999 call as a side effect of being completed', () => {
+    // F4: `log:999_called` in a step's actions painted the timer strip green on
+    // any Done tap. The call now reaches the log only from a human assertion —
+    // the tel:999 pill or the confirm control — so no step may carry it.
+    for (const protocol of protocols) {
+      for (const step of protocol.steps) {
+        expect(step.actions ?? [], `${protocol.id}.${step.id}`).not.toContain('log:999_called');
       }
     }
   });

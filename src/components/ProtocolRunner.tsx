@@ -21,6 +21,11 @@ import {
 } from '../lib/doseLimits';
 import { voiceCommandsSupported } from '../lib/platform';
 import { switchTargetId, switchButtonLabel, splitHero, isDuplicateSupport } from '../lib/stepCopy';
+import {
+  requires999Confirm,
+  CALL_999_CONFIRMED_LABEL,
+  CALL_999_NOT_YET_LABEL,
+} from '../lib/call999';
 import { elapsedSeconds, formatClock, hhmm } from '../lib/emergencyTimers';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
@@ -69,6 +74,7 @@ export function ProtocolRunner() {
     toggleMute,
     addEventLog,
     logDrugGiven,
+    log999Called,
     runStepActions,
     activeEvent,
     practiceSetup,
@@ -102,6 +108,11 @@ export function ProtocolRunner() {
   const limitClass = drug ? doseLimitClass(drug) : null;
   const hardBlocked = atDoseLimit && limitClass === 'hard_block';
   const escalated = atDoseLimit && limitClass === 'escalation';
+
+  // A step whose whole instruction is "call 999" asks, in the footer, whether
+  // the call actually happened — instead of a generic Done that used to log the
+  // call for them (clinical ruling R2, 2026-08-13; see lib/call999).
+  const needs999Confirm = requires999Confirm(activeProtocol?.id, currentStep?.id);
 
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
@@ -224,6 +235,18 @@ export function ProtocolRunner() {
       performAdvance();
     });
   }, [runOnce, currentStep, addEventLog, logDrugGiven, performAdvance]);
+
+  // The 999 confirm: records the call the team says they made, then advances.
+  // Deduped in the store, because the same team may already have logged it by
+  // tapping the pill to dial. Its neutral twin in the footer is plain advance()
+  // — no log — and so is the voice "done", which must never assert a phone call
+  // nobody has confirmed on screen.
+  const handle999Confirmed = useCallback(() => {
+    runOnce(() => {
+      log999Called();
+      performAdvance();
+    });
+  }, [runOnce, log999Called, performAdvance]);
 
   const handleNext = useCallback(() => {
     // A hard-blocked drug step offers plain onward navigation, not another
@@ -564,7 +587,36 @@ export function ProtocolRunner() {
             </>
           )}
 
-          {!isDecision && !atDoseLimit && (
+          {/* A "call 999" step ends in a question, not a Done: did the call
+              happen? The primary records it; the secondary moves on and records
+              nothing. Both advance — treatment must never gate behind asserting
+              a phone call (R2), so there is no dead end here for a team where
+              one person is still dialling.
+
+              The primary is red TINT, not solid: solid red on this screen means
+              "escalate to CPR", and a confirmation is not an escalation. */}
+          {!isDecision && !atDoseLimit && needs999Confirm && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={handle999Confirmed}
+                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                style={{ gap: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--red-tint-2)', border: '1.5px solid var(--red)', color: 'var(--red-strong)' }}
+              >
+                <Phone className="w-6 h-6" />
+                <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>{CALL_999_CONFIRMED_LABEL}</span>
+              </button>
+              <button
+                onClick={advance}
+                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                style={{ gap: 10, minHeight: 'var(--touch-comfort)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border-strong)', color: 'var(--text-2)' }}
+              >
+                <ChevronRight className="w-5 h-5" />
+                <span className="font-bold" style={{ fontSize: 'var(--fs-body)' }}>{CALL_999_NOT_YET_LABEL}</span>
+              </button>
+            </div>
+          )}
+
+          {!isDecision && !atDoseLimit && !needs999Confirm && (
             <button
               onClick={handleNext}
               className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
@@ -575,11 +627,13 @@ export function ProtocolRunner() {
             </button>
           )}
 
-          {/* Persistent 999 (logs on tap, doesn't block the dial) + voice controls */}
+          {/* Persistent 999 (logs on tap, doesn't block the dial) + voice controls.
+              Deduped in the store: tapping to dial and then confirming on a 999
+              step is one call, and must read as one call. */}
           <div className="flex items-center" style={{ gap: 8, marginTop: isDecision ? 0 : 10 }}>
             <a
               href="tel:999"
-              onClick={() => addEventLog('999_called', '999 called')}
+              onClick={() => log999Called()}
               className="flex-1 flex items-center justify-center active:scale-[0.99] transition-transform"
               style={{ gap: 8, minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--red-tint-2)', border: '1.5px solid var(--red)', textDecoration: 'none' }}
             >

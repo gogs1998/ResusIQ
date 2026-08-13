@@ -25,7 +25,7 @@ interface CPRModeProps {
 }
 
 export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
-  const { isMuted, toggleMute, addEventLog, practiceSetup, activeEvent } = useAppStore();
+  const { isMuted, toggleMute, addEventLog, log999Called, practiceSetup, activeEvent } = useAppStore();
   const { speak } = useSpeech();
 
   const {
@@ -221,7 +221,7 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
 
         <a
           href="tel:999"
-          onClick={() => { addEventLog('999_called', '999 called'); }}
+          onClick={() => { log999Called(); }}
           className="flex items-center justify-center active:scale-[0.99] transition-transform"
           style={{ gap: 8, marginTop: 10, minHeight: 52, borderRadius: 'var(--radius-md)', background: 'var(--red-tint-2)', border: '1.5px solid var(--red)', textDecoration: 'none' }}
         >

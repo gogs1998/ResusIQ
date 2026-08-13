@@ -13,6 +13,7 @@ import type {
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
 import { doseLimitClass, isAtDoseLimit } from '../lib/doseLimits';
+import { has999Called } from '../lib/call999';
 import { newId } from '../lib/ids';
 
 interface AppState {
@@ -47,6 +48,7 @@ interface AppState {
   createEvent: (protocolId: string) => void;
   addEventLog: (type: EventType, label: string, details?: string, drugId?: string) => void;
   logDrugGiven: (drug: Drug, label: string) => { ok: boolean; reason?: 'max_doses_reached' };
+  log999Called: () => { ok: boolean; reason?: 'already_logged' | 'no_active_event' };
   endEvent: (outcome?: string, notes?: string) => void;
   
   // Voice
@@ -277,7 +279,13 @@ export const useAppStore = create<AppState>()(
               get().switchProtocol(arg);
               break;
             case 'log':
-              if (EVENT_TYPES.has(arg as EventType)) {
+              // No protocol step carries log:999_called any more (ruling R2 —
+              // the log follows a human assertion, not a step completion), but
+              // route it through the deduped logger anyway so a future data
+              // change can only ever produce ONE call entry per emergency.
+              if (arg === '999_called') {
+                get().log999Called();
+              } else if (EVENT_TYPES.has(arg as EventType)) {
                 get().addEventLog(arg as EventType, LOG_LABELS[arg] ?? arg);
               } else {
                 get().addEventLog('custom', arg);
@@ -392,6 +400,26 @@ export const useAppStore = create<AppState>()(
           return { ok: false, reason: 'max_doses_reached' };
         }
         get().addEventLog('drug_given', label, undefined, drug.id);
+        return { ok: true };
+      },
+
+      // The ONLY way "999 has been called" reaches the log (clinical ruling R2,
+      // 2026-08-13). It used to be a step action — completing a "Call 999 now"
+      // instruction with the generic Done painted the timer strip green while
+      // someone was still finding a phone. Now it is written only where a human
+      // asserts it: the tel:999 pill, or the explicit confirm control on a 999
+      // step.
+      //
+      // Deduped to ONE entry per emergency. Those two paths overlap constantly
+      // (tap the pill to dial, then confirm on the step), and a second entry
+      // would read as a second call to the 999 script, the SBAR and anyone
+      // reviewing the record afterwards. Nothing downstream counts calls; they
+      // all ask "was 999 called, and when" — which the first entry answers.
+      log999Called: () => {
+        const { activeEvent } = get();
+        if (!activeEvent) return { ok: false, reason: 'no_active_event' };
+        if (has999Called(activeEvent)) return { ok: false, reason: 'already_logged' };
+        get().addEventLog('999_called', LOG_LABELS['999_called']);
         return { ok: true };
       },
 
