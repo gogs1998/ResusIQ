@@ -73,6 +73,25 @@ const helperText: CSSProperties = {
   color: 'var(--text-2)',
 };
 
+// Declared at module scope, NOT inside the wizard. As a nested component it was
+// a brand-new component type on every render of the form, so React unmounted and
+// remounted it on each keystroke — throwing away its DOM (and any transition or
+// focus state) while the user typed the practice address the 999 script depends
+// on.
+function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      role="switch"
+      aria-checked={on}
+      className="w-12 h-6 rounded-full transition-colors flex-shrink-0"
+      style={{ background: on ? 'var(--brand)' : 'var(--surface-inset)' }}
+    >
+      <div className="w-5 h-5 rounded-full transition-transform" style={{ background: '#fff', transform: on ? 'translateX(24px)' : 'translateX(2px)' }} />
+    </button>
+  );
+}
+
 export function PracticeSetupWizard() {
   const { practiceSetup, setPracticeSetup, setScreen } = useAppStore();
 
@@ -98,7 +117,10 @@ export function PracticeSetupWizard() {
 
   const totalSteps = 4;
 
-  const updateField = (field: keyof PracticeSetup, value: any) => {
+  // Generic over the field, so the value has to match the field it is being
+  // written to — `any` here let a string land in a boolean field (or the wrong
+  // way round) with nothing complaining.
+  const updateField = <K extends keyof PracticeSetup>(field: K, value: PracticeSetup[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -151,18 +173,6 @@ export function PracticeSetupWizard() {
       handleSave();
     }
   };
-
-  const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
-    <button
-      onClick={onClick}
-      role="switch"
-      aria-checked={on}
-      className="w-12 h-6 rounded-full transition-colors flex-shrink-0"
-      style={{ background: on ? 'var(--brand)' : 'var(--surface-inset)' }}
-    >
-      <div className="w-5 h-5 rounded-full transition-transform" style={{ background: '#fff', transform: on ? 'translateX(24px)' : 'translateX(2px)' }} />
-    </button>
-  );
 
   return (
     <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>

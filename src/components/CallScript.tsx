@@ -1,6 +1,6 @@
 import { Phone, MapPin, ArrowLeft, Copy, Check, Clock } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { elapsedSeconds } from '../lib/emergencyTimers';
 
@@ -183,7 +183,12 @@ export function CallScript() {
   const [now, setNow] = useState(() => new Date());
   // Fallback start when this screen is opened outside a live emergency: the
   // clock then counts from mount (0-based), preserving the old behaviour.
-  const mountRef = useRef(new Date());
+  // The fallback anchor, when this screen is opened with no live emergency (the
+  // 999 script is reachable outside one). State, not a ref: it is READ during
+  // render to decide what the clock shows, and a ref read during render is a
+  // value React does not know the component depends on. useState's initialiser
+  // runs once, so the instant is still "when this screen opened".
+  const [mountedAt] = useState(() => new Date());
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -192,7 +197,7 @@ export function CallScript() {
 
   // Anchor the elapsed clock to the emergency's real start (999 asks this
   // first), not this screen's mount — so it reads the same as the runner strip.
-  const elapsed = elapsedSeconds(activeEvent?.timestamp ?? mountRef.current.toISOString(), now);
+  const elapsed = elapsedSeconds(activeEvent?.timestamp ?? mountedAt.toISOString(), now);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
