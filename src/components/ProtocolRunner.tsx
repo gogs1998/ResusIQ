@@ -589,7 +589,7 @@ export function ProtocolRunner() {
                   <p
                     key={idx}
                     role="status"
-                    style={{ margin: 0, padding: '0 16px', fontSize: 14, fontWeight: 600, color: 'var(--text-3)' }}
+                    style={{ margin: 0, padding: '0 16px', fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}
                   >
                     {suppression.note}
                   </p>
