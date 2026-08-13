@@ -7,6 +7,7 @@ import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
 import { MONOTONIC_TIMER_STEPS, SPENT_CLOCK_SUPPRESSIONS } from '../lib/monotonicTimers';
+import { TERMINAL_STEPS, TERMINAL_LINES, stepsWithoutOnwardRoute } from '../lib/terminalSteps';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -249,6 +250,39 @@ describe('999 confirm step integrity', () => {
       for (const step of protocol.steps) {
         expect(step.actions ?? [], `${protocol.id}.${step.id}`).not.toContain('log:999_called');
       }
+    }
+  });
+});
+
+describe('terminal step integrity', () => {
+  // TERMINAL_STEPS must cover the successor-less set EXACTLY. A step that gains
+  // a `next` and stays listed would show an end-state while the guidance
+  // continues; a new end state that is not listed inherits a "Done — next step"
+  // that walks the operator into whatever happens to sit next in the array —
+  // the defect this replaced.
+  it('classifies every successor-less step, and nothing else', () => {
+    const actual = new Set<string>();
+    for (const protocol of protocols) {
+      for (const step of stepsWithoutOnwardRoute(protocol)) {
+        actual.add(`${protocol.id}#${step.id}`);
+      }
+    }
+    const listed = new Set(Object.keys(TERMINAL_STEPS));
+    for (const key of actual) {
+      expect(listed, `${key} ends the guidance but has no end-state`).toContain(key);
+    }
+    for (const key of listed) {
+      expect(actual, `${key} is listed as terminal but still routes onward`).toContain(key);
+    }
+    expect(listed.size).toBe(14);
+  });
+
+  it('splits them into the two clinically distinct groups', () => {
+    const groups = Object.values(TERMINAL_STEPS);
+    expect(groups.filter((g) => g === 'awaiting_crew')).toHaveLength(7);
+    expect(groups.filter((g) => g === 'complete')).toHaveLength(7);
+    for (const line of Object.values(TERMINAL_LINES)) {
+      expect(line.startsWith('No further steps —')).toBe(true);
     }
   });
 });

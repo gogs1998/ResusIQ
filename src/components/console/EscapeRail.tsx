@@ -28,16 +28,26 @@ export function EscapeRail({ onEscape }: EscapeRailProps = {}) {
 
   const handleEscape = onEscape ?? (() => switchProtocol('cardiac_arrest'));
 
+  // Red hierarchy, three levels, so the colour still means something (Grok UX2
+  // counted three equal red affordances in one footer and called the language
+  // collapsed):
+  //   filled red      — the escalation that IS the next action (Start CPR now)
+  //   red tint + rule — the 999 pill and the "999 called" confirm
+  //   red on neutral  — this rail: always present, rarely the answer
+  // The rail keeps a red keyline, a red mark and red text, so it is still
+  // unmistakably the emergency exit; it stops shouting at the same volume as
+  // the thing the operator is actually being asked to do.
   const wrap: CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
     width: '100%',
     textAlign: 'left',
-    background: 'var(--red-tint-2)',
-    border: '1.5px solid var(--red)',
-    borderRadius: 13,
-    padding: '12px 14px',
+    background: 'var(--surface-1)',
+    border: '1px solid var(--border-strong)',
+    borderLeft: '3px solid var(--red)',
+    borderRadius: 'var(--radius-md)',
+    padding: '11px 14px',
     color: 'var(--red-strong)',
     cursor: 'pointer',
   };
@@ -52,15 +62,15 @@ export function EscapeRail({ onEscape }: EscapeRailProps = {}) {
     >
       <span
         className="flex items-center justify-center flex-shrink-0"
-        style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--red-tint)', color: 'var(--red-strong)' }}
+        style={{ width: 34, height: 34, borderRadius: 'var(--radius-sm)', background: 'var(--red-tint)', color: 'var(--red-strong)' }}
       >
         <HeartPulse className="w-5 h-5" />
       </span>
       <span style={{ minWidth: 0 }}>
-        <span className="block font-extrabold" style={{ fontSize: 14, color: 'var(--red-strong)', lineHeight: 1.2 }}>
+        <span className="block font-extrabold" style={{ fontSize: 15, color: 'var(--red-strong)', lineHeight: 1.2 }}>
           Unresponsive &amp; not breathing?
         </span>
-        <span className="block" style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', opacity: 0.85, marginTop: 1 }}>
+        <span className="block" style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, color: 'var(--text-2)', marginTop: 1 }}>
           Tap to start CPR now
         </span>
       </span>

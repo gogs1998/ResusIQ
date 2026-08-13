@@ -168,7 +168,16 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           reachable when the content no longer fits). */}
       <main
         className="flex-1 flex flex-col items-center"
-        style={{ padding: '8px 20px', minHeight: 0, overflowY: 'auto', justifyContent: 'safe center' }}
+        style={{
+          padding: '8px 20px',
+          // A floor under the pacing display. The deck below may shrink this
+          // region, but the ring, its counter and the breath warning are what
+          // the operator is compressing against — below roughly this height they
+          // stop being usable at arm's length, and the region scrolls instead.
+          minHeight: 300,
+          overflowY: 'auto',
+          justifyContent: 'safe center',
+        }}
       >
         {/* Eyebrow — red dot + push-hard shout */}
         <div className="flex items-center" style={{ gap: 8, marginBottom: 18 }}>

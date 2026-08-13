@@ -26,7 +26,8 @@ import {
   CALL_999_CONFIRMED_LABEL,
   CALL_999_NOT_YET_LABEL,
 } from '../lib/call999';
-import { elapsedSeconds, formatClock, hhmm } from '../lib/emergencyTimers';
+import { formatClock, hhmm } from '../lib/emergencyTimers';
+import { terminalGroup, TERMINAL_LINES } from '../lib/terminalSteps';
 import {
   isMonotonicTimerStep,
   timerAnchorKey,
@@ -173,6 +174,10 @@ export function ProtocolRunner() {
     ? spentClockSuppression(activeProtocol?.id, currentStep?.id)
     : null;
 
+  // A step the protocol author meant as the end. The guidance stops here; the
+  // footer says so instead of offering a next step it cannot deliver.
+  const endState = terminalGroup(activeProtocol?.id, currentStep?.id);
+
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
   // event as voices load — can't re-speak the same step (the first-step
@@ -226,7 +231,13 @@ export function ProtocolRunner() {
   // Step 0 is the only place the corner control ends the emergency, so it is the
   // only place the bar can belong — the second belt, for a step change that
   // bypasses gestures entirely.
-  const showEndConfirm = confirmingEndAt === positionKey && currentStepIndex === 0;
+  // Where an end control exists at all: the step-0 X, and the terminal steps
+  // whose footer offers "End emergency". Gating on this (rather than on the
+  // flag alone) is what stops the bar riding onto a step whose header the
+  // operator still needs.
+  const canEndFromHere = currentStepIndex === 0 || terminalGroup(activeProtocol?.id, currentStep?.id) !== null;
+  const showEndConfirm = confirmingEndAt === positionKey && canEndFromHere;
+
 
   useEffect(() => {
     advancingFromRef.current = null;
@@ -445,7 +456,6 @@ export function ProtocolRunner() {
     ? currentStep.question
     : supportText ? `${heroText}. ${supportText}` : heroText;
 
-  const elapsed = activeEvent ? elapsedSeconds(activeEvent.timestamp, now) : 0;
   const progressPct = totalSteps > 1 ? Math.round((currentStepIndex / (totalSteps - 1)) * 100) : 100;
 
   // ONE dominant action per state: green = confirm a dose given, red = escalate
@@ -497,22 +507,22 @@ export function ProtocolRunner() {
           >
             {currentStepIndex === 0 ? <X className="w-6 h-6" style={{ color: 'var(--text-3)' }} /> : <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />}
           </button>
-          <h1 className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 12.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', margin: 0 }}>
+          <h1 className="flex-1 min-w-0 font-extrabold truncate" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-eyebrow)', textTransform: 'uppercase', color: 'var(--text-2)', margin: 0 }}>
             {activeProtocol.title}
           </h1>
-          <div className="text-right flex-shrink-0">
-            <div className="riq-data font-bold" style={{ fontSize: 15, color: 'var(--text-1)', lineHeight: 1 }}>{formatClock(elapsed)}</div>
-            <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>Elapsed</div>
-          </div>
+          {/* Elapsed lives in the TimerStrip chip and NOWHERE else. Two clocks a
+              few pixels apart, fed by the same source, cost header height and
+              implied two systems were counting (Grok UX2). */}
+          <span className="riq-data flex-shrink-0" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>
+            {currentStepIndex + 1} / {totalSteps}
+          </span>
         </div>
         )}
 
-        {/* Thin progress bar + step counter (replaces the segmented dashes) */}
-        <div className="flex items-center" style={{ gap: 10, marginTop: 12 }}>
-          <div style={{ flex: 1, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--surface-inset)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', width: `${progressPct}%`, transition: 'width 0.3s ease' }} />
-          </div>
-          <span className="riq-data flex-shrink-0" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>{currentStepIndex + 1} / {totalSteps}</span>
+        {/* Progress — a hairline, with the counter moved up beside the title so
+            the header is one row instead of three. */}
+        <div style={{ height: 3, borderRadius: 'var(--radius-pill)', background: 'var(--surface-inset)', overflow: 'hidden', marginTop: 10 }}>
+          <div style={{ height: '100%', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', width: `${progressPct}%`, transition: 'width 0.3s ease' }} />
         </div>
 
         {/* Pinned timers — first-class. One tick source: the runner owns `now`
@@ -724,11 +734,39 @@ export function ProtocolRunner() {
               </button>
               <button
                 onClick={advance}
-                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                  className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
                 style={{ gap: 10, marginTop: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
               >
                 <ChevronRight className="w-6 h-6" />
                 <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Next step</span>
+              </button>
+            </>
+          )}
+
+          {/* End of the guidance. No CTA: "Done — next step" promised a next
+              step that does not exist, and the runner's array-order fallback
+              then walked the operator into an unrelated screen — on
+              seizure.monitor_seizure, into "Seizure stopped — recovery
+              position", asserting the seizure had stopped because someone
+              tapped a button. The line states where they are; ending is a quiet
+              secondary through the existing confirm. Group A gets no extra
+              friction: a screen held for twenty minutes must not train the team
+              to tap through a guard. */}
+          {!isDecision && endState && (
+            <>
+              <p
+                role="status"
+                style={{ margin: 0, padding: '2px 4px 12px', fontSize: 'var(--fs-body-sm)', fontWeight: 600, color: 'var(--text-2)', lineHeight: 1.35 }}
+              >
+                {TERMINAL_LINES[endState]}
+              </p>
+              <button
+                onClick={() => setConfirmingEndAt(positionKey)}
+                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                style={{ gap: 8, minHeight: 'var(--touch-comfort)', borderRadius: 'var(--radius-md)', background: 'var(--surface-1)', border: '1px solid var(--border-strong)', color: 'var(--text-2)' }}
+              >
+                <X className="w-5 h-5" />
+                <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)' }}>End emergency</span>
               </button>
             </>
           )}
@@ -741,11 +779,11 @@ export function ProtocolRunner() {
 
               The primary is red TINT, not solid: solid red on this screen means
               "escalate to CPR", and a confirmation is not an escalation. */}
-          {!isDecision && !atDoseLimit && needs999Confirm && (
+          {!isDecision && !atDoseLimit && !endState && needs999Confirm && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
                 onClick={handle999Confirmed}
-                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                  className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
                 style={{ gap: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--red-tint-2)', border: '1.5px solid var(--red)', color: 'var(--red-strong)' }}
               >
                 <Phone className="w-6 h-6" />
@@ -753,7 +791,7 @@ export function ProtocolRunner() {
               </button>
               <button
                 onClick={advance}
-                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                  className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
                 style={{ gap: 10, minHeight: 'var(--touch-comfort)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-1)', border: '1px solid var(--border-strong)', color: 'var(--text-2)' }}
               >
                 <ChevronRight className="w-5 h-5" />
@@ -762,7 +800,7 @@ export function ProtocolRunner() {
             </div>
           )}
 
-          {!isDecision && !atDoseLimit && !needs999Confirm && (
+          {!isDecision && !atDoseLimit && !endState && !needs999Confirm && (
             <button
               onClick={handleNext}
               className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
