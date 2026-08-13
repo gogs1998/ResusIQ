@@ -10,6 +10,7 @@ import {
 import type { CSSProperties } from 'react';
 import { useAppStore } from '../store/appStore';
 import { triageQuestions, protocols } from '../data/protocols';
+import { shouldFastPathToArrest } from '../lib/triage';
 import { EscapeRail } from './console/EscapeRail';
 
 const backBtn: CSSProperties = {
@@ -40,17 +41,21 @@ export function TriageWizard() {
   const currentQuestion = essentialQuestions[currentQuestionIndex];
 
   const handleAnswer = (answer: boolean) => {
+    // Evaluate the fast-path against the answers INCLUDING this one. `answer`
+    // is merged locally rather than read back from the store: setTriageAnswer
+    // does not mutate the `triageAnswers` captured by this closure, so a check
+    // against store state would always miss the answer that just triggered it.
+    const answersWithThis = { ...triageAnswers, [currentQuestion.id]: answer };
     setTriageAnswer(currentQuestion.id, answer);
 
-    // Check for immediate routing
-    if (currentQuestion.id === 'conscious' && !answer) {
-      // Not conscious - check breathing
-      const breathingAnswered = triageAnswers['breathing_normally'];
-      if (breathingAnswered === false) {
-        // Unconscious and not breathing - cardiac arrest
-        startEmergency('cardiac_arrest');
-        return;
-      }
+    // Unresponsive + not breathing: start CPR now, on whichever of the two is
+    // answered second. Every remaining question is time the patient does not
+    // have. Lands on start_cpr — this path IS the arrest recognition, so the
+    // protocol must not ask it again.
+    if (shouldFastPathToArrest(answersWithThis)) {
+      clearTriageAnswers();
+      startEmergency('cardiac_arrest', 'triage', { landOn: 'start_cpr' });
+      return;
     }
 
     if (currentQuestionIndex < essentialQuestions.length - 1) {
@@ -130,8 +135,10 @@ export function TriageWizard() {
   };
 
   // The "If in doubt" panel — the pre-emergency safety exits, shared by both the
-  // question and result screens. CARDIAC ARREST keeps its existing no-source
-  // routing (starts at step 0); the EscapeRail above uses the 'tile' fast-path.
+  // question and result screens. CARDIAC ARREST here deliberately keeps step-0
+  // routing: "if in doubt" is the one entry that has NOT asserted arrest, so it
+  // gets the check-response / check-breathing sequence. The EscapeRail above is
+  // the opposite assertion ("unresponsive & not breathing") and lands on CPR.
   const inDoubtPanel = (
     <div style={{ padding: '12px 14px', borderRadius: 13, background: 'var(--red-tint-2)', border: '1.5px solid var(--red)' }}>
       <p className="font-bold" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red-strong)', opacity: 0.9, marginBottom: 10 }}>
@@ -259,7 +266,12 @@ export function TriageWizard() {
 
       {/* Footer — escape rail (the architectural guarantee) + if-in-doubt exits */}
       <footer className="safe-area-bottom" style={{ flexShrink: 0, padding: '10px 18px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <EscapeRail onEscape={() => startEmergency('cardiac_arrest', 'tile')} />
+        <EscapeRail
+          onEscape={() => {
+            clearTriageAnswers();
+            startEmergency('cardiac_arrest', 'triage', { landOn: 'start_cpr' });
+          }}
+        />
         {inDoubtPanel}
       </footer>
     </div>
