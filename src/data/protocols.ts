@@ -662,12 +662,12 @@ export const protocols: Protocol[] = [
       {
         id: 'prolonged_seizure',
         type: 'decision',
-        say: 'Has the seizure lasted longer than 5 minutes?',
-        show: 'Has the seizure lasted longer than 5 minutes?',
-        question: 'Has the seizure lasted longer than 5 minutes?',
+        say: 'Is the seizure still going?',
+        show: 'Is the seizure still going?',
+        question: 'Is the seizure still going?',
         answers: [
-          { label: 'Yes — longer than 5 minutes', next: 'call_999_seizure' },
-          { label: 'No — still seizing, under 5 minutes', next: 'continue_timing' },
+          { label: 'Yes — 5 minutes or more, or it has happened again', next: 'call_999_seizure' },
+          { label: 'Yes — still under 5 minutes', next: 'continue_timing' },
           { label: 'Seizure has stopped', next: 'post_ictal' }
         ]
       },
