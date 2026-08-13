@@ -107,10 +107,55 @@ export function ProtocolRunner() {
     }
   }, [currentStep, isMuted, speak]);
 
+  // ONE gesture at a time.
+  //
+  // Every advancing path — the hero CTA, a decision answer, a drug confirm, and
+  // the reassess timer completing — logs to the medico-legal record and moves
+  // the step. Two of them landing in the same frame logs the event twice and
+  // skips a step, because React has not re-rendered with the new step in
+  // between: a gloved double-tap on "Confirm given" recorded two IM doses, and a
+  // manual Done racing the timer's auto-advance skipped past the next
+  // instruction entirely. (The timer is the sharper edge: useTimer fires
+  // onComplete from inside a setState updater, which React may invoke more than
+  // once for a single expiry.)
+  //
+  // The barrier is a ref holding the position a gesture fired from. It cannot be
+  // state: a second tap in the same frame would still read the old value, since
+  // state updates are async — which is the very race being closed.
+  //
+  // Position, not a boolean, so the barrier needs no release: the next render is
+  // on a new step, whose key no longer matches, and the guard lapses on its own.
+  // The key carries the protocol as well as the index because the anaphylaxis →
+  // cardiac_arrest handoff moves between two different steps that share the id
+  // 'start_cpr'.
+  const advancingFromRef = useRef<string | null>(null);
+  const positionKey = `${activeProtocol?.id}#${currentStepIndex}`;
+
+  const runOnce = useCallback((op: () => void) => {
+    if (advancingFromRef.current === positionKey) return;
+    const before = useAppStore.getState();
+    const eventsBefore = before.activeEvent?.events.length ?? 0;
+    advancingFromRef.current = positionKey;
+    op();
+    // The store commits synchronously. A gesture that neither moved nor wrote
+    // anything — a dose refused at its ceiling — leaves nothing to protect, and
+    // holding the barrier there would block the operator's next tap on a screen
+    // that never re-renders. Anything that did navigate or log keeps it.
+    const after = useAppStore.getState();
+    const moved =
+      after.activeProtocol?.id !== before.activeProtocol?.id ||
+      after.currentStepIndex !== before.currentStepIndex;
+    const logged = (after.activeEvent?.events.length ?? 0) !== eventsBefore;
+    if (!moved && !logged) advancingFromRef.current = null;
+  }, [positionKey]);
+
   // Linear progression for non-decision steps. Step `actions` fire HERE, on
   // completion (leaving the step) — not on render — so back-navigation can't
   // re-fire them and they run only after the user did the thing.
-  const advance = useCallback(() => {
+  //
+  // Unguarded: the guard is applied by the callers below, so one gesture can
+  // log a dose AND advance without tripping its own barrier.
+  const performAdvance = useCallback(() => {
     if (!currentStep || !activeProtocol) return;
     // Log this step's completion exactly once. All navigation below goes through
     // goToStep, which does NOT log — advancing via any store helper that logs on
@@ -128,39 +173,45 @@ export function ProtocolRunner() {
     // else: terminal step with no successor — nothing to advance to.
   }, [currentStep, activeProtocol, currentStepIndex, addEventLog, runStepActions, goToStep]);
 
+  const advance = useCallback(() => runOnce(performAdvance), [runOnce, performAdvance]);
+
   // Decision steps resolve in ONE tap: choosing an answer logs the choice, runs
   // any step actions, and jumps straight to that branch's target step. Navigation
   // is goToStep-only for the same single-log reason as advance().
   const chooseAnswer = useCallback((answer: { label: string; next: string }) => {
-    if (currentStep) {
-      addEventLog('step_completed', `${currentStep.show.split('\n')[0]} → ${answer.label}`);
-      runStepActions(currentStep);
-      // Defensive: no decision carries a switch today, but if one did the switch
-      // owns navigation — don't also jump to answer.next.
-      if (switchTargetId(currentStep)) return;
-    }
-    const byId = activeProtocol?.steps.findIndex(s => s.id === answer.next) ?? -1;
-    if (byId >= 0) goToStep(byId);
-    // answer.next always resolves (data-integrity test); no fallback jump.
-  }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep]);
+    runOnce(() => {
+      if (currentStep) {
+        addEventLog('step_completed', `${currentStep.show.split('\n')[0]} → ${answer.label}`);
+        runStepActions(currentStep);
+        // Defensive: no decision carries a switch today, but if one did the switch
+        // owns navigation — don't also jump to answer.next.
+        if (switchTargetId(currentStep)) return;
+      }
+      const byId = activeProtocol?.steps.findIndex(s => s.id === answer.next) ?? -1;
+      if (byId >= 0) goToStep(byId);
+      // answer.next always resolves (data-integrity test); no fallback jump.
+    });
+  }, [runOnce, currentStep, addEventLog, runStepActions, activeProtocol, goToStep]);
 
   // On a require_confirm (drug) step one press logs the drug as given and
   // advances — keeps the event log honest without a two-tap dance. The store
   // owns the dose ceiling: if it refuses, nothing is logged and we stay put so
   // the refused state is what the operator sees.
   const handleConfirm = useCallback(() => {
-    if (currentStep?.type === 'drug' && currentStep.drug_id) {
-      const stepDrug = getDrugById(currentStep.drug_id);
-      if (stepDrug) {
-        if (!logDrugGiven(stepDrug, `Drug: ${currentStep.drug_id}`).ok) return;
-      } else {
-        // Unknown drug id (guarded against by the data-integrity tests): record
-        // the administration rather than losing it.
-        addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
+    runOnce(() => {
+      if (currentStep?.type === 'drug' && currentStep.drug_id) {
+        const stepDrug = getDrugById(currentStep.drug_id);
+        if (stepDrug) {
+          if (!logDrugGiven(stepDrug, `Drug: ${currentStep.drug_id}`).ok) return;
+        } else {
+          // Unknown drug id (guarded against by the data-integrity tests): record
+          // the administration rather than losing it.
+          addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
+        }
       }
-    }
-    advance();
-  }, [currentStep, addEventLog, logDrugGiven, advance]);
+      performAdvance();
+    });
+  }, [runOnce, currentStep, addEventLog, logDrugGiven, performAdvance]);
 
   const handleNext = useCallback(() => {
     // A spent drug step offers plain onward navigation, not another confirm —
