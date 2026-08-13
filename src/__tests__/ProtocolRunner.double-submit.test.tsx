@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach, afterAll } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ProtocolRunner } from '../components/ProtocolRunner';
@@ -15,7 +15,6 @@ import { drugs } from '../data/drugs';
 // would miss.
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
@@ -35,7 +34,7 @@ beforeAll(() => {
 });
 
 let container: HTMLDivElement;
-let root: Root;
+let root: Root | null = null;
 
 const render = () => {
   container = document.createElement('div');
@@ -46,10 +45,25 @@ const render = () => {
   });
 };
 
+// Idempotent, and run again after every test: a failing assertion skips the
+// explicit call at the end of a case, and a leaked root keeps this component's
+// 1s clock interval ticking into the next one.
 const unmount = () => {
-  act(() => root.unmount());
+  if (!root) return;
+  const mounted = root;
+  root = null;
+  act(() => mounted.unmount());
   container.remove();
 };
+
+afterEach(unmount);
+
+// The speech stub is this file's, not the suite's — hand the global back so it
+// cannot leak into a file that means to assert on the real absence of a speech
+// stack.
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 const buttonWithText = (text: string) =>
   [...container.querySelectorAll('button')].find((b) => b.textContent?.includes(text));
@@ -177,6 +191,38 @@ describe('ProtocolRunner double-submit guard', () => {
       next!.click();
     });
     expect(countDosesGiven(useAppStore.getState().activeEvent, 'midazolam_buccal')).toBe(1);
+    // ...and it MOVES. Asserting only the dose count let a dead button pass:
+    // the step this test navigates back to is the same position the confirm
+    // fired from, so a guard that never released left "Next step" inert — mid
+    // seizure, with the app looking frozen.
+    const afterNext = useAppStore.getState();
+    expect(afterNext.activeProtocol!.steps[afterNext.currentStepIndex].id).toBe(
+      seizure.steps[midazolamIndex].next
+    );
+
+    unmount();
+  });
+
+  it('after Back, the FIRST tap on the primary control advances', () => {
+    // The guard keyed on `${protocol}#${index}` and cleared only after a gesture
+    // that did nothing. Back returns to a position a gesture already fired from,
+    // so the key matched again and every subsequent tap on that step — CTA,
+    // drug confirm, 999 confirm, voice "next" — was swallowed for good.
+    useAppStore.getState().startEmergency('cardiac_arrest');
+    render();
+
+    act(() => buttonWithText('Done — next step')!.click());
+    expect(useAppStore.getState().activeProtocol!.steps[useAppStore.getState().currentStepIndex].id)
+      .toBe('response');
+
+    act(() => useAppStore.getState().prevStep());
+    expect(useAppStore.getState().currentStepIndex).toBe(0);
+
+    // ONE tap. Not a retry, not a double-tap that happens to get through.
+    act(() => buttonWithText('Done — next step')!.click());
+
+    const after = useAppStore.getState();
+    expect(after.activeProtocol!.steps[after.currentStepIndex].id).toBe('response');
 
     unmount();
   });

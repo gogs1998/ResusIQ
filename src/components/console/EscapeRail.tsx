@@ -9,8 +9,10 @@ import { useAppStore } from '../../store/appStore';
 //
 // `onEscape` overrides the default tap behaviour for callers that run BEFORE an
 // emergency exists — TriageWizard mounts the same rail but there is no activeEvent
-// yet, so switchProtocol would no-op; it passes startEmergency('cardiac_arrest',
-// 'tile') instead. One rail component, one set of styles, two entry points.
+// yet, so switchProtocol would no-op; it passes
+// startEmergency('cardiac_arrest', 'triage', { landOn: 'start_cpr' }) instead,
+// which lands on compressions exactly like the mid-emergency switch does. One
+// rail component, one set of styles, two entry points, one landing.
 
 interface EscapeRailProps {
   onEscape?: () => void;
@@ -59,7 +61,7 @@ export function EscapeRail({ onEscape }: EscapeRailProps = {}) {
           Unresponsive &amp; not breathing?
         </span>
         <span className="block" style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', opacity: 0.85, marginTop: 1 }}>
-          Tap any time — switches straight to CPR
+          Tap to start CPR now
         </span>
       </span>
     </button>

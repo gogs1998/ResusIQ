@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Deck } from '../components/console/Deck';
@@ -13,7 +13,6 @@ import type { EmergencyEvent } from '../types';
 // handover. The row may now only state a dose that was actually recorded.
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
@@ -22,7 +21,7 @@ beforeAll(() => {
 });
 
 let container: HTMLDivElement;
-let root: Root;
+let root: Root | null = null;
 
 const render = () => {
   container = document.createElement('div');
@@ -33,10 +32,17 @@ const render = () => {
   });
 };
 
+// Idempotent, and run again after every test: a failing assertion skips the
+// explicit call at the end of a case, and a leaked root outlives the file.
 const unmount = () => {
-  act(() => root.unmount());
+  if (!root) return;
+  const mounted = root;
+  root = null;
+  act(() => mounted.unmount());
   container.remove();
 };
+
+afterEach(unmount);
 
 const buttonWithText = (text: string) =>
   [...container.querySelectorAll('button')].find((b) => b.textContent?.includes(text));

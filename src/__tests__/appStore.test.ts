@@ -90,7 +90,7 @@ describe('appStore emergency lifecycle', () => {
   });
 
   it('switchProtocol to cardiac_arrest lands on start_cpr, not the top of the protocol', () => {
-    // F1: the escape rail promises "switches straight to CPR". A deterioration
+    // F1: the escape rail promises "Tap to start CPR now". A deterioration
     // entry has already asserted unresponsive + not breathing, so re-running
     // safety → response → airway → breathing_check → "are they breathing?"
     // delays compressions on a patient already declared arrested.

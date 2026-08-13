@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach, afterAll } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ProtocolRunner } from '../components/ProtocolRunner';
@@ -9,7 +9,6 @@ import { useAppStore } from '../store/appStore';
 // screen mid-emergency. One tap was enough to do that.
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
@@ -43,7 +42,7 @@ beforeAll(() => {
 });
 
 let container: HTMLDivElement;
-let root: Root;
+let root: Root | null = null;
 
 const render = () => {
   container = document.createElement('div');
@@ -54,10 +53,25 @@ const render = () => {
   });
 };
 
+// Idempotent, and run again after every test: a failing assertion skips the
+// explicit call at the end of a case, and a leaked root keeps this component's
+// 1s clock interval ticking into the next one.
 const unmount = () => {
-  act(() => root.unmount());
+  if (!root) return;
+  const mounted = root;
+  root = null;
+  act(() => mounted.unmount());
   container.remove();
 };
+
+afterEach(unmount);
+
+// The speech stub is this file's, not the suite's — hand the global back so it
+// cannot leak into a file that means to assert on the real absence of a speech
+// stack.
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 const buttonWithText = (text: string) =>
   [...container.querySelectorAll('button')].find((b) => b.textContent?.includes(text));

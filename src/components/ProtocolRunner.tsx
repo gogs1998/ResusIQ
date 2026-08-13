@@ -152,13 +152,27 @@ export function ProtocolRunner() {
   // state: a second tap in the same frame would still read the old value, since
   // state updates are async — which is the very race being closed.
   //
-  // Position, not a boolean, so the barrier needs no release: the next render is
-  // on a new step, whose key no longer matches, and the guard lapses on its own.
-  // The key carries the protocol as well as the index because the anaphylaxis →
-  // cardiac_arrest handoff moves between two different steps that share the id
-  // 'start_cpr'.
+  // Position, not a boolean. The key carries the protocol as well as the index
+  // because the anaphylaxis → cardiac_arrest handoff moves between two different
+  // steps that share the id 'start_cpr'.
+  //
+  // It is RELEASED on every position change, and that release is the whole
+  // correctness argument. The original version left the ref holding the key it
+  // fired from and reasoned that a key never recurs — which is false the moment
+  // anyone taps Back. Returning to a step a gesture already fired from matched
+  // the stale key, so every later tap on that step was swallowed: silently, for
+  // good, with no visible state to explain it. Back onto a spent midazolam step
+  // and "Next step" simply stopped working, mid-seizure, on a frozen-looking
+  // screen. The escalation controls and the 999 confirm inherit the same path.
+  //
+  // The effect cannot reintroduce the double-tap it guards against: two taps in
+  // one frame are not separated by a render, so nothing clears between them.
   const advancingFromRef = useRef<string | null>(null);
   const positionKey = `${activeProtocol?.id}#${currentStepIndex}`;
+
+  useEffect(() => {
+    advancingFromRef.current = null;
+  }, [positionKey]);
 
   const runOnce = useCallback((op: () => void) => {
     if (advancingFromRef.current === positionKey) return;
@@ -233,8 +247,15 @@ export function ProtocolRunner() {
         if (stepDrug) {
           if (!logDrugGiven(stepDrug, `Drug: ${currentStep.drug_id}`).ok) return;
         } else {
-          // Unknown drug id (guarded against by the data-integrity tests): record
-          // the administration rather than losing it.
+          // The ONLY path that reaches the log without passing logDrugGiven's
+          // ceiling — and it is unreachable by construction: a data-integrity
+          // test asserts every step drug_id resolves to a real drug, and a
+          // second one that drug_id appears only on 'drug' steps. Reaching here
+          // means the id names no drug, so there is no max_doses to enforce and
+          // nothing for the ceiling to say; dropping the administration instead
+          // would lose a dose from the medico-legal record, which is the worse
+          // failure. If a future change makes this reachable with a real drug,
+          // it must go through logDrugGiven.
           addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
         }
       }

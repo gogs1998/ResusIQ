@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach, afterAll } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ProtocolRunner } from '../components/ProtocolRunner';
@@ -12,7 +12,6 @@ import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
 // treatment must never gate behind asserting a phone call.
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
@@ -30,7 +29,7 @@ beforeAll(() => {
 });
 
 let container: HTMLDivElement;
-let root: Root;
+let root: Root | null = null;
 
 const render = () => {
   container = document.createElement('div');
@@ -41,10 +40,25 @@ const render = () => {
   });
 };
 
+// Idempotent, and run again after every test: a failing assertion skips the
+// explicit call at the end of a case, and a leaked root keeps this component's
+// 1s clock interval ticking into the next one.
 const unmount = () => {
-  act(() => root.unmount());
+  if (!root) return;
+  const mounted = root;
+  root = null;
+  act(() => mounted.unmount());
   container.remove();
 };
+
+afterEach(unmount);
+
+// The speech stub is this file's, not the suite's — hand the global back so it
+// cannot leak into a file that means to assert on the real absence of a speech
+// stack.
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 const buttonWithText = (text: string) =>
   [...container.querySelectorAll('button')].find((b) => b.textContent?.includes(text));
@@ -146,6 +160,30 @@ describe('ProtocolRunner 999 confirm footer', () => {
     act(() => buttonWithText('999 called — continue')!.click());
 
     expect(calls999().length).toBe(1);
+
+    unmount();
+  });
+
+  it('still records the call when the step is reached a second time, via Back', () => {
+    // The confirm shares the runner's one-gesture barrier, which used to key on
+    // position and never release — so a step revisited by Back had every control
+    // on it dead, this one included. Here the team moves on without asserting a
+    // call, comes back because the call has now been made, and confirms it.
+    const { protocol, index } = openStep('stroke', 'time_call');
+
+    act(() => buttonWithText('Not yet — continue anyway')!.click());
+    expect(calls999().length).toBe(0);
+
+    act(() => useAppStore.getState().prevStep());
+    expect(useAppStore.getState().currentStepIndex).toBe(index);
+
+    act(() => buttonWithText('999 called — continue')!.click());
+
+    expect(calls999().length).toBe(1);
+    const after = useAppStore.getState();
+    expect(after.activeProtocol!.steps[after.currentStepIndex].id).toBe(
+      protocol.steps[index].next
+    );
 
     unmount();
   });

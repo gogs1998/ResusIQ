@@ -232,7 +232,7 @@ export const useAppStore = create<AppState>()(
       // EVERY call is a deterioration by construction (it is guarded on
       // activeEvent), so the landing uses DETERIORATION_LANDING where the target
       // declares one — cardiac_arrest lands on `start_cpr`, honouring the escape
-      // rail's "switches straight to CPR" promise. Targets without an entry fall
+      // rail's "Tap to start CPR now" promise. Targets without an entry fall
       // back to the leading-recognition skip a decisive tile entry uses.
       // Unknown ids are a silent no-op — target validity is owned by the
       // data-integrity tests (every switch_protocol action targets a real
