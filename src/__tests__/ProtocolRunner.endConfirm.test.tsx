@@ -153,6 +153,44 @@ describe('ProtocolRunner end confirmation', () => {
     unmount();
   });
 
+  it('an advance that is not a tap takes the confirmation with it', () => {
+    // Only a click dismissed the bar. A voice "next" or a timer auto-advance
+    // moves the step without one, so the confirmation rode along onto later
+    // steps — hiding the protocol title and the elapsed clock, and leaving an
+    // "End emergency" button sitting where the operator expects the step
+    // header. Here the step changes by a route that is not a click.
+    render();
+    act(() => buttonWithLabel('End emergency')!.click());
+    expect(endConfirm()).not.toBeNull();
+
+    act(() => useAppStore.getState().goToStep(1));
+
+    expect(endConfirm()).toBeNull();
+    // The header is back: elapsed clock and the plain Back control.
+    expect(container.textContent).toContain('Elapsed');
+    expect(buttonWithLabel('Previous step')).not.toBeNull();
+    expect(useAppStore.getState().isEmergencyActive).toBe(true);
+
+    unmount();
+  });
+
+  it('does not reappear when the operator comes back to step 0', () => {
+    // The confirmation is keyed on position, so returning to the position it was
+    // opened on would match again. Going back drops it.
+    render();
+    act(() => buttonWithLabel('End emergency')!.click());
+    act(() => useAppStore.getState().goToStep(1));
+    expect(endConfirm()).toBeNull();
+
+    act(() => buttonWithLabel('Previous step')!.click());
+
+    expect(useAppStore.getState().currentStepIndex).toBe(0);
+    expect(endConfirm()).toBeNull();
+    expect(buttonWithLabel('End emergency')).not.toBeNull();
+
+    unmount();
+  });
+
   it('past step 0 the corner control is still plain Back — no confirmation', () => {
     act(() => useAppStore.getState().goToStep(1));
     render();

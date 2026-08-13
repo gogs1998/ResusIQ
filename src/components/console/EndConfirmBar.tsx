@@ -30,7 +30,11 @@ export function EndConfirmBar({ body, onKeepGoing, onEnd }: EndConfirmBarProps) 
   return (
     <div
       {...{ [END_CONFIRM_ATTR]: '' }}
-      role="alertdialog"
+      // Not a dialog: it sits in the header's place, traps nothing, and the rest
+      // of the screen stays live and tappable behind it — in CPR deliberately
+      // so. Claiming alertdialog would promise a modal that does not exist.
+      // Focus still lands on Keep going, which is what makes it answerable.
+      role="group"
       aria-label={TITLE}
       aria-describedby="end-confirm-body"
       style={{

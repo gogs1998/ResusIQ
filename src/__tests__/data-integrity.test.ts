@@ -6,7 +6,7 @@ import { TILES } from '../components/EmergencyDashboard';
 import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
-import { MONOTONIC_TIMER_STEPS } from '../lib/monotonicTimers';
+import { MONOTONIC_TIMER_STEPS, SPENT_CLOCK_SUPPRESSIONS } from '../lib/monotonicTimers';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -246,6 +246,31 @@ describe('monotonic timer step integrity', () => {
       expect(step, `${protocolId} has no step "${stepId}"`).toBeDefined();
       expect(step!.type, `${protocolId}.${stepId}`).toBe('timer_block');
       expect(step!.duration_seconds, `${protocolId}.${stepId} has no duration`).toBeGreaterThan(0);
+    }
+  });
+
+  it('every spent-clock suppression names a real answer on a real decision', () => {
+    // The suppression withdraws one answer once the clock is spent. Keyed on the
+    // graph edge, so a reworded label is safe — but a REMOVED edge would make it
+    // silently suppress nothing, which is the failure this catches.
+    for (const s of SPENT_CLOCK_SUPPRESSIONS) {
+      const protocol = protocols.find((p) => p.id === s.protocol);
+      expect(protocol, `no protocol "${s.protocol}"`).toBeDefined();
+      const step = protocol!.steps.find((x) => x.id === s.step);
+      expect(step, `${s.protocol} has no step "${s.step}"`).toBeDefined();
+      expect(step!.type).toBe('decision');
+      const answer = (step!.answers ?? []).find((a) => a.next === s.answerNext);
+      expect(answer, `${s.protocol}.${s.step} has no answer -> ${s.answerNext}`).toBeDefined();
+      expect(s.note.length).toBeGreaterThan(0);
+
+      // What remains when it is withdrawn must still let the team describe the
+      // patient: escalate, and say it has stopped (clinical ruling R4 follow-up).
+      const remaining = (step!.answers ?? []).filter((a) => a.next !== s.answerNext);
+      expect(remaining.length, `${s.step} would be left with too few answers`).toBeGreaterThan(1);
+      expect(
+        remaining.some((a) => /stopped/i.test(a.label)),
+        `${s.step} loses its "stopped" exit`
+      ).toBe(true);
     }
   });
 

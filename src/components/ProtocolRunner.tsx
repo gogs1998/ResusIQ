@@ -26,8 +26,13 @@ import {
   CALL_999_CONFIRMED_LABEL,
   CALL_999_NOT_YET_LABEL,
 } from '../lib/call999';
-import { elapsedSeconds, formatClock, hhmm, remainingSeconds } from '../lib/emergencyTimers';
-import { isMonotonicTimerStep, timerAnchorKey } from '../lib/monotonicTimers';
+import { elapsedSeconds, formatClock, hhmm } from '../lib/emergencyTimers';
+import {
+  isMonotonicTimerStep,
+  timerAnchorKey,
+  monotonicClockRemaining,
+  spentClockSuppression,
+} from '../lib/monotonicTimers';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
@@ -91,7 +96,13 @@ export function ProtocolRunner() {
   const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
-  const [confirmingEnd, setConfirmingEnd] = useState(false);
+  // The end confirmation, held as the POSITION it was opened on rather than a
+  // bare flag. Only a tap used to dismiss it, so a voice "next" or a timer
+  // auto-advance carried the bar onto later steps — hiding the protocol title
+  // and the elapsed clock behind an "End emergency" button on a step that never
+  // asked for one. A key that stops matching needs no effect to clear it: the
+  // step moves, and the confirmation is simply no longer for this screen.
+  const [confirmingEndAt, setConfirmingEndAt] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
 
   // 1s tick for the header elapsed clock (999 asks elapsed time first). Derived
@@ -142,14 +153,25 @@ export function ProtocolRunner() {
     if (anchorKey) anchorTimer(anchorKey);
   }, [anchorKey, anchorTimer]);
 
+  // ONE reading of the clock, shared by everything that acts on it: the display,
+  // the backstop route, and the answer suppression below. They cannot disagree
+  // about whether five minutes have passed because there is nothing to disagree
+  // with.
+  const clockRemaining = monotonicClockRemaining(activeProtocol, timerAnchors, now);
+
   // Before the anchor exists (the very first render of a first arrival) the full
   // duration is the correct answer — that arrival IS the start.
   const monotonicRemaining =
     isMonotonicTimer && currentStep?.duration_seconds
-      ? timerAnchor
-        ? remainingSeconds(timerAnchor, currentStep.duration_seconds, now)
-        : currentStep.duration_seconds
+      ? clockRemaining ?? currentStep.duration_seconds
       : null;
+
+  // With the clock spent, the answer that contradicts it is withdrawn and a
+  // statement of the measurement takes its place (clinical ruling R4 follow-up;
+  // see lib/monotonicTimers for why this answer and not the bounce).
+  const suppression = clockRemaining === 0
+    ? spentClockSuppression(activeProtocol?.id, currentStep?.id)
+    : null;
 
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
@@ -200,6 +222,11 @@ export function ProtocolRunner() {
   // one frame are not separated by a render, so nothing clears between them.
   const advancingFromRef = useRef<string | null>(null);
   const positionKey = `${activeProtocol?.id}#${currentStepIndex}`;
+
+  // Step 0 is the only place the corner control ends the emergency, so it is the
+  // only place the bar can belong — the second belt, for a step change that
+  // bypasses gestures entirely.
+  const showEndConfirm = confirmingEndAt === positionKey && currentStepIndex === 0;
 
   useEffect(() => {
     advancingFromRef.current = null;
@@ -336,9 +363,14 @@ export function ProtocolRunner() {
   // everywhere else" closes the event log and drops the team back to the home
   // screen mid-emergency, which is not a gesture to take on one tap (F10, R5).
   const handleBack = useCallback(() => {
-    if (currentStepIndex === 0) setConfirmingEnd(true);
-    else prevStep();
-  }, [currentStepIndex, prevStep]);
+    if (currentStepIndex === 0) setConfirmingEndAt(positionKey);
+    else {
+      // Going back re-enters a position the confirmation may have been opened
+      // on; drop it so it cannot reappear unbidden under the returning thumb.
+      setConfirmingEndAt(null);
+      prevStep();
+    }
+  }, [currentStepIndex, positionKey, prevStep]);
 
   // Voice command handler.
   const handleVoiceCommand = useCallback((command: string) => {
@@ -348,15 +380,21 @@ export function ProtocolRunner() {
       // a clinical branch by voice stays a deliberate safety gate until native STT.
       if (currentStep?.type !== 'decision') handleNext();
     } else if (c.includes('back') || c.includes('previous')) {
+      setConfirmingEndAt(null);
       prevStep();
     } else if (c.includes('repeat')) {
       handleRepeat();
     } else if (c.includes('mute') || c.includes('quiet')) {
       toggleMute();
     } else if (c.includes('999') || c.includes('emergency')) {
+      // Same act as tapping the pill — a person asking for the call to be
+      // placed — so it reaches the record the same way, through the deduped
+      // logger. Saying "999" used to dial without leaving a trace, which put
+      // the log's honesty back where F4 found it.
+      log999Called();
       window.location.href = 'tel:999';
     }
-  }, [currentStep, prevStep, handleRepeat, toggleMute, handleNext]);
+  }, [currentStep, prevStep, handleRepeat, toggleMute, handleNext, log999Called]);
 
   const { isListening, startListening, stopListening } = useVoiceCommands(handleVoiceCommand);
 
@@ -435,18 +473,18 @@ export function ProtocolRunner() {
       style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
       // Reaching for anything else answers the question — same rule as CPR.
       onClickCapture={(e) => {
-        if (!confirmingEnd) return;
-        if (!(e.target as Element).closest(`[${END_CONFIRM_ATTR}]`)) setConfirmingEnd(false);
+        if (!showEndConfirm) return;
+        if (!(e.target as Element).closest(`[${END_CONFIRM_ATTR}]`)) setConfirmingEndAt(null);
       }}
     >
       {/* Header — back · protocol · elapsed clock, then progress + pinned timers.
           The confirmation takes the top row's place rather than covering the
           step, so the instruction the team is working from stays readable. */}
       <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
-        {confirmingEnd ? (
+        {showEndConfirm ? (
           <EndConfirmBar
             body={END_CONFIRM_BODY_RUNNER}
-            onKeepGoing={() => setConfirmingEnd(false)}
+            onKeepGoing={() => setConfirmingEndAt(null)}
             onEnd={endEmergency}
           />
         ) : (
@@ -540,10 +578,23 @@ export function ProtocolRunner() {
           </div>
         )}
 
-        {/* Decision choices — one tap each */}
+        {/* Decision choices — one tap each. A suppressed answer keeps its place
+            in the list, occupied by the measurement that withdrew it, so the
+            option does not silently vanish from under a thumb already moving. */}
         {isDecision && currentStep.answers && (
           <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {currentStep.answers.map((answer, idx) => {
+              if (suppression && answer.next === suppression.answerNext) {
+                return (
+                  <p
+                    key={idx}
+                    role="status"
+                    style={{ margin: 0, padding: '0 16px', fontSize: 14, fontWeight: 600, color: 'var(--text-3)' }}
+                  >
+                    {suppression.note}
+                  </p>
+                );
+              }
               const isYes = /^yes/i.test(answer.label);
               const isNo = /^no/i.test(answer.label);
               const [mainLabel, ...subParts] = answer.label.split(' — ');

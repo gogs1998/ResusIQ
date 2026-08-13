@@ -131,7 +131,7 @@ describe('ProtocolRunner seizure clock', () => {
 
     // The boundary itself routes — and to the decision, not to the drug.
     expect(stepId()).toBe('prolonged_seizure');
-    expect(container.textContent).toContain('Has the seizure lasted longer than 5 minutes?');
+    expect(container.textContent).toContain('Is the seizure still going?');
   });
 
   it('a clock already well past five minutes cannot be restarted by the loop', () => {
@@ -154,6 +154,68 @@ describe('ProtocolRunner seizure clock', () => {
     act(() => stopped!.click());
 
     expect(stepId()).toBe('post_ictal');
+  });
+
+
+  it('a spent clock withdraws the answer that contradicts it', () => {
+    // Clinical ruling R4 follow-up. "Still under 5 minutes" against a spent
+    // clock led to continue_timing, whose Done bounced the team straight back
+    // to this question. The answer goes; the measurement takes its place.
+    arriveWithClockAge(300);
+    expect(stepId()).toBe('prolonged_seizure');
+
+    const labels = [...container.querySelectorAll('button')].map((b) => b.textContent ?? '');
+    expect(labels.some((l) => l.includes('still under 5 minutes'))).toBe(false);
+    expect(container.textContent).toContain('Past 5 minutes on the clock.');
+
+    // What the team can still SAY about the patient is untouched: escalate, or
+    // report that it has stopped.
+    expect(labels.some((l) => l.includes('5 minutes or more, or it has happened again'))).toBe(true);
+    expect(labels.some((l) => l.includes('Seizure has stopped'))).toBe(true);
+  });
+
+  it('a live clock keeps every answer — including "still under 5 minutes"', () => {
+    // Reached the question early, by hand, with the clock still running: this is
+    // the manual path R4 preserves, and nothing is withdrawn on it.
+    arriveWithClockAge(120);
+    act(() => {
+      const done = [...container.querySelectorAll('button')].find((b) =>
+        b.textContent?.includes('Done — next step')
+      );
+      done!.click();
+    });
+    expect(stepId()).toBe('prolonged_seizure');
+
+    const labels = [...container.querySelectorAll('button')].map((b) => b.textContent ?? '');
+    expect(labels.some((l) => l.includes('still under 5 minutes'))).toBe(true);
+    expect(container.textContent).not.toContain('Past 5 minutes on the clock.');
+  });
+
+  it('suppression and the backstop route read the SAME clock', () => {
+    // One second short of the boundary: the timer step does not route, and the
+    // answer is still offered. They must flip together, not one before the other.
+    arriveWithClockAge(299);
+    expect(stepId()).toBe('time_seizure');
+    act(() => {
+      [...container.querySelectorAll('button')]
+        .find((b) => b.textContent?.includes('Done — next step'))!
+        .click();
+    });
+    expect(
+      [...container.querySelectorAll('button')].some((b) =>
+        b.textContent?.includes('still under 5 minutes')
+      )
+    ).toBe(true);
+    unmount();
+
+    // At the boundary the timer routes on its own AND the answer is gone.
+    arriveWithClockAge(300);
+    expect(stepId()).toBe('prolonged_seizure');
+    expect(
+      [...container.querySelectorAll('button')].some((b) =>
+        b.textContent?.includes('still under 5 minutes')
+      )
+    ).toBe(false);
   });
 
   it('leaves interval timers alone — the adrenaline reassess still restarts', () => {
