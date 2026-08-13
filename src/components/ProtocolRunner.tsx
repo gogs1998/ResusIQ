@@ -33,6 +33,11 @@ import { getDrugById } from '../data/drugs';
 import { DrugCard } from './DrugCard';
 import { ChildDoseBands } from './ChildDoseBands';
 import { CPRMode } from './CPRMode';
+import {
+  EndConfirmBar,
+  END_CONFIRM_BODY_RUNNER,
+  END_CONFIRM_ATTR,
+} from './console/EndConfirmBar';
 import { TimerStrip } from './console/TimerStrip';
 import { EscapeRail } from './console/EscapeRail';
 import { Deck } from './console/Deck';
@@ -83,6 +88,7 @@ export function ProtocolRunner() {
   const { speak, isSpeaking } = useSpeech();
   const [showDrugCard, setShowDrugCard] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   // 1s tick for the header elapsed clock (999 asks elapsed time first). Derived
@@ -263,11 +269,14 @@ export function ProtocolRunner() {
     if (currentStep) speak(currentStep.say);
   }, [currentStep, speak]);
 
-  // Back: previous step, or end the emergency from the first step.
+  // Back: previous step, or — from the first step, where the control becomes an
+  // X — ask before ending. On step 0 the same corner that means "go back
+  // everywhere else" closes the event log and drops the team back to the home
+  // screen mid-emergency, which is not a gesture to take on one tap (F10, R5).
   const handleBack = useCallback(() => {
-    if (currentStepIndex === 0) endEmergency();
+    if (currentStepIndex === 0) setConfirmingEnd(true);
     else prevStep();
-  }, [currentStepIndex, endEmergency, prevStep]);
+  }, [currentStepIndex, prevStep]);
 
   // Voice command handler.
   const handleVoiceCommand = useCallback((command: string) => {
@@ -359,9 +368,26 @@ export function ProtocolRunner() {
   const doseNoticeDetail = doseNotice?.detail ?? '';
 
   return (
-    <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
-      {/* Header — back · protocol · elapsed clock, then progress + pinned timers */}
+    <div
+      className="theatre flex flex-col safe-area-top"
+      style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
+      // Reaching for anything else answers the question — same rule as CPR.
+      onClickCapture={(e) => {
+        if (!confirmingEnd) return;
+        if (!(e.target as Element).closest(`[${END_CONFIRM_ATTR}]`)) setConfirmingEnd(false);
+      }}
+    >
+      {/* Header — back · protocol · elapsed clock, then progress + pinned timers.
+          The confirmation takes the top row's place rather than covering the
+          step, so the instruction the team is working from stays readable. */}
       <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+        {confirmingEnd ? (
+          <EndConfirmBar
+            body={END_CONFIRM_BODY_RUNNER}
+            onKeepGoing={() => setConfirmingEnd(false)}
+            onEnd={endEmergency}
+          />
+        ) : (
         <div className="flex items-center" style={{ gap: 10 }}>
           <button
             onClick={handleBack}
@@ -379,6 +405,7 @@ export function ProtocolRunner() {
             <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>Elapsed</div>
           </div>
         </div>
+        )}
 
         {/* Thin progress bar + step counter (replaces the segmented dashes) */}
         <div className="flex items-center" style={{ gap: 10, marginTop: 12 }}>

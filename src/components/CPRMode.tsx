@@ -13,6 +13,8 @@ import {
 import type { ProtocolStep } from '../types';
 import { Sheet } from './Sheet';
 import { Callout } from './Callout';
+import { Deck } from './console/Deck';
+import { EndConfirmBar, END_CONFIRM_BODY_CPR, END_CONFIRM_ATTR } from './console/EndConfirmBar';
 import { useMetronome } from '../hooks/useTimer';
 import { useSpeech } from '../hooks/useSpeech';
 import { useAppStore } from '../store/appStore';
@@ -47,6 +49,10 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
   const [shockCount, setShockCount] = useState(0);
   const [showAEDPrompt, setShowAEDPrompt] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  // The X asks before it ends (ruling R5). Nothing about this state reaches the
+  // metronome: compressions must keep their pace, and their sound, while the
+  // question is on screen.
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
 
   useEffect(() => {
     if (!isMuted) {
@@ -73,6 +79,10 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
     }
   };
 
+  // Signs of life is NOT the end-emergency route and must never inherit its
+  // confirmation: ROSC hands the patient onward through the protocol (recovery
+  // position, monitoring, handover) with the event log still open. The guard
+  // below belongs to the X alone.
   const handleROSC = () => {
     addEventLog('rosc', 'Return of spontaneous circulation');
     stopMetronome();
@@ -102,11 +112,29 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
     <div
       className="theatre flex flex-col safe-area-top"
       style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
+      // Reaching for anything else answers the question: the operator has moved
+      // on, and a confirmation left hanging over the header is one more thing to
+      // read during compressions.
+      onClickCapture={(e) => {
+        if (!confirmingEnd) return;
+        if (!(e.target as Element).closest(`[${END_CONFIRM_ATTR}]`)) setConfirmingEnd(false);
+      }}
     >
-      {/* Header — end · title · mute · elapsed clock */}
+      {/* Header — end · title · mute · elapsed clock, or the end confirmation in
+          its place. Swapping the row keeps the confirm off the compression
+          counter; an overlay would cover the one thing that must stay visible. */}
+      {confirmingEnd ? (
+        <div style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+          <EndConfirmBar
+            body={END_CONFIRM_BODY_CPR}
+            onKeepGoing={() => setConfirmingEnd(false)}
+            onEnd={onEnd}
+          />
+        </div>
+      ) : (
       <header className="flex items-center" style={{ gap: 8, padding: '14px 16px 0', flexShrink: 0 }}>
         <button
-          onClick={onEnd}
+          onClick={() => setConfirmingEnd(true)}
           aria-label="End emergency"
           className="flex items-center justify-center flex-shrink-0 active:opacity-80 transition-opacity"
           style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'transparent', border: 'none' }}
@@ -132,9 +160,16 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           </div>
         )}
       </header>
+      )}
 
-      {/* Centre — the compression counter is the whole screen */}
-      <main className="flex-1 flex flex-col items-center justify-center" style={{ padding: '8px 20px', minHeight: 0, overflow: 'hidden' }}>
+      {/* Centre — the compression counter is the whole screen.
+          Scrolls rather than clips: opening the deck below shrinks this region,
+          and the pacing display must survive that (`safe center` keeps the top
+          reachable when the content no longer fits). */}
+      <main
+        className="flex-1 flex flex-col items-center"
+        style={{ padding: '8px 20px', minHeight: 0, overflowY: 'auto', justifyContent: 'safe center' }}
+      >
         {/* Eyebrow — red dot + push-hard shout */}
         <div className="flex items-center" style={{ gap: 8, marginBottom: 18 }}>
           <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', flexShrink: 0 }} />
@@ -143,8 +178,10 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           </span>
         </div>
 
-        {/* Pulsing ring — DS pulse-cpr (0.545s / 110 BPM), reduced-motion aware */}
-        <div className="relative flex items-center justify-center" style={{ width: 224, height: 224 }}>
+        {/* Pulsing ring — DS pulse-cpr (0.545s / 110 BPM), reduced-motion aware.
+            flexShrink 0: whatever else has to give when the deck opens, the
+            thing the operator is pacing against does not. */}
+        <div className="relative flex items-center justify-center" style={{ width: 224, height: 224, flexShrink: 0 }}>
           <div
             className={`relative rounded-full flex items-center justify-center ${pulseActive ? 'animate-pulse-cpr' : ''}`}
             style={{ width: 220, height: 220, border: '3px solid color-mix(in srgb, var(--red) 55%, transparent)', boxShadow: 'inset 0 0 0 10px var(--red-tint)' }}
@@ -199,7 +236,9 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
       </main>
 
       {/* Footer — AED · signs of life · persistent 999 */}
-      <footer className="safe-area-bottom" style={{ flexShrink: 0, padding: '10px 18px 16px' }}>
+      {/* The deck below now owns the home-indicator inset — the footer no longer
+          sits at the bottom edge, so it must not reserve it too. */}
+      <footer style={{ flexShrink: 0, padding: '10px 18px 12px' }}>
         <div className="grid grid-cols-2" style={{ gap: 10 }}>
           <button
             onClick={() => setShowAEDPrompt(true)}
@@ -232,6 +271,20 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           )}
         </a>
       </footer>
+
+      {/* Deck — collapsed. The dispatcher script and the running log were
+          reachable from every screen EXCEPT the one where a second rescuer most
+          needs them: during compressions, someone has to give 999 the address
+          and what has been done (F10, and R5 approves it as the two-rescuer
+          pattern).
+
+          It sits in normal flow at the very bottom, so an expanded panel can
+          only ever shrink what is above it — it cannot cover the compression
+          counter or the pulse ring, and it cannot swallow a tap meant for them.
+          Its panel is capped shorter than the runner's for the same reason. */}
+      <div style={{ background: 'var(--surface-inset)', paddingBottom: 'var(--sab)', flexShrink: 0 }}>
+        <Deck panelMaxHeight="30vh" />
+      </div>
 
       {/* AED Shock dialog */}
       <Sheet

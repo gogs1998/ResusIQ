@@ -63,7 +63,16 @@ const sayLabel: CSSProperties = {
   margin: '6px 0',
 };
 
-export function Deck() {
+interface DeckProps {
+  /**
+   * Cap on the expanded panel. Expanding shrinks the content above the deck, so
+   * the cap is really "how much of the screen may the reference material take":
+   * lower in CPR, where what is above is the compression pacing display.
+   */
+  panelMaxHeight?: string;
+}
+
+export function Deck({ panelMaxHeight = '40vh' }: DeckProps = {}) {
   const activeEvent = useAppStore((s) => s.activeEvent);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<DeckTab>('script');
@@ -133,7 +142,7 @@ export function Deck() {
       </div>
 
       {open && (
-        <div id={PANEL_ID} style={{ padding: '0 16px 14px', maxHeight: '40vh', overflowY: 'auto' }}>
+        <div id={PANEL_ID} style={{ padding: '0 16px 14px', maxHeight: panelMaxHeight, overflowY: 'auto' }}>
           {tab === 'script' && (
             <div className="riq-script-doc">
               <CallScriptContent />
