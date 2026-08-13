@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { getDrugById } from '../../data/drugs';
 import { hhmm } from '../../lib/emergencyTimers';
+import { loggedDoseText } from '../../lib/drugLog';
 import { CallScriptContent } from '../CallScript';
 
 // The deck — a slide-up sheet inside the runner. Dissolves the "999 script / log
@@ -157,6 +158,7 @@ export function Deck({ panelMaxHeight = '40vh' }: DeckProps = {}) {
               ) : (
                 drugsGiven.map((e) => {
                   const drug = e.drug_id ? getDrugById(e.drug_id) : undefined;
+                  const dose = loggedDoseText(e.details);
                   return (
                     <div key={e.id} style={rowStyle}>
                       <span className="riq-data" style={rowTime}>{hhmm(e.timestamp)}</span>
@@ -164,11 +166,15 @@ export function Deck({ panelMaxHeight = '40vh' }: DeckProps = {}) {
                         <span className="block font-semibold" style={{ color: 'var(--text-1)' }}>
                           {drug?.name ?? e.label}
                         </span>
-                        {drug && (
-                          <span className="block" style={{ color: 'var(--text-2)', marginTop: 1 }}>
-                            {drug.adult_dose_text}
-                          </span>
-                        )}
+                        {/* The recorded dose, or a statement that none was
+                            recorded — never the drug's adult text, which this
+                            panel used to assert over paediatric doses (F8). */}
+                        <span
+                          className="block"
+                          style={{ color: e.details ? 'var(--text-2)' : 'var(--text-3)', marginTop: 1 }}
+                        >
+                          {dose}
+                        </span>
                       </span>
                     </div>
                   );

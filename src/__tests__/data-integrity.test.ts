@@ -39,6 +39,19 @@ describe('protocol step graph integrity', () => {
       }
     });
 
+    it(`${protocol.id}: only 'drug' steps carry a drug_id`, () => {
+      // drug_id is what makes the runner treat a step as an administration: the
+      // dose panel, the confirm-given control and the max-dose ceiling all hang
+      // off it, and every one of them also checks type === 'drug'. A drug_id on
+      // any other step type is therefore data that reads as a dose but is never
+      // enforced as one — a silent hole in the dose limits.
+      for (const step of protocol.steps) {
+        if (step.drug_id) {
+          expect(step.type, `${protocol.id}.${step.id} carries drug_id`).toBe('drug');
+        }
+      }
+    });
+
     it(`${protocol.id}: every on_timer_end_next resolves to a real step`, () => {
       for (const step of protocol.steps) {
         if (step.on_timer_end_next) {

@@ -47,7 +47,11 @@ interface AppState {
   eventHistory: EmergencyEvent[];
   createEvent: (protocolId: string) => void;
   addEventLog: (type: EventType, label: string, details?: string, drugId?: string) => void;
-  logDrugGiven: (drug: Drug, label: string) => { ok: boolean; reason?: 'max_doses_reached' };
+  logDrugGiven: (
+    drug: Drug,
+    label: string,
+    doseText?: string
+  ) => { ok: boolean; reason?: 'max_doses_reached' };
   log999Called: () => { ok: boolean; reason?: 'already_logged' | 'no_active_event' };
   endEvent: (outcome?: string, notes?: string) => void;
   
@@ -394,12 +398,18 @@ export const useAppStore = create<AppState>()(
       //
       // A refusal logs NOTHING: a refused attempt is not a clinical event, and
       // writing one would put a phantom dose in the medico-legal record.
-      logDrugGiven: (drug, label) => {
+      // `doseText` is what was actually given — the band, or free text — and is
+      // the only thing allowed to state a dose in the record (see lib/drugLog:
+      // the deck used to print the drug's ADULT dose against every entry,
+      // including paediatric ones). Nothing populates it yet; capturing the band
+      // at confirm time is the follow-on. Until it does, readers say the dose was
+      // not recorded rather than inventing one.
+      logDrugGiven: (drug, label, doseText) => {
         const dosesGiven = countDosesGiven(get().activeEvent, drug.id);
         if (doseLimitClass(drug) === 'hard_block' && isAtDoseLimit(drug, dosesGiven)) {
           return { ok: false, reason: 'max_doses_reached' };
         }
-        get().addEventLog('drug_given', label, undefined, drug.id);
+        get().addEventLog('drug_given', label, doseText, drug.id);
         return { ok: true };
       },
 
