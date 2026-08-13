@@ -228,11 +228,14 @@ export const drugs: Drug[] = [
     indication: 'Status epilepticus (seizure > 5 minutes)',
     adult_dose: '10 mg buccal',
     adult_dose_text: '10 mg administered between gum and cheek (half on each side)',
-    child_dose: '5–10 y: 7.5 mg · 1–5 y: 5 mg',
+    child_dose: '5 to <10 y: 7.5 mg · 1 to <5 y: 5 mg · under 1 y: 2.5 mg',
     child_dose_text:
-      'Child > 10 years: 10 mg buccal\n' +
-      'Child 5–10 years: 7.5 mg buccal\n' +
-      'Child 1–5 years: 5 mg buccal',
+      'Child 10 years and over: 10 mg (2 ml)\n' +
+      'Child 5 to under 10 years: 7.5 mg (1.5 ml)\n' +
+      'Child 1 to under 5 years: 5 mg (1 ml)\n' +
+      'Child 6 months to under 1 year: 2.5 mg (0.5 ml)\n' +
+      'Infant 3 to 6 months: 2.5 mg (0.5 ml) — licensed for hospital use only. Call 999 first and give only on the call handler or paramedic advice.\n' +
+      'Volumes are for midazolam 10 mg in 2 ml (5 mg/ml) as stocked in UK emergency dental kits.',
     route: 'BUCCAL',
     site: 'Between gum and cheek — half on each side',
     how_to_give:
@@ -246,6 +249,7 @@ export const drugs: Drug[] = [
     warnings: [
       'ONLY give for seizure lasting > 5 minutes — NOT for a seizure that has stopped',
       'SINGLE DOSE ONLY — do not repeat',
+      'Under 6 months: 999 first — the licence expects a hospital setting with monitoring, and respiratory depression can be delayed in this age group',
       'Call 999 BEFORE giving',
       'Have suction ready — risk of aspiration',
       'Monitor airway closely — can cause respiratory depression',
