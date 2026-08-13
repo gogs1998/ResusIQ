@@ -5,6 +5,7 @@ import { ProtocolRunner } from './components/ProtocolRunner';
 import { TriageWizard } from './components/TriageWizard';
 import { CallScript } from './components/CallScript';
 import { SBARHandover } from './components/SBARHandover';
+import { TrainingDialGuard } from './components/TrainingDialGuard';
 import './index.css';
 
 // Non-emergency routes are code-split so they (and heavy deps like `motion`)
@@ -66,12 +67,27 @@ function renderScreen(currentScreen: ReturnType<typeof useAppStore.getState>['cu
 function App() {
   const { currentScreen, isEmergencyActive, activeProtocol } = useAppStore();
 
+  // Mounted above every screen, including the runner, because the 999 controls
+  // it guards are on all of them. Renders and registers NOTHING unless training
+  // mode is on, so the real-emergency path is untouched.
+  const guard = <TrainingDialGuard />;
+
   // If emergency is active and we have a protocol, show the protocol runner.
   if (isEmergencyActive && activeProtocol) {
-    return <ProtocolRunner />;
+    return (
+      <>
+        <ProtocolRunner />
+        {guard}
+      </>
+    );
   }
 
-  return <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>;
+  return (
+    <>
+      <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>
+      {guard}
+    </>
+  );
 }
 
 export default App
