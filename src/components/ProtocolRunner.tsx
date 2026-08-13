@@ -12,7 +12,7 @@ import {
   Mic,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore, countDosesGiven } from '../store/appStore';
 import { voiceCommandsSupported } from '../lib/platform';
 import { switchTargetId, switchButtonLabel, splitHero, isDuplicateSupport } from '../lib/stepCopy';
 import { elapsedSeconds, formatClock } from '../lib/emergencyTimers';
@@ -62,6 +62,7 @@ export function ProtocolRunner() {
     isMuted,
     toggleMute,
     addEventLog,
+    logDrugGiven,
     runStepActions,
     activeEvent,
     practiceSetup,
@@ -80,6 +81,15 @@ export function ProtocolRunner() {
   }, []);
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
+
+  // Dose ceiling for this step, derived from the event log on every render
+  // rather than held in component state — so returning to a spent drug step by
+  // Back shows the same refusal the store would give, instead of a fresh-looking
+  // Confirm button.
+  const drug = currentStep?.drug_id ? getDrugById(currentStep.drug_id) : null;
+  const doseLimitReached =
+    drug?.max_doses !== undefined &&
+    countDosesGiven(activeEvent, currentStep?.drug_id) >= drug.max_doses;
 
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
@@ -135,21 +145,32 @@ export function ProtocolRunner() {
   }, [currentStep, addEventLog, runStepActions, activeProtocol, goToStep]);
 
   // On a require_confirm (drug) step one press logs the drug as given and
-  // advances — keeps the event log honest without a two-tap dance.
+  // advances — keeps the event log honest without a two-tap dance. The store
+  // owns the dose ceiling: if it refuses, nothing is logged and we stay put so
+  // the refused state is what the operator sees.
   const handleConfirm = useCallback(() => {
     if (currentStep?.type === 'drug' && currentStep.drug_id) {
-      addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
+      const stepDrug = getDrugById(currentStep.drug_id);
+      if (stepDrug) {
+        if (!logDrugGiven(stepDrug, `Drug: ${currentStep.drug_id}`).ok) return;
+      } else {
+        // Unknown drug id (guarded against by the data-integrity tests): record
+        // the administration rather than losing it.
+        addEventLog('drug_given', `Drug: ${currentStep.drug_id}`, undefined, currentStep.drug_id);
+      }
     }
     advance();
-  }, [currentStep, addEventLog, advance]);
+  }, [currentStep, addEventLog, logDrugGiven, advance]);
 
   const handleNext = useCallback(() => {
-    if (currentStep?.require_confirm) {
+    // A spent drug step offers plain onward navigation, not another confirm —
+    // including for the voice command, which must never stall on a refusal.
+    if (currentStep?.require_confirm && !doseLimitReached) {
       handleConfirm();
     } else {
       advance();
     }
-  }, [currentStep, handleConfirm, advance]);
+  }, [currentStep, doseLimitReached, handleConfirm, advance]);
 
   const handleRepeat = useCallback(() => {
     if (currentStep) speak(currentStep.say);
@@ -208,7 +229,6 @@ export function ProtocolRunner() {
     return <CPRMode step={currentStep} onNext={handleNext} onEnd={endEmergency} />;
   }
 
-  const drug = currentStep.drug_id ? getDrugById(currentStep.drug_id) : null;
   const totalSteps = activeProtocol.steps.length;
   const isDecision = currentStep.type === 'decision';
   // A step that hands off to another protocol on completion (e.g. start_cpr →
@@ -240,6 +260,13 @@ export function ProtocolRunner() {
     : currentStep.require_confirm
       ? (currentStep.type === 'drug' ? 'Confirm given' : 'Confirm done')
       : 'Done — next step';
+
+  // Spent dose: the confirm affordance is withdrawn entirely (an available
+  // button that refuses on tap still invites the tap under stress), replaced by
+  // a statement of what the record already holds plus plain onward navigation.
+  const doseLimitText = drug?.max_doses === 1
+    ? 'Already given — single dose only'
+    : `Maximum doses reached (${drug?.max_doses})`;
 
   return (
     <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
@@ -409,7 +436,30 @@ export function ProtocolRunner() {
       {/* Footer — one dominant CTA, persistent 999 + voice controls, escape rail, deck */}
       <footer style={{ flexShrink: 0 }}>
         <div style={{ padding: '10px 18px 12px' }}>
-          {!isDecision && (
+          {!isDecision && doseLimitReached && (
+            <>
+              <div
+                role="status"
+                className="flex items-center"
+                style={{ gap: 10, minHeight: 'var(--touch-hero)', padding: '12px 16px', borderRadius: 'var(--radius-xl)', background: 'var(--warn-tint)', border: '1.5px solid var(--warn)' }}
+              >
+                <span aria-hidden style={{ flexShrink: 0, fontSize: 18, color: 'var(--warn)' }}>⚠︎</span>
+                <span className="font-bold" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--warn)', lineHeight: 1.3 }}>
+                  {doseLimitText}
+                </span>
+              </div>
+              <button
+                onClick={advance}
+                className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                style={{ gap: 10, marginTop: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
+              >
+                <ChevronRight className="w-6 h-6" />
+                <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Next step</span>
+              </button>
+            </>
+          )}
+
+          {!isDecision && !doseLimitReached && (
             <button
               onClick={handleNext}
               className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"

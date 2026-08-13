@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAppStore } from '../store/appStore';
+import { useAppStore, countDosesGiven } from '../store/appStore';
 import { protocols } from '../data/protocols';
+import { drugs } from '../data/drugs';
 
 const reset = () =>
   useAppStore.setState({
@@ -149,6 +150,95 @@ describe('appStore emergency lifecycle', () => {
     // anaphylaxis recognition is intentionally NOT flagged — must still show first
     expect(s.currentStepIndex).toBe(0);
     expect(s.activeProtocol?.steps[0].id).toBe('recognition');
+  });
+});
+
+// F2/F11: max_doses used to be metadata the execution path never read, so
+// "single dose — do not repeat" was a caption. These pin the ceiling at the one
+// place a dose can enter the record.
+describe('appStore logDrugGiven (max_doses enforcement)', () => {
+  beforeEach(reset);
+
+  const drugById = (id: string) => drugs.find((d) => d.id === id)!;
+  const dosesOf = (id: string) =>
+    countDosesGiven(useAppStore.getState().activeEvent, id);
+
+  it('refuses a second midazolam and appends nothing to the log', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('seizure');
+    const midazolam = drugById('midazolam_buccal');
+    expect(midazolam.max_doses).toBe(1);
+
+    expect(store.logDrugGiven(midazolam, 'Drug: midazolam_buccal').ok).toBe(true);
+    const afterFirst = useAppStore.getState().activeEvent!.events.length;
+
+    const second = store.logDrugGiven(midazolam, 'Drug: midazolam_buccal');
+    expect(second.ok).toBe(false);
+    expect(second.reason).toBe('max_doses_reached');
+    // The refusal is not itself an event — a phantom entry would be as wrong in
+    // the medico-legal record as the extra dose.
+    expect(useAppStore.getState().activeEvent!.events.length).toBe(afterFirst);
+    expect(dosesOf('midazolam_buccal')).toBe(1);
+  });
+
+  it('two rapid calls for a max-1 drug yield exactly one dose', () => {
+    // The double-tap case: no debounce involved, the count itself refuses.
+    const store = useAppStore.getState();
+    store.startEmergency('hypoglycaemia');
+    const glucagon = drugById('glucagon_im');
+    store.logDrugGiven(glucagon, 'Drug: glucagon_im');
+    store.logDrugGiven(glucagon, 'Drug: glucagon_im');
+    expect(dosesOf('glucagon_im')).toBe(1);
+  });
+
+  it('allows oral glucose up to 3 and refuses the fourth', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('hypoglycaemia');
+    const glucose = drugById('glucose_oral');
+    expect(glucose.max_doses).toBe(3);
+
+    for (let i = 0; i < 3; i++) {
+      expect(store.logDrugGiven(glucose, 'Drug: glucose_oral').ok).toBe(true);
+    }
+    expect(store.logDrugGiven(glucose, 'Drug: glucose_oral')).toEqual({
+      ok: false,
+      reason: 'max_doses_reached',
+    });
+    expect(dosesOf('glucose_oral')).toBe(3);
+  });
+
+  it('adrenaline has no ceiling — a fifth dose still logs', () => {
+    // CLAUDE.md non-negotiable: adrenaline repeats every 5 min with no fixed
+    // in-flow maximum. The data carries no max_doses and the store must not
+    // invent one.
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    const adrenaline = drugById('adrenaline_im_adult');
+    expect(adrenaline.max_doses).toBeUndefined();
+
+    for (let i = 0; i < 5; i++) {
+      expect(store.logDrugGiven(adrenaline, 'Drug: adrenaline_im_adult').ok).toBe(true);
+    }
+    expect(dosesOf('adrenaline_im_adult')).toBe(5);
+  });
+
+  it('the ceiling is per drug, not shared across drugs', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('hypoglycaemia');
+    store.logDrugGiven(drugById('glucagon_im'), 'Drug: glucagon_im');
+    expect(store.logDrugGiven(drugById('midazolam_buccal'), 'Drug: midazolam_buccal').ok).toBe(true);
+    expect(dosesOf('glucagon_im')).toBe(1);
+    expect(dosesOf('midazolam_buccal')).toBe(1);
+  });
+
+  it('countDosesGiven ignores non-drug entries and other drugs', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    store.addEventLog('step_completed', 'Drug: midazolam_buccal');
+    store.logDrugGiven(drugById('adrenaline_im_adult'), 'Drug: adrenaline_im_adult');
+    expect(dosesOf('midazolam_buccal')).toBe(0);
+    expect(countDosesGiven(null, 'adrenaline_im_adult')).toBe(0);
+    expect(countDosesGiven(useAppStore.getState().activeEvent, undefined)).toBe(0);
   });
 });
 

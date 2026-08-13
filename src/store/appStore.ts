@@ -7,7 +7,8 @@ import type {
   EmergencyEvent,
   EventLogEntry,
   PracticeSetup,
-  EventType
+  EventType,
+  Drug
 } from '../types';
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
@@ -44,6 +45,7 @@ interface AppState {
   eventHistory: EmergencyEvent[];
   createEvent: (protocolId: string) => void;
   addEventLog: (type: EventType, label: string, details?: string, drugId?: string) => void;
+  logDrugGiven: (drug: Drug, label: string) => { ok: boolean; reason?: 'max_doses_reached' };
   endEvent: (outcome?: string, notes?: string) => void;
   
   // Voice
@@ -103,6 +105,19 @@ export const DETERIORATION_LANDING: Record<string, string> = {
 // step -1.
 function stepIndexById(steps: Protocol['steps'], stepId: string | undefined): number {
   return stepId ? steps.findIndex((s) => s.id === stepId) : -1;
+}
+
+// Doses of one drug already recorded on an event. The single counting rule,
+// shared by the enforcement in logDrugGiven and by the UI that has to show the
+// same verdict: the runner derives its "already given" state from this at
+// render, so Back into a spent drug step cannot disagree with the store about
+// whether another dose is allowed.
+export function countDosesGiven(
+  event: EmergencyEvent | null,
+  drugId: string | undefined
+): number {
+  if (!event || !drugId) return 0;
+  return event.events.filter((e) => e.type === 'drug_given' && e.drug_id === drugId).length;
 }
 
 // Runtime mirror of the EventType union (the type itself is erased at build
@@ -356,6 +371,25 @@ export const useAppStore = create<AppState>()(
         }
       },
       
+      // The ONLY way a drug administration reaches the log. `max_doses` in
+      // drugs.ts was previously metadata the execution path never read, so
+      // "single dose — do not repeat" was a caption, not a rule: Back onto the
+      // step and Confirm given again appended a second dose. Here the ceiling is
+      // enforced where the dose is recorded, driven purely by the data — no
+      // drug-specific branches — so midazolam (1), glucagon (1), oral glucose
+      // (3) and GTN (3) are all covered, while adrenaline declares no max_doses
+      // and stays repeatable every 5 minutes as the anaphylaxis rule requires.
+      //
+      // A refusal logs NOTHING: a refused attempt is not a clinical event, and
+      // writing one would put a phantom dose in the medico-legal record.
+      logDrugGiven: (drug, label) => {
+        if (drug.max_doses !== undefined && countDosesGiven(get().activeEvent, drug.id) >= drug.max_doses) {
+          return { ok: false, reason: 'max_doses_reached' };
+        }
+        get().addEventLog('drug_given', label, undefined, drug.id);
+        return { ok: true };
+      },
+
       endEvent: (outcome, notes) => {
         const { activeEvent, eventHistory } = get();
         if (activeEvent) {
