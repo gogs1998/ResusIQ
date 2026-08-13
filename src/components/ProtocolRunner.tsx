@@ -26,7 +26,8 @@ import {
   CALL_999_CONFIRMED_LABEL,
   CALL_999_NOT_YET_LABEL,
 } from '../lib/call999';
-import { elapsedSeconds, formatClock, hhmm } from '../lib/emergencyTimers';
+import { elapsedSeconds, formatClock, hhmm, remainingSeconds } from '../lib/emergencyTimers';
+import { isMonotonicTimerStep, timerAnchorKey } from '../lib/monotonicTimers';
 import { useSpeech, useVoiceCommands } from '../hooks/useSpeech';
 import { useTimer } from '../hooks/useTimer';
 import { getDrugById } from '../data/drugs';
@@ -81,6 +82,8 @@ export function ProtocolRunner() {
     logDrugGiven,
     log999Called,
     runStepActions,
+    timerAnchors,
+    anchorTimer,
     activeEvent,
     practiceSetup,
   } = useAppStore();
@@ -119,6 +122,34 @@ export function ProtocolRunner() {
   // the call actually happened — instead of a generic Done that used to log the
   // call for them (clinical ruling R2, 2026-08-13; see lib/call999).
   const needs999Confirm = requires999Confirm(activeProtocol?.id, currentStep?.id);
+
+  // The seizure clock. A timer_block that measures ONE elapsing thing rather
+  // than an interval reads its remaining time from an anchor fixed at first
+  // arrival, so the protocol's timing loop can never hand the team another five
+  // minutes (F9, clinical ruling R4 — see lib/monotonicTimers).
+  const isMonotonicTimer =
+    currentStep?.type === 'timer_block' &&
+    isMonotonicTimerStep(activeProtocol?.id, currentStep.id);
+  const anchorKey =
+    isMonotonicTimer && activeProtocol && currentStep
+      ? timerAnchorKey(activeProtocol.id, currentStep.id)
+      : null;
+  const timerAnchor = anchorKey ? timerAnchors[anchorKey] : undefined;
+
+  // Anchor on arrival. Idempotent in the store, so re-entering the step through
+  // the loop records nothing new and the original start time stands.
+  useEffect(() => {
+    if (anchorKey) anchorTimer(anchorKey);
+  }, [anchorKey, anchorTimer]);
+
+  // Before the anchor exists (the very first render of a first arrival) the full
+  // duration is the correct answer — that arrival IS the start.
+  const monotonicRemaining =
+    isMonotonicTimer && currentStep?.duration_seconds
+      ? timerAnchor
+        ? remainingSeconds(timerAnchor, currentStep.duration_seconds, now)
+        : currentStep.duration_seconds
+      : null;
 
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
@@ -285,6 +316,16 @@ export function ProtocolRunner() {
       advance();
     }
   }, [currentStep, hardBlocked, handleConfirm, advance]);
+
+  // The backstop (R4). Once the wall clock is spent the step routes onward to
+  // the still-seizing check — including on arrival, so coming back round the
+  // loop cannot park the team on a dead 00:00 timer, and cannot restart it.
+  // Routing goes through the graph's own target, which is the decision step:
+  // a seizure that has stopped answers "Seizure has stopped" there and goes to
+  // post-ictal care, so the clock can never walk it toward midazolam.
+  useEffect(() => {
+    if (monotonicRemaining === 0) handleNext();
+  }, [monotonicRemaining, handleNext]);
 
   const handleRepeat = useCallback(() => {
     if (currentStep) speak(currentStep.say);
@@ -563,10 +604,16 @@ export function ProtocolRunner() {
           </div>
         )}
 
-        {/* Timer */}
+        {/* Timer. A monotonic step shows the wall clock it is anchored to; every
+            other timer_block keeps the interval countdown that restarts on each
+            pass, which is correct for a reassess cycle. */}
         {currentStep.type === 'timer_block' && currentStep.duration_seconds && (
           <div style={{ marginTop: 18 }}>
-            <TimerDisplay seconds={currentStep.duration_seconds} onComplete={handleNext} />
+            {monotonicRemaining !== null ? (
+              <MonotonicTimerDisplay remaining={monotonicRemaining} anchorIso={timerAnchor} />
+            ) : (
+              <TimerDisplay seconds={currentStep.duration_seconds} onComplete={handleNext} />
+            )}
           </div>
         )}
       </main>
@@ -721,6 +768,32 @@ export function ProtocolRunner() {
       </footer>
 
       {showDrugCard && drug && <DrugCard drug={drug} onClose={() => setShowDrugCard(false)} />}
+    </div>
+  );
+}
+
+// The seizure clock: one wall-clock reading, derived from the anchor and the
+// runner's tick. It owns no countdown of its own — there is nothing here to
+// remount and restart, which is precisely the bug (F9).
+//
+// No pause control, deliberately. The interval timer below can be paused
+// because it measures the team's waiting; this one measures the patient's
+// seizure, and pausing it would only make the record lie about how long it ran.
+// The start time is shown because that is what 999 asks for.
+function MonotonicTimerDisplay({ remaining, anchorIso }: { remaining: number; anchorIso?: string }) {
+  return (
+    <div className="text-center" style={{ padding: 20, borderRadius: 'var(--radius-lg)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+      <p className="font-bold" style={{ fontSize: 'var(--fs-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <Timer className="w-4 h-4" /> Seizure clock
+      </p>
+      <p className="riq-data font-extrabold" style={{ fontSize: 'var(--fs-display)', lineHeight: 1, color: 'var(--text-1)', margin: '8px 0' }}>
+        {formatClock(remaining)}
+      </p>
+      {anchorIso && (
+        <p style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>
+          Timing from {hhmm(anchorIso)} — this clock does not reset
+        </p>
+      )}
     </div>
   );
 }

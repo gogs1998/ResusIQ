@@ -6,6 +6,7 @@ import { TILES } from '../components/EmergencyDashboard';
 import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
+import { MONOTONIC_TIMER_STEPS } from '../lib/monotonicTimers';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -215,6 +216,59 @@ describe('999 confirm step integrity', () => {
       for (const step of protocol.steps) {
         expect(step.actions ?? [], `${protocol.id}.${step.id}`).not.toContain('log:999_called');
       }
+    }
+  });
+});
+
+describe('monotonic timer step integrity', () => {
+  // These ids select which timer_blocks refuse to restart on re-entry. A stale
+  // id silently returns the seizure clock to per-visit countdowns — the F9
+  // defect — with nothing failing, so both ends are pinned here.
+  it('the seizure clock is registered, and the loop it guards still exists', () => {
+    // Without this, emptying the map would disable the fix and every assertion
+    // below would pass vacuously — which is exactly how the red-check for this
+    // work was performed, so the hole is real.
+    expect(MONOTONIC_TIMER_STEPS.seizure).toBe('time_seizure');
+    // The loop that made a per-visit countdown dangerous: an arrival at
+    // time_seizure can be reached again without leaving the protocol.
+    const seizure = protocols.find((p) => p.id === 'seizure')!;
+    const returnsToTimer = seizure.steps.filter(
+      (s) => s.next === 'time_seizure' || (s.answers ?? []).some((a) => a.next === 'time_seizure')
+    );
+    expect(returnsToTimer.length, 'nothing routes back to time_seizure').toBeGreaterThan(1);
+  });
+
+  it('every listed step exists, in its protocol, and is a timer_block', () => {
+    for (const [protocolId, stepId] of Object.entries(MONOTONIC_TIMER_STEPS)) {
+      const protocol = protocols.find((p) => p.id === protocolId);
+      expect(protocol, `MONOTONIC_TIMER_STEPS key "${protocolId}" is not a protocol`).toBeDefined();
+      const step = protocol!.steps.find((s) => s.id === stepId);
+      expect(step, `${protocolId} has no step "${stepId}"`).toBeDefined();
+      expect(step!.type, `${protocolId}.${stepId}`).toBe('timer_block');
+      expect(step!.duration_seconds, `${protocolId}.${stepId} has no duration`).toBeGreaterThan(0);
+    }
+  });
+
+  it('each one expires into a decision, never straight into a drug', () => {
+    // Clinical ruling R4's mandatory guard. The clock is a backstop that routes
+    // to a question — "is it still going?" — because a seizure that has STOPPED
+    // must be able to answer so and go to post-ictal care. A timer wired
+    // directly at the 999/midazolam branch would walk a stopped seizure toward
+    // a drug it must not be given.
+    for (const [protocolId, stepId] of Object.entries(MONOTONIC_TIMER_STEPS)) {
+      const protocol = protocols.find((p) => p.id === protocolId)!;
+      const index = protocol.steps.findIndex((s) => s.id === stepId);
+      const step = protocol.steps[index];
+      const targetId = step.next ?? protocol.steps[index + 1]?.id;
+      expect(targetId, `${protocolId}.${stepId} expires nowhere`).toBe(step.on_timer_end_next);
+      const target = protocol.steps.find((s) => s.id === targetId)!;
+      expect(target.type, `${protocolId}.${stepId} -> ${targetId}`).toBe('decision');
+      expect(target.answers?.length ?? 0).toBeGreaterThan(0);
+      // One of those answers must be the "it has stopped" exit.
+      expect(
+        target.answers!.some((a) => /stopped/i.test(a.label)),
+        `${targetId} offers no "stopped" answer`
+      ).toBe(true);
     }
   });
 });

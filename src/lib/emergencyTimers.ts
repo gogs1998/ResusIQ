@@ -42,6 +42,24 @@ export function nextDoseCountdown(
   return { due: secondsLeft === 0, secondsLeft };
 }
 
+/**
+ * Seconds left of `durationSeconds` measured from a fixed anchor — the shape of
+ * a clock that counts ONE elapsing thing rather than an interval restarted on
+ * each pass (see lib/monotonicTimers).
+ *
+ * Clamps at 0, and 0 is the routing signal: at exactly the duration the time is
+ * up, matching "5 minutes" meaning "once 5 minutes have passed". Returning to a
+ * step whose anchor is already spent yields 0, not a fresh countdown, which is
+ * the whole point — the loop cannot buy the seizure another five minutes.
+ */
+export function remainingSeconds(
+  anchorIso: string,
+  durationSeconds: number,
+  now: Date
+): number {
+  return Math.max(0, durationSeconds - elapsedSeconds(anchorIso, now));
+}
+
 /** Local wall-clock HH:MM (24h) for the instant an ISO timestamp names — the
  *  time an event was logged, as read off the strip/deck rows. */
 export function hhmm(iso: string): string {

@@ -5,6 +5,7 @@ import {
   nextDoseCountdown,
   formatClock,
   hhmm,
+  remainingSeconds,
 } from '../lib/emergencyTimers';
 
 // Pure time math for the console's pinned timer strip. Every test passes an
@@ -125,5 +126,37 @@ describe('formatClock', () => {
 
   it('floors negatives to 00:00', () => {
     expect(formatClock(-30)).toBe('00:00');
+  });
+});
+
+// F9 / clinical ruling R4: the seizure clock counts ONE elapsing thing. Its
+// whole job is to give the same answer on the second visit to the step as it
+// would have on the first — the loop must not buy the seizure another 5 minutes.
+describe('remainingSeconds', () => {
+  const anchor = '2026-08-13T10:00:00.000Z';
+  const at = (seconds: number) => new Date(Date.parse(anchor) + seconds * 1000);
+
+  it('is the full duration at the anchor instant', () => {
+    expect(remainingSeconds(anchor, 300, at(0))).toBe(300);
+  });
+
+  it('counts down with real time, not with visits to the step', () => {
+    expect(remainingSeconds(anchor, 300, at(30))).toBe(270);
+    // The loop's re-entry case: back on the step at a real 4:30, and it says
+    // 0:30 — not a fresh 5:00, which is the defect this replaces.
+    expect(remainingSeconds(anchor, 300, at(270))).toBe(30);
+  });
+
+  it('is 0 at exactly the duration — the boundary routes', () => {
+    expect(remainingSeconds(anchor, 300, at(300))).toBe(0);
+  });
+
+  it('clamps at 0 however long the step is left behind', () => {
+    expect(remainingSeconds(anchor, 300, at(301))).toBe(0);
+    expect(remainingSeconds(anchor, 300, at(60 * 60))).toBe(0);
+  });
+
+  it('does not run backwards if the clock is behind the anchor', () => {
+    expect(remainingSeconds(anchor, 300, at(-90))).toBe(300);
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAppStore, countDosesGiven } from '../store/appStore';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
@@ -12,6 +12,10 @@ const reset = () =>
     activeEvent: null,
     eventHistory: [],
     currentScreen: 'home',
+    // A fresh app holds no clocks. Without this the anchors of one test leak
+    // into the next, which is how the "refuses to anchor outside a live
+    // emergency" case first failed — the leftover map, not the call under test.
+    timerAnchors: {},
   });
 
 describe('appStore emergency lifecycle', () => {
@@ -342,6 +346,87 @@ describe('appStore log999Called (999 is asserted, not inferred)', () => {
     store.runStepActions({ id: 't', type: 'instruction', say: '', show: '', actions: ['log:999_called'] });
 
     expect(calls999().length).toBe(1);
+  });
+});
+
+// F9 / clinical ruling R4: the seizure clock is anchored in the store, not in
+// the timer component, precisely so that remounting the step cannot restart it.
+describe('appStore anchorTimer (monotonic clocks)', () => {
+  beforeEach(reset);
+
+  const KEY = 'seizure#time_seizure';
+
+  it('records the first arrival and returns it', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('seizure');
+
+    const anchor = store.anchorTimer(KEY);
+    expect(anchor).not.toBeNull();
+    expect(useAppStore.getState().timerAnchors[KEY]).toBe(anchor);
+  });
+
+  it('is idempotent — a second arrival does not move the start time', () => {
+    // The arrival effect runs on every render pass through the step, and the
+    // loop brings the team back to it. Neither may restart the seizure clock.
+    const store = useAppStore.getState();
+    store.startEmergency('seizure');
+
+    const first = store.anchorTimer(KEY);
+    const second = useAppStore.getState().anchorTimer(KEY);
+    const third = useAppStore.getState().anchorTimer(KEY);
+
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+    expect(Object.keys(useAppStore.getState().timerAnchors)).toEqual([KEY]);
+  });
+
+  it('refuses to anchor outside a live emergency', () => {
+    expect(useAppStore.getState().anchorTimer(KEY)).toBeNull();
+    expect(useAppStore.getState().timerAnchors).toEqual({});
+  });
+
+  it('is cleared when the emergency ends', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('seizure');
+    store.anchorTimer(KEY);
+    expect(useAppStore.getState().timerAnchors[KEY]).toBeDefined();
+
+    useAppStore.getState().endEmergency();
+    expect(useAppStore.getState().timerAnchors).toEqual({});
+  });
+
+  it('a later emergency never inherits a spent clock', () => {
+    // The clock is faked so the two anchors cannot land in the same millisecond
+    // — comparing real timestamps here asserted an artifact, not the property.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-13T10:00:00.000Z'));
+      const store = useAppStore.getState();
+      store.startEmergency('seizure');
+      const first = store.anchorTimer(KEY);
+      expect(first).toBe('2026-08-13T10:00:00.000Z');
+      useAppStore.getState().endEmergency();
+
+      vi.setSystemTime(new Date('2026-08-13T10:20:00.000Z'));
+      useAppStore.getState().startEmergency('seizure');
+      expect(useAppStore.getState().timerAnchors).toEqual({});
+
+      // The new emergency times itself from ITS own start, twenty minutes on —
+      // not from the seizure that ended.
+      expect(useAppStore.getState().anchorTimer(KEY)).toBe('2026-08-13T10:20:00.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('survives a protocol switch — the same event keeps its clocks', () => {
+    const store = useAppStore.getState();
+    store.startEmergency('seizure');
+    const anchor = store.anchorTimer(KEY);
+
+    useAppStore.getState().switchProtocol('cardiac_arrest');
+
+    expect(useAppStore.getState().timerAnchors[KEY]).toBe(anchor);
   });
 });
 

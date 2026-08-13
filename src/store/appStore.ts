@@ -53,6 +53,11 @@ interface AppState {
     doseText?: string
   ) => { ok: boolean; reason?: 'max_doses_reached' };
   log999Called: () => { ok: boolean; reason?: 'already_logged' | 'no_active_event' };
+
+  // Monotonic timer anchors, keyed by timerAnchorKey(protocol, step). See
+  // lib/monotonicTimers for which steps qualify and why.
+  timerAnchors: Record<string, string>;
+  anchorTimer: (key: string) => string | null;
   endEvent: (outcome?: string, notes?: string) => void;
   
   // Voice
@@ -214,7 +219,10 @@ export const useAppStore = create<AppState>()(
             activeProtocol: protocol,
             currentStepIndex: startIndex,
             currentScreen: 'protocol',
-            activeEvent: event
+            activeEvent: event,
+            // A new emergency times itself from scratch — never from a clock
+            // left anchored by the last one.
+            timerAnchors: {}
           });
           // Keep screen awake during emergency (re-acquires on foreground)
           enableWakeLock();
@@ -328,14 +336,16 @@ export const useAppStore = create<AppState>()(
             currentStepIndex: 0,
             currentScreen: 'home',
             activeEvent: null,
-            eventHistory: [...eventHistory, completedEvent]
+            eventHistory: [...eventHistory, completedEvent],
+            timerAnchors: {}
           });
         } else {
           set({ 
             isEmergencyActive: false,
             activeProtocol: null,
             currentStepIndex: 0,
-            currentScreen: 'home'
+            currentScreen: 'home',
+            timerAnchors: {}
           });
         }
       },
@@ -433,6 +443,32 @@ export const useAppStore = create<AppState>()(
         return { ok: true };
       },
 
+      timerAnchors: {},
+
+      // First arrival wins, for the life of ONE emergency.
+      //
+      // The seizure clock is anchored here rather than by the timer component so
+      // that re-entering the step cannot restart it: a component remount is
+      // exactly what used to hand the team a fresh five minutes (F9). Idempotent
+      // by construction — a second call returns the first anchor untouched — so
+      // the arrival effect can run on every render pass without lying about when
+      // the seizure started.
+      //
+      // Tied to the active event: cleared when one starts and when one ends, so
+      // a later emergency never inherits a spent clock. Not persisted, for the
+      // same reason activeEvent is not.
+      anchorTimer: (key) => {
+        const { activeEvent, timerAnchors } = get();
+        // No live event means no emergency to time. Refusing here keeps a stray
+        // anchor from outliving the record it belongs to.
+        if (!activeEvent) return null;
+        const existing = timerAnchors[key];
+        if (existing) return existing;
+        const anchor = new Date().toISOString();
+        set({ timerAnchors: { ...timerAnchors, [key]: anchor } });
+        return anchor;
+      },
+
       endEvent: (outcome, notes) => {
         const { activeEvent, eventHistory } = get();
         if (activeEvent) {
@@ -444,7 +480,8 @@ export const useAppStore = create<AppState>()(
           };
           set({
             activeEvent: null,
-            eventHistory: [...eventHistory, completedEvent]
+            eventHistory: [...eventHistory, completedEvent],
+            timerAnchors: {}
           });
         }
       },
