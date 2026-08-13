@@ -22,7 +22,11 @@ interface AppState {
   isEmergencyActive: boolean;
   activeProtocol: Protocol | null;
   currentStepIndex: number;
-  startEmergency: (protocolId: string, source?: 'tile' | 'triage' | 'library') => void;
+  startEmergency: (
+    protocolId: string,
+    source?: 'tile' | 'triage' | 'library',
+    opts?: { landOn?: string }
+  ) => void;
   switchProtocol: (protocolId: string) => void;
   runStepActions: (step: ProtocolStep) => void;
   setProtocol: (protocol: Protocol | null) => void;
@@ -68,6 +72,37 @@ function firstActionStepIndex(steps: Protocol['steps']): number {
   let i = 0;
   while (i < steps.length - 1 && steps[i].recognition) i++;
   return i;
+}
+
+// Deterioration landing — where a protocol entered mid-emergency starts.
+//
+// Clinical premise: every arrival path into cardiac_arrest as a DETERIORATION
+// (the escape rail, or a step's `switch_protocol:cardiac_arrest` action) has
+// already asserted "unresponsive and not breathing". The opening steps of
+// cardiac_arrest — safety, response, shout_help, airway, breathing_check,
+// breathing_decision — exist to establish exactly that. Re-asking them delays
+// compressions on a patient the operator has already declared arrested, which
+// is the harm the escape rail exists to prevent. So a deterioration entry lands
+// on `start_cpr`; the pre-answered steps stay in the graph and Back still
+// reaches them.
+//
+// This does NOT apply to a fresh entry (home tile, triage result confirmation):
+// there the premise has not been asserted, so the full recognition sequence
+// runs and only the leading-recognition skip applies. The one exception is a
+// triage path that has itself answered unconscious + not breathing — it passes
+// `landOn` explicitly rather than inheriting this map.
+//
+// Keys/values are held to real protocol and step ids by the data-integrity
+// tests, which also assert the landing step carries no `recognition` flag.
+export const DETERIORATION_LANDING: Record<string, string> = {
+  cardiac_arrest: 'start_cpr',
+};
+
+// Resolve a step id to its index, or -1 when absent/undefined. Callers fall
+// back to their own default index so a stale id can never strand the runner on
+// step -1.
+function stepIndexById(steps: Protocol['steps'], stepId: string | undefined): number {
+  return stepId ? steps.findIndex((s) => s.id === stepId) : -1;
 }
 
 // Runtime mirror of the EventType union (the type itself is erased at build
@@ -122,13 +157,22 @@ export const useAppStore = create<AppState>()(
       activeProtocol: null,
       currentStepIndex: 0,
       
-      startEmergency: (protocolId, source) => {
+      startEmergency: (protocolId, source, opts) => {
         const protocol = protocols.find(p => p.id === protocolId);
         if (protocol) {
           // Decisive entry (tile tap) skips leading recognition/symptom steps —
           // the user already chose the condition, so lead with the action.
           // Triage/library keep them (arrived via uncertainty).
-          const startIndex = source === 'tile' ? firstActionStepIndex(protocol.steps) : 0;
+          //
+          // `landOn` overrides both: a caller that has ALREADY established the
+          // protocol's entry criteria (the triage unconscious + not-breathing
+          // fast-path) names the step to start on, so the operator is not asked
+          // again what they just answered. An unknown id falls back to the
+          // source-based index rather than stranding the runner.
+          const landOnIndex = stepIndexById(protocol.steps, opts?.landOn);
+          const startIndex = landOnIndex >= 0
+            ? landOnIndex
+            : source === 'tile' ? firstActionStepIndex(protocol.steps) : 0;
           const event: EmergencyEvent = {
             id: newId(),
             timestamp: new Date().toISOString(),
@@ -161,9 +205,13 @@ export const useAppStore = create<AppState>()(
       // protocols mid-emergency: EscapeRail calls it directly, and a protocol
       // step's `switch_protocol:<id>` action routes through it via
       // runStepActions (so the anaphylaxis→CPR handoff is one graph edge, not a
-      // hand-wired branch). Applies the same
-      // leading-recognition skip a decisive tile entry uses, so e.g.
-      // cardiac_arrest lands on its first action step, not a recognition step.
+      // hand-wired branch).
+      //
+      // EVERY call is a deterioration by construction (it is guarded on
+      // activeEvent), so the landing uses DETERIORATION_LANDING where the target
+      // declares one — cardiac_arrest lands on `start_cpr`, honouring the escape
+      // rail's "switches straight to CPR" promise. Targets without an entry fall
+      // back to the leading-recognition skip a decisive tile entry uses.
       // Unknown ids are a silent no-op — target validity is owned by the
       // data-integrity tests (every switch_protocol action targets a real
       // protocol), not re-checked at runtime.
@@ -178,10 +226,11 @@ export const useAppStore = create<AppState>()(
         if (activeProtocol?.id === protocolId) return;
         const protocol = protocols.find(p => p.id === protocolId);
         if (!protocol) return;
+        const landingIndex = stepIndexById(protocol.steps, DETERIORATION_LANDING[protocolId]);
         set({
           isEmergencyActive: true,
           activeProtocol: protocol,
-          currentStepIndex: firstActionStepIndex(protocol.steps),
+          currentStepIndex: landingIndex >= 0 ? landingIndex : firstActionStepIndex(protocol.steps),
           currentScreen: 'protocol',
         });
         // Records the switch on the SAME event log.

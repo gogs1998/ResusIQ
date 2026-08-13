@@ -87,6 +87,46 @@ describe('appStore emergency lifecycle', () => {
     expect(s.activeProtocol?.steps[s.currentStepIndex].recognition).toBeFalsy();
   });
 
+  it('switchProtocol to cardiac_arrest lands on start_cpr, not the top of the protocol', () => {
+    // F1: the escape rail promises "switches straight to CPR". A deterioration
+    // entry has already asserted unresponsive + not breathing, so re-running
+    // safety → response → airway → breathing_check → "are they breathing?"
+    // delays compressions on a patient already declared arrested.
+    const store = useAppStore.getState();
+    store.startEmergency('anaphylaxis');
+    store.switchProtocol('cardiac_arrest');
+
+    const s = useAppStore.getState();
+    const cardiac = s.activeProtocol!;
+    expect(cardiac.id).toBe('cardiac_arrest');
+    expect(cardiac.steps[s.currentStepIndex].id).toBe('start_cpr');
+    expect(s.currentStepIndex).toBe(cardiac.steps.findIndex((st) => st.id === 'start_cpr'));
+    // The skipped steps are still in the graph — Back reaches them.
+    expect(cardiac.steps.some((st) => st.id === 'breathing_check')).toBe(true);
+  });
+
+  it('a fresh (non-deterioration) cardiac_arrest entry keeps the full sequence', () => {
+    // The landing map must not leak into tile/triage entry, where the premise
+    // has NOT been asserted.
+    useAppStore.getState().startEmergency('cardiac_arrest', 'tile');
+    const tile = useAppStore.getState();
+    expect(tile.activeProtocol?.steps[tile.currentStepIndex].id).toBe('safety');
+
+    reset();
+    useAppStore.getState().startEmergency('cardiac_arrest', 'triage');
+    expect(useAppStore.getState().currentStepIndex).toBe(0);
+  });
+
+  it('startEmergency landOn starts on the named step; an unknown id falls back', () => {
+    useAppStore.getState().startEmergency('cardiac_arrest', 'triage', { landOn: 'start_cpr' });
+    const s = useAppStore.getState();
+    expect(s.activeProtocol?.steps[s.currentStepIndex].id).toBe('start_cpr');
+
+    reset();
+    useAppStore.getState().startEmergency('cardiac_arrest', 'triage', { landOn: 'no_such_step' });
+    expect(useAppStore.getState().currentStepIndex).toBe(0);
+  });
+
   it('switchProtocol ignores an unknown protocol id', () => {
     const store = useAppStore.getState();
     store.startEmergency('asthma');

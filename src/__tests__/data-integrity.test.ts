@@ -3,6 +3,7 @@ import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import { PROTOCOL_MAP } from '../components/AIAssistant';
 import { TILES } from '../components/EmergencyDashboard';
+import { DETERIORATION_LANDING } from '../store/appStore';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -111,6 +112,28 @@ describe('home tile <-> protocol integrity', () => {
     }
     for (const id of protocolIds) {
       expect(tileIds, `protocol "${id}" has no home tile`).toContain(id);
+    }
+  });
+});
+
+describe('deterioration landing integrity', () => {
+  // DETERIORATION_LANDING short-circuits a mid-emergency protocol switch onto a
+  // named step. A stale key or step id would silently fall back to the full
+  // recognition sequence — reintroducing the exact delay the map removes — so
+  // both ends are pinned here rather than discovered in a resus.
+  it('every key is a real protocol and every value a real step in it', () => {
+    for (const [protocolId, stepId] of Object.entries(DETERIORATION_LANDING)) {
+      const protocol = protocols.find((p) => p.id === protocolId);
+      expect(protocol, `DETERIORATION_LANDING key "${protocolId}" is not a protocol`).toBeDefined();
+      const step = protocol!.steps.find((s) => s.id === stepId);
+      expect(step, `${protocolId} has no step "${stepId}"`).toBeDefined();
+    }
+  });
+
+  it('no landing step is recognition-flagged (landing must be an action)', () => {
+    for (const [protocolId, stepId] of Object.entries(DETERIORATION_LANDING)) {
+      const step = protocols.find((p) => p.id === protocolId)!.steps.find((s) => s.id === stepId)!;
+      expect(step.recognition, `${protocolId}.${stepId} is a recognition step`).toBeFalsy();
     }
   });
 });
