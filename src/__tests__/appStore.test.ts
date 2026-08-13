@@ -505,3 +505,36 @@ describe('appStore runStepActions (step-action execution)', () => {
     expect(s.activeProtocol?.id).toBe('anaphylaxis');
   });
 });
+
+// Stage 4: the OS chrome follows the app into theatre. jsdom gives us a real
+// document, so the meta-tag side of it is directly assertable.
+describe('emergency OS chrome', () => {
+  beforeEach(() => {
+    reset();
+    document.getElementById('riq-theme-color-emergency')?.remove();
+  });
+
+  const override = () => document.getElementById('riq-theme-color-emergency') as HTMLMetaElement | null;
+
+  it('points theme-color at the theatre surface while an emergency runs', () => {
+    expect(override()).toBeNull();
+
+    useAppStore.getState().startEmergency('anaphylaxis');
+
+    expect(override()).not.toBeNull();
+    expect(override()!.content).toBe('#0C1118');
+    expect(override()!.name).toBe('theme-color');
+  });
+
+  it('hands it back when the emergency ends', () => {
+    useAppStore.getState().startEmergency('anaphylaxis');
+    useAppStore.getState().endEmergency();
+    expect(override()).toBeNull();
+  });
+
+  it('does not stack overrides across successive emergencies', () => {
+    useAppStore.getState().startEmergency('anaphylaxis');
+    useAppStore.getState().startEmergency('asthma');
+    expect(document.querySelectorAll('#riq-theme-color-emergency')).toHaveLength(1);
+  });
+});

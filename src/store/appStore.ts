@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
+import { enterEmergencyChrome, exitEmergencyChrome } from '../lib/osChrome';
 import { doseLimitClass, isAtDoseLimit } from '../lib/doseLimits';
 import { has999Called } from '../lib/call999';
 import { newId } from '../lib/ids';
@@ -224,8 +225,10 @@ export const useAppStore = create<AppState>()(
             // left anchored by the last one.
             timerAnchors: {}
           });
-          // Keep screen awake during emergency (re-acquires on foreground)
+          // Keep screen awake during emergency (re-acquires on foreground), and
+          // take the OS chrome dark with the app.
           enableWakeLock();
+          enterEmergencyChrome();
         }
       },
       
@@ -326,8 +329,10 @@ export const useAppStore = create<AppState>()(
       
       endEmergency: () => {
         const { activeEvent, eventHistory } = get();
-        // Release wake lock (also stops the foreground re-acquire)
+        // Release wake lock (also stops the foreground re-acquire) and hand the
+        // OS chrome back.
         disableWakeLock();
+        exitEmergencyChrome();
         if (activeEvent) {
           const completedEvent = { ...activeEvent, completed: true };
           set({ 

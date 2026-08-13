@@ -200,4 +200,17 @@
   --focus-ring-tight: 0 0 0 3px rgba(84, 193, 255, 0.35);
   --glow-green: none;
   --glow-red: 0 6px 18px rgba(229, 72, 77, 0.30);
+
+  /* Theatre is lit from within, not floated. On near-black surfaces a drop
+     shadow is invisible at best and a grey smear at worst, so panels are
+     BORDERED here — the elevation tokens collapse to nothing and the borders
+     carry the separation. It is also what stops the dark screens reading as
+     light-mode cards with the colours inverted. */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --elev-1: none;
+  --elev-2: none;
+  --elev-modal: none;
+  --shadow-btn: none;
 }
