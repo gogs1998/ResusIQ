@@ -1,10 +1,23 @@
-/* ResusIQ webfont — Lexend, self-hosted via @fontsource (offline-safe).
-   Lexend is engineered to reduce visual stress and improve reading proficiency
-   — exactly what a panicking user needs at arm's length. Single family, used at
-   every size. Weights 300–800 cover the calm/big/obvious ramp. */
-@import '@fontsource/lexend/300.css';
-@import '@fontsource/lexend/400.css';
-@import '@fontsource/lexend/500.css';
-@import '@fontsource/lexend/600.css';
-@import '@fontsource/lexend/700.css';
-@import '@fontsource/lexend/800.css';
+/* ResusIQ webfont — Inter, self-hosted via @fontsource (offline-safe).
+   Inter is a neutral, professional, highly legible UI typeface — its large
+   x-height and open apertures keep instructions readable at arm's length,
+   while its restrained character suits the Instrument console's clinical,
+   information-dense surfaces. Self-hosting via @fontsource guarantees the
+   fonts render with no network — critical for an offline-capable emergency
+   PWA. Weights 400–800 cover the regular/medium/semibold/bold/extrabold ramp
+   (no light weights — Instrument never renders text below regular). */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/800.css';
+
+/* Numerals — IBM Plex Mono, self-hosted for the same offline reason.
+   Every number this app shows is one a person reads back under pressure: a
+   dose, a countdown, a compression count, the time 999 was called. A
+   proportional face lets 1:1000 and 1:10,000 take nearly the same width, and
+   lets digits shuffle sideways as a timer counts down. A true mono with tabular
+   figures fixes both — the digits sit on a grid and only their shapes change.
+   Two weights: 500 for inline data, 700 for the display counters. */
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/700.css';

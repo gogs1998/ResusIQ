@@ -11,6 +11,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { newId } from '../lib/ids';
 import type { PracticeSetup, StaffRole, EquipmentItem } from '../types';
 
 const defaultEquipment: EquipmentItem[] = [
@@ -72,12 +73,31 @@ const helperText: CSSProperties = {
   color: 'var(--text-2)',
 };
 
+// Declared at module scope, NOT inside the wizard. As a nested component it was
+// a brand-new component type on every render of the form, so React unmounted and
+// remounted it on each keystroke — throwing away its DOM (and any transition or
+// focus state) while the user typed the practice address the 999 script depends
+// on.
+function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      role="switch"
+      aria-checked={on}
+      className="w-12 h-6 rounded-full transition-colors flex-shrink-0"
+      style={{ background: on ? 'var(--brand)' : 'var(--surface-inset)' }}
+    >
+      <div className="w-5 h-5 rounded-full transition-transform" style={{ background: '#fff', transform: on ? 'translateX(24px)' : 'translateX(2px)' }} />
+    </button>
+  );
+}
+
 export function PracticeSetupWizard() {
   const { practiceSetup, setPracticeSetup, setScreen } = useAppStore();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<PracticeSetup>>({
-    id: practiceSetup?.id || crypto.randomUUID(),
+    id: practiceSetup?.id || newId(),
     name: practiceSetup?.name || '',
     address: practiceSetup?.address || '',
     postcode: practiceSetup?.postcode || '',
@@ -97,7 +117,10 @@ export function PracticeSetupWizard() {
 
   const totalSteps = 4;
 
-  const updateField = (field: keyof PracticeSetup, value: any) => {
+  // Generic over the field, so the value has to match the field it is being
+  // written to — `any` here let a string land in a boolean field (or the wrong
+  // way round) with nothing complaining.
+  const updateField = <K extends keyof PracticeSetup>(field: K, value: PracticeSetup[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -151,20 +174,8 @@ export function PracticeSetupWizard() {
     }
   };
 
-  const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
-    <button
-      onClick={onClick}
-      role="switch"
-      aria-checked={on}
-      className="w-12 h-6 rounded-full transition-colors flex-shrink-0"
-      style={{ background: on ? 'var(--brand)' : 'var(--surface-inset)' }}
-    >
-      <div className="w-5 h-5 rounded-full transition-transform" style={{ background: '#fff', transform: on ? 'translateX(24px)' : 'translateX(2px)' }} />
-    </button>
-  );
-
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center gap-2 px-4" style={{ height: 'var(--appbar-h)' }}>
         <button
@@ -179,7 +190,7 @@ export function PracticeSetupWizard() {
           <h1 className="font-bold" style={{ fontSize: 'var(--fs-body)', color: 'var(--text-1)' }}>Practice setup</h1>
           <p
             className="mt-0.5 uppercase"
-            style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', color: 'var(--teal-700)' }}
+            style={{ fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: 'var(--ls-label)', color: 'var(--brand)' }}
           >
             Step {step} of {totalSteps}
           </p>

@@ -78,8 +78,8 @@ export const protocols: Protocol[] = [
       {
         id: 'start_cpr',
         type: 'instruction',
-        say: 'Start CPR now. Give 30 chest compressions, then 2 rescue breaths.',
-        show: 'Start CPR now.\n\n30 compressions, then 2 breaths.',
+        say: 'Start CPR now. Give 30 chest compressions, then 2 rescue breaths. Send someone for the defibrillator and make sure 999 is on the line.',
+        show: 'Start CPR now.\n\n30 compressions, then 2 breaths.\nSend someone for the defibrillator and 999 — do not stop compressions to wait.',
         next: 'cpr_mode'
       },
       {
@@ -191,7 +191,7 @@ export const protocols: Protocol[] = [
           { role: 'Person 2', task: 'Bring the emergency drugs kit' },
           { role: 'You', task: 'Stay with them and give adrenaline' }
         ],
-        actions: ['suggest:call_999', 'log:999_called'],
+        actions: ['suggest:call_999'],
         next: 'position'
       },
       {
@@ -655,19 +655,19 @@ export const protocols: Protocol[] = [
         id: 'time_seizure',
         type: 'timer_block',
         say: 'Note the time it started and time the seizure.',
-        show: 'Time the seizure from now.\n\nNote the start time. Most seizures stop on their own within 5 minutes.',
+        show: 'Time the seizure from now.\n\nNote the start time. If it was already going before you opened this, count from when it actually started.\nMost seizures stop on their own within 5 minutes.',
         duration_seconds: 300,
         on_timer_end_next: 'prolonged_seizure'
       },
       {
         id: 'prolonged_seizure',
         type: 'decision',
-        say: 'Has the seizure lasted longer than 5 minutes?',
-        show: 'Has the seizure lasted longer than 5 minutes?',
-        question: 'Has the seizure lasted longer than 5 minutes?',
+        say: 'Is the seizure still going?',
+        show: 'Is the seizure still going?',
+        question: 'Is the seizure still going?',
         answers: [
-          { label: 'Yes — longer than 5 minutes', next: 'call_999_seizure' },
-          { label: 'No — still seizing, under 5 minutes', next: 'continue_timing' },
+          { label: 'Yes — 5 minutes or more, or it has happened again', next: 'call_999_seizure' },
+          { label: 'Yes — still under 5 minutes', next: 'continue_timing' },
           { label: 'Seizure has stopped', next: 'post_ictal' }
         ]
       },
@@ -702,7 +702,7 @@ export const protocols: Protocol[] = [
         type: 'drug',
         drug_id: 'midazolam_buccal',
         say: 'Give one dose of buccal midazolam between the gum and cheek. For an adult that is 10 milligrams. This is a single dose only — do not repeat it.',
-        show: 'Give buccal midazolam — one dose only.\n\nAdult: 10 mg. Child 10+: 10 mg. Child 5 to 10: 7.5 mg. Child 1 to 5: 5 mg. Place between the gum and cheek, half each side. Single dose — do not repeat.',
+        show: 'Give buccal midazolam — one dose only.\n\nAdult and 10 years+: 10 mg (2 ml). 5 to under 10: 7.5 mg (1.5 ml). 1 to under 5: 5 mg (1 ml). 6 months to under 1 year: 2.5 mg (0.5 ml).\nPlace between the gum and cheek, half each side. Single dose — do not repeat.',
         require_confirm: true,
         next: 'monitor_seizure'
       },
@@ -771,7 +771,7 @@ export const protocols: Protocol[] = [
         type: 'instruction',
         say: 'Call 999 now and say you think it’s a heart attack.',
         show: 'Call 999 now — say suspected heart attack.\n\nGet someone to fetch the emergency kit and the defibrillator while you stay with them.',
-        actions: ['suggest:call_999', 'log:999_called'],
+        actions: ['suggest:call_999'],
         next: 'position_chest'
       },
       {
@@ -1039,7 +1039,7 @@ export const protocols: Protocol[] = [
         type: 'instruction',
         say: 'Call 999 now. Tell them it is a suspected stroke.',
         show: 'Call 999 now.\n\nSay "suspected stroke" — they need it fast.',
-        actions: ['suggest:call_999', 'log:999_called'],
+        actions: ['suggest:call_999'],
         next: 'record_time'
       },
       {
@@ -1123,7 +1123,7 @@ export const protocols: Protocol[] = [
         type: 'instruction',
         say: 'Call 999 now. Tell them you suspect adrenal crisis in a patient who depends on steroids.',
         show: 'Call 999 now.\n\nSay: suspected adrenal crisis, steroid-dependent patient.',
-        actions: ['suggest:call_999', 'log:999_called'],
+        actions: ['suggest:call_999'],
         next: 'position_adrenal'
       },
       {

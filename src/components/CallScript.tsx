@@ -2,6 +2,7 @@ import { Phone, MapPin, ArrowLeft, Copy, Check, Clock } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { elapsedSeconds } from '../lib/emergencyTimers';
 
 const backBtn: CSSProperties = {
   width: 56,
@@ -22,23 +23,13 @@ const eyebrow: CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export function CallScript() {
-  const { practiceSetup, setScreen, activeProtocol, activeEvent } = useAppStore();
+// The 999-script body: the "What to say" steps (patient state derived from the
+// event log) plus the reminders. Props-free and store-reading so it renders
+// identically on the standalone CallScript screen and inside the console Deck's
+// 999 tab — one source of clinically signed-off wording.
+export function CallScriptContent() {
+  const { practiceSetup, activeProtocol, activeEvent } = useAppStore();
   const [copied, setCopied] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds(s => s + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60).toString().padStart(2, '0');
-    const s = (secs % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
 
   const address = practiceSetup?.address || '[Practice address not set]';
   const postcode = practiceSetup?.postcode || '[Postcode not set]';
@@ -115,7 +106,112 @@ export function CallScript() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+        <h2 style={{ ...eyebrow, color: 'var(--text-3)' }}>What to say</h2>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-2 active:opacity-70 transition-opacity"
+          style={{
+            fontSize: 'var(--fs-label)',
+            fontWeight: 600,
+            padding: '10px 16px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-sm)',
+            border: 'none',
+            color: copied ? 'var(--green-700)' : 'var(--text-2)',
+          }}
+        >
+          {copied ? <Check className="w-5 h-5" style={{ color: 'var(--green-600)' }} /> : <Copy className="w-5 h-5" />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+
+      <div className="flex flex-col" style={{ gap: 12 }}>
+        <ScriptStep number={1} instruction="State the service needed">
+          <p className="font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--red-700)' }}>"Ambulance"</p>
+        </ScriptStep>
+
+        <ScriptStep number={2} instruction="Give your location">
+          <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{practiceName}"</p>
+          <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>"{address}"</p>
+          <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--brand)', marginTop: 2 }}>"{postcode}"</p>
+        </ScriptStep>
+
+        <ScriptStep number={3} instruction="Describe the emergency">
+          <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{emergencyType}"</p>
+        </ScriptStep>
+
+        <ScriptStep number={4} instruction="Patient status">
+          <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState()}"</p>
+        </ScriptStep>
+
+        <ScriptStep number={5} instruction="Answer their questions">
+          <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}>
+            Stay on the line. The operator will guide you.
+            Put the phone on speaker so you can continue treatment.
+          </p>
+        </ScriptStep>
+      </div>
+
+      {/* Important reminders */}
+      <div
+        style={{
+          marginTop: 16,
+          background: 'var(--surface)',
+          boxShadow: 'var(--shadow-sm)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 20,
+        }}
+      >
+        <h3 style={{ ...eyebrow, color: 'var(--brand)', marginBottom: 12 }}>Remember</h3>
+        <ul className="flex flex-col" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', gap: 10, listStyle: 'none', padding: 0, margin: 0, lineHeight: 'var(--lh-normal)' }}>
+          <li>Put the phone on speaker mode</li>
+          <li>Do not hang up — let them hang up first</li>
+          <li>Send someone to meet the ambulance at the door</li>
+          <li>Have the patient's medical history ready if possible</li>
+          <li>Note the time of the call</li>
+        </ul>
+      </div>
+    </>
+  );
+}
+
+export function CallScript() {
+  const { practiceSetup, setScreen, activeEvent } = useAppStore();
+  const [now, setNow] = useState(() => new Date());
+  // Fallback start when this screen is opened outside a live emergency: the
+  // clock then counts from mount (0-based), preserving the old behaviour.
+  // The fallback anchor, when this screen is opened with no live emergency (the
+  // 999 script is reachable outside one). State, not a ref: it is READ during
+  // render to decide what the clock shows, and a ref read during render is a
+  // value React does not know the component depends on. useState's initialiser
+  // runs once, so the instant is still "when this screen opened".
+  const [mountedAt] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Anchor the elapsed clock to the emergency's real start (999 asks this
+  // first), not this screen's mount — so it reads the same as the runner strip.
+  const elapsed = elapsedSeconds(activeEvent?.timestamp ?? mountedAt.toISOString(), now);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const address = practiceSetup?.address || '[Practice address not set]';
+  const postcode = practiceSetup?.postcode || '[Postcode not set]';
+  const phone = practiceSetup?.phone || '[Phone not set]';
+  const practiceName = practiceSetup?.name || 'Dental Practice';
+
+  return (
+    <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center" style={{ gap: 8, padding: '8px 12px', height: 'var(--appbar-h)' }}>
         <button onClick={() => setScreen('home')} aria-label="Back" style={backBtn} className="active:opacity-70 transition-opacity">
@@ -127,7 +223,7 @@ export function CallScript() {
           style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 600, color: 'var(--text-2)' }}
         >
           <Clock className="w-5 h-5" />
-          {formatTime(elapsedSeconds)}
+          {formatTime(elapsed)}
         </div>
       </header>
 
@@ -159,14 +255,14 @@ export function CallScript() {
             background: 'var(--surface)',
             boxShadow: 'var(--shadow-sm)',
             borderRadius: 'var(--radius-lg)',
-            border: '1.5px solid var(--teal-100)',
+            border: '1px solid var(--brand-100)',
             padding: 20,
           }}
         >
           <div className="flex items-start" style={{ gap: 16 }}>
             <MapPin className="w-7 h-7 flex-shrink-0" style={{ color: 'var(--brand)', marginTop: 2 }} />
             <div>
-              <p style={{ ...eyebrow, color: 'var(--teal-700)' }}>Practice address</p>
+              <p style={{ ...eyebrow, color: 'var(--brand)' }}>Practice address</p>
               <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)', marginTop: 6 }}>{practiceName}</p>
               <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>{address}</p>
               <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--brand)', marginTop: 6 }}>{postcode}</p>
@@ -180,73 +276,7 @@ export function CallScript() {
 
       {/* Script */}
       <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px 16px' }}>
-        <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-          <h2 style={{ ...eyebrow, color: 'var(--text-3)' }}>What to say</h2>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 active:opacity-70 transition-opacity"
-            style={{
-              fontSize: 'var(--fs-label)',
-              fontWeight: 600,
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--surface)',
-              boxShadow: 'var(--shadow-sm)',
-              border: 'none',
-              color: copied ? 'var(--green-700)' : 'var(--text-2)',
-            }}
-          >
-            {copied ? <Check className="w-5 h-5" style={{ color: 'var(--green-600)' }} /> : <Copy className="w-5 h-5" />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-
-        <div className="flex flex-col" style={{ gap: 12 }}>
-          <ScriptStep number={1} instruction="State the service needed">
-            <p className="font-bold" style={{ fontSize: 'var(--fs-subtitle)', color: 'var(--red-700)' }}>"Ambulance"</p>
-          </ScriptStep>
-
-          <ScriptStep number={2} instruction="Give your location">
-            <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{practiceName}"</p>
-            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>"{address}"</p>
-            <p className="cs-numeric font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--brand)', marginTop: 2 }}>"{postcode}"</p>
-          </ScriptStep>
-
-          <ScriptStep number={3} instruction="Describe the emergency">
-            <p className="font-bold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{emergencyType}"</p>
-          </ScriptStep>
-
-          <ScriptStep number={4} instruction="Patient status">
-            <p className="font-semibold" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text-1)' }}>"{getPatientState()}"</p>
-          </ScriptStep>
-
-          <ScriptStep number={5} instruction="Answer their questions">
-            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 'var(--lh-normal)' }}>
-              Stay on the line. The operator will guide you.
-              Put the phone on speaker so you can continue treatment.
-            </p>
-          </ScriptStep>
-        </div>
-
-        {/* Important reminders */}
-        <div
-          style={{
-            marginTop: 16,
-            background: 'var(--surface)',
-            boxShadow: 'var(--shadow-sm)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 20,
-          }}
-        >
-          <h3 style={{ ...eyebrow, color: 'var(--teal-700)', marginBottom: 12 }}>Remember</h3>
-          <ul className="flex flex-col" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', gap: 10, listStyle: 'none', padding: 0, margin: 0, lineHeight: 'var(--lh-normal)' }}>
-            <li>Put the phone on speaker mode</li>
-            <li>Do not hang up — let them hang up first</li>
-            <li>Send someone to meet the ambulance at the door</li>
-            <li>Have the patient's medical history ready if possible</li>
-            <li>Note the time of the call</li>
-          </ul>
-        </div>
+        <CallScriptContent />
       </div>
 
       {/* Back to protocol button */}
@@ -286,12 +316,15 @@ function ScriptStep({ number, instruction, children }: { number: number; instruc
       <div className="flex items-start" style={{ gap: 16 }}>
         <div
           className="cs-numeric flex items-center justify-center font-bold flex-shrink-0"
-          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--teal-50)', color: 'var(--brand)' }}
+          style={{ width: 36, height: 36, borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-body-sm)', background: 'var(--brand-tint)', color: 'var(--brand)' }}
         >
           {number}
         </div>
         <div className="flex-1">
-          <p style={{ fontSize: 'var(--fs-label)', color: 'var(--text-3)', marginBottom: 6 }}>{instruction}</p>
+          {/* An instruction the caller reads while a dispatcher waits — body
+              text, not a kicker. It was on the label token, which now sizes
+              uppercase kickers at 12px. */}
+          <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginBottom: 6 }}>{instruction}</p>
           {children}
         </div>
       </div>

@@ -12,16 +12,16 @@ import {
   Volume2,
   VolumeX,
   Settings,
-  ClipboardList,
-  GraduationCap,
-  BookOpen,
-  FileText,
-  CircleHelp,
   Stethoscope,
   ChevronRight,
+  BookOpen,
+  ClipboardList,
+  FileText,
+  GraduationCap,
 } from 'lucide-react';
 import type { CSSProperties, ComponentType } from 'react';
 import { useAppStore } from '../store/appStore';
+import { TILES, tilesByTone, conditionSpine } from '../lib/conditions';
 
 const iconMap: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
   Heart,
@@ -36,26 +36,12 @@ const iconMap: Record<string, ComponentType<{ className?: string; style?: CSSPro
   Stethoscope,
 };
 
-// Plain-English tile names (sentence case) — the lay word a panicking carer
-// recognises, not the clinical term. Icon names map into iconMap above.
-const TILES: { id: string; label: string; icon: string }[] = [
-  { id: 'cardiac_arrest', label: 'Cardiac arrest', icon: 'HeartPulse' },
-  { id: 'anaphylaxis', label: 'Anaphylaxis', icon: 'ShieldAlert' },
-  { id: 'choking', label: 'Choking', icon: 'Wind' },
-  { id: 'asthma', label: 'Asthma attack', icon: 'Stethoscope' },
-  { id: 'chest_pain', label: 'Chest pain', icon: 'Heart' },
-  { id: 'hypoglycaemia', label: 'Low blood sugar', icon: 'Droplet' },
-  { id: 'seizure', label: 'Seizure', icon: 'Brain' },
-  { id: 'syncope', label: 'Fainting', icon: 'CircleOff' },
-  { id: 'stroke', label: 'Stroke', icon: 'Zap' },
-  { id: 'adrenal_crisis', label: 'Adrenal crisis', icon: 'AlertOctagon' },
-];
 
 const TOOLS = [
-  { screen: 'protocol_library' as const, icon: BookOpen, label: 'Library' },
-  { screen: 'sbar' as const, icon: FileText, label: 'SBAR' },
-  { screen: 'reports' as const, icon: ClipboardList, label: 'Reports' },
-  { screen: 'training' as const, icon: GraduationCap, label: 'Training' },
+  { screen: 'protocol_library' as const, label: 'Library', Icon: BookOpen },
+  { screen: 'sbar' as const, label: 'SBAR', Icon: ClipboardList },
+  { screen: 'reports' as const, label: 'Reports', Icon: FileText },
+  { screen: 'training' as const, label: 'Training', Icon: GraduationCap },
 ];
 
 const headerBtn: CSSProperties = {
@@ -69,147 +55,237 @@ const headerBtn: CSSProperties = {
   border: 'none',
 };
 
-function TileIcon({ name }: { name: string }) {
-  const Icon = iconMap[name] ?? Heart;
-  return (
-    <span
-      className="flex items-center justify-center flex-shrink-0"
-      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', background: 'var(--teal-50)' }}
-    >
-      <Icon className="w-8 h-8" style={{ color: 'var(--teal-700)' }} />
-    </span>
-  );
-}
+const kicker: CSSProperties = {
+  fontSize: 'var(--fs-label)',
+  fontWeight: 800,
+  letterSpacing: 'var(--ls-eyebrow)',
+  textTransform: 'uppercase',
+  color: 'var(--text-3)',
+  margin: '14px 2px 7px',
+};
 
 export function EmergencyDashboard() {
   const { startEmergency, setScreen, practiceSetup, isMuted, toggleMute, isTrainingMode } = useAppStore();
 
+  const hero = TILES.find((t) => t.tone === 'critical')!;
+  const lifeThreat = tilesByTone('severe');
+  const other = tilesByTone('urgent', 'standard');
+  const HeroIcon = iconMap[hero.icon] ?? Heart;
+
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div
+      className="riq-ward-focus flex flex-col overflow-hidden safe-area-top"
+      style={{ height: '100dvh', background: 'var(--bg)', color: 'var(--text-1)' }}
+    >
       {/* Header */}
-      <header className="flex items-start justify-between" style={{ padding: '12px 24px 8px' }}>
-        <div className="flex items-center gap-2.5">
-          <img src="/logo-mark.svg" alt="" className="w-9 h-9 rounded-xl" />
-          <div>
-            <h1 className="font-bold" style={{ fontSize: 'var(--fs-lead)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-              <span style={{ color: 'var(--text-1)' }}>Resus</span><span style={{ color: 'var(--brand)' }}>IQ</span>
-            </h1>
-            <p style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', marginTop: 2 }}>
-              {isTrainingMode ? 'Training mode' : "What's happening? Tap to begin."}
-            </p>
-          </div>
+      <header className="flex-none flex items-start justify-between" style={{ padding: '14px 20px 4px' }}>
+        <div>
+          <h1 className="font-bold" style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+            <span style={{ color: 'var(--text-1)' }}>Resus</span><span style={{ color: 'var(--brand)' }}>IQ</span>
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 3 }}>
+            {isTrainingMode ? 'Training mode' : "What's happening? Tap the condition."}
+          </p>
         </div>
-        <div className="flex items-center" style={{ gap: 2 }}>
+        <div className="flex items-center" style={{ gap: 2, marginRight: -8 }}>
           <button onClick={toggleMute} style={headerBtn} aria-label={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'} aria-pressed={isMuted}>
-            {isMuted ? <VolumeX className="w-6 h-6" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-6 h-6" style={{ color: 'var(--text-2)' }} />}
+            {isMuted ? <VolumeX className="w-5 h-5" style={{ color: 'var(--red)' }} /> : <Volume2 className="w-5 h-5" style={{ color: 'var(--text-2)' }} />}
           </button>
           <button onClick={() => setScreen('setup')} style={headerBtn} aria-label="Settings">
-            <Settings className="w-6 h-6" style={{ color: 'var(--text-2)' }} />
+            <Settings className="w-5 h-5" style={{ color: 'var(--text-2)' }} />
           </button>
         </div>
       </header>
 
-      {/* Practice badge */}
+      {/* Practice badge — kept, compact single line */}
       {practiceSetup?.address && (
-        <div className="flex items-center gap-1.5" style={{ margin: '0 24px 4px' }}>
-          <Stethoscope className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
-          <p className="truncate" style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-2)' }}>
+        <div className="flex-none flex items-center gap-1.5" style={{ margin: '0 20px 2px' }}>
+          <Stethoscope className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
+          <p className="truncate" style={{ fontSize: 12, color: 'var(--text-2)' }}>
             {practiceSetup.name || practiceSetup.address}{practiceSetup.postcode ? ` · ${practiceSetup.postcode}` : ''}
           </p>
         </div>
       )}
 
-      {/* Scrollable tile grid */}
-      <main className="flex-1 overflow-y-auto" style={{ padding: '8px 24px 12px', minHeight: 0 }}>
-        <div className="grid grid-cols-2" style={{ gap: 16 }}>
-          {TILES.map((tile) => (
-            <button
-              key={tile.id}
-              onClick={() => startEmergency(tile.id, 'tile')}
-              className="flex flex-col text-left active:scale-[0.98] transition-transform"
-              style={{
-                gap: 16,
-                minHeight: 150,
-                padding: 22,
-                borderRadius: 'var(--radius-xl)',
-                background: 'var(--surface)',
-                boxShadow: 'var(--shadow-md)',
-                border: 'none',
-              }}
-            >
-              <TileIcon name={tile.icon} />
-              <span className="font-bold" style={{ fontSize: 'var(--fs-subtitle)', lineHeight: 1.1, letterSpacing: '-0.01em', marginTop: 'auto', color: 'var(--text-1)' }}>
-                {tile.label}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Guided "Not sure?" — warm amber, reassuring */}
+      {/* Ranked conditions + triage. Fits 390x780 without scrolling; shorter
+          screens and iOS text zoom SCROLL rather than clip, so the last tile is
+          never unreachable. The 999 control below stays pinned either way. */}
+      <main className="flex-1 flex flex-col min-h-0 overflow-y-auto" style={{ padding: '6px 14px 0' }}>
+        {/* The one condition where seconds decide the outcome gets the whole
+            width and the only filled red on the screen. */}
         <button
-          onClick={() => setScreen('triage')}
-          className="w-full flex items-center text-left active:scale-[0.98] transition-transform"
+          onClick={() => startEmergency(hero.id, 'tile')}
+          aria-label={`${hero.label}. ${hero.cue.replace(/\s*·\s*/g, ', ')}`}
+          className="w-full flex items-center text-left active:scale-[0.99] transition-transform"
           style={{
-            marginTop: 16,
-            gap: 18,
-            minHeight: 96,
-            padding: '20px 22px',
-            borderRadius: 'var(--radius-xl)',
-            background: 'var(--amber-50)',
-            boxShadow: '0 0 0 2px var(--amber-600) inset, var(--shadow-sm)',
+            gap: 13,
+            minHeight: 76,
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--red)',
             border: 'none',
+            boxShadow: 'var(--shadow-999)',
+            color: '#fff',
           }}
         >
-          <span className="flex items-center justify-center flex-shrink-0" style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--amber-100)' }}>
-            <CircleHelp className="w-7 h-7" style={{ color: 'var(--amber-700)' }} />
+          <span
+            className="flex items-center justify-center flex-shrink-0"
+            style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.16)' }}
+          >
+            <HeroIcon className="w-7 h-7" style={{ color: '#fff' }} />
           </span>
           <span className="flex-1 min-w-0">
-            <span className="block font-bold" style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.15, color: 'var(--text-1)' }}>Not sure?</span>
-            <span className="block" style={{ fontSize: 'var(--fs-body-sm)', color: 'var(--amber-700)', marginTop: 2 }}>Answer a few quick questions</span>
+            <span className="block" style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
+              {hero.label}
+            </span>
+            <span className="block" style={{ fontSize: 13, fontWeight: 600, opacity: 0.9, marginTop: 2 }}>
+              {hero.cue}
+            </span>
           </span>
-          <ChevronRight className="w-6 h-6 flex-shrink-0" style={{ color: 'var(--amber-700)' }} />
+          <ChevronRight className="w-6 h-6 flex-shrink-0" style={{ opacity: 0.8 }} />
         </button>
 
-        {/* Low-emphasis tools row */}
-        <div className="grid grid-cols-4" style={{ gap: 8, marginTop: 24 }}>
-          {TOOLS.map(({ screen, icon: Icon, label }) => (
-            <button
-              key={screen}
-              onClick={() => setScreen(screen)}
-              className="flex flex-col items-center gap-1.5 active:opacity-70 transition-opacity"
-              style={{ padding: '12px 4px', borderRadius: 'var(--radius-md)', background: 'transparent', border: 'none' }}
-            >
-              <Icon className="w-5 h-5" style={{ color: 'var(--text-3)' }} />
-              <span style={{ fontSize: 'var(--fs-caption)', color: 'var(--text-3)' }}>{label}</span>
-            </button>
-          ))}
+        <p style={kicker}>Life threat</p>
+        <div className="grid grid-cols-2" style={{ gap: 8 }}>
+          {lifeThreat.map((tile) => {
+            const Icon = iconMap[tile.icon] ?? Heart;
+            return (
+              <button
+                key={tile.id}
+                onClick={() => startEmergency(tile.id, 'tile')}
+                aria-label={`${tile.label}. ${tile.cue.replace(/\s*·\s*/g, ', ')}`}
+                className="flex flex-col text-left active:scale-[0.98] transition-transform"
+                style={{
+                  gap: 6,
+                  minHeight: 78,
+                  padding: '11px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderLeft: conditionSpine(tile.cond),
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <span
+                  className="flex items-center justify-center flex-shrink-0"
+                  style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: tile.cond }} />
+                </span>
+                <span className="font-bold" style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.12, letterSpacing: '-0.01em', color: 'var(--text-1)' }}>
+                  {tile.label}
+                </span>
+                <span style={{ fontSize: 'var(--fs-caption)', lineHeight: 1.2, color: 'var(--text-2)' }}>
+                  {tile.cue}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        <p style={kicker}>Other emergencies</p>
+        <div className="grid grid-cols-2" style={{ gap: 8 }}>
+          {other.map((tile) => {
+            const Icon = iconMap[tile.icon] ?? Heart;
+            return (
+              <button
+                key={tile.id}
+                onClick={() => startEmergency(tile.id, 'tile')}
+                aria-label={`${tile.label}. ${tile.cue.replace(/\s*·\s*/g, ', ')}`}
+                className="flex items-center text-left active:scale-[0.98] transition-transform"
+                style={{
+                  gap: 10,
+                  minHeight: 56,
+                  padding: '9px 11px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderLeft: conditionSpine(tile.cond),
+                }}
+              >
+                <span
+                  className="flex items-center justify-center flex-shrink-0"
+                  style={{ width: 28, height: 28, borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: tile.cond }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-bold" style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.12, color: 'var(--text-1)' }}>
+                    {tile.label}
+                  </span>
+                  <span className="block truncate" style={{ fontSize: 'var(--fs-caption)', lineHeight: 1.2, color: 'var(--text-2)' }}>
+                    {tile.cue}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Triage sits under the conditions, not above them: it is the answer to
+            "I don't know", and offering it first taught the operator to fill in
+            a form before looking for what they already recognise. */}
+        <button
+          onClick={() => setScreen('triage')}
+          className="w-full flex items-center justify-between text-left active:scale-[0.99] transition-transform"
+          style={{
+            marginTop: 14,
+            padding: '11px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--warn-tint)',
+            border: '1px solid var(--amber-600)',
+            color: 'var(--amber-700)',
+            fontSize: 13.5,
+            fontWeight: 700,
+          }}
+        >
+          <span>Not sure? Answer a few questions</span>
+          <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--amber-700)' }} />
+        </button>
       </main>
 
-      {/* Persistent Call 999 — pinned, with a bottom protection fade */}
-      <div
-        className="safe-area-bottom"
-        style={{ padding: '12px 24px 24px', background: 'linear-gradient(0deg, var(--canvas) 72%, transparent)' }}
-      >
+      {/* Pinned: 999, then the tools row. 999 is red tint + keyline, not filled —
+          the filled red on this screen belongs to cardiac arrest, and two solid
+          reds is the collapse of the colour language Grok flagged. It is still
+          full width, still one tap, and now reads as the escalation it is rather
+          than competing with the guidance the app exists to give. */}
+      <div className="flex-none safe-area-bottom flex flex-col" style={{ gap: 6, padding: '8px 14px 10px' }}>
         <a
           href="tel:999"
-          className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center active:scale-[0.99] transition-transform"
           style={{
-            gap: 14,
-            minHeight: 'var(--touch-hero)',
-            borderRadius: 'var(--radius-xl)',
-            background: 'var(--red)',
-            color: '#fff',
-            boxShadow: 'var(--shadow-999)',
+            gap: 10,
+            minHeight: 54,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--red-tint-2)',
+            border: '1.5px solid var(--red)',
             textDecoration: 'none',
           }}
         >
-          <Phone className="w-7 h-7" />
-          <span className="text-center" style={{ lineHeight: 1.1 }}>
-            <span className="block font-bold" style={{ fontSize: 'var(--fs-subtitle)' }}>Call 999</span>
-            <span className="block" style={{ fontSize: 'var(--fs-caption)', opacity: 0.9, fontWeight: 500 }}>Ambulance — emergency services</span>
+          <Phone className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--red-strong)' }} />
+          <span className="text-center" style={{ lineHeight: 1.15 }}>
+            <span className="block" style={{ fontSize: 16, fontWeight: 800, color: 'var(--red-strong)' }}>Call 999</span>
+            <span className="block" style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, color: 'var(--red-strong)', opacity: 0.8 }}>
+              ambulance — emergency services
+            </span>
           </span>
         </a>
+
+        {/* Tools — a 4-up row of real targets. They were an interpunct-separated
+            text strip: easy to miss, and hard to hit with gloves on. */}
+        <nav className="grid grid-cols-4" style={{ gap: 4 }}>
+          {TOOLS.map(({ screen, label, Icon }) => (
+            <button
+              key={screen}
+              onClick={() => setScreen(screen)}
+              className="flex flex-col items-center justify-center active:opacity-60 transition-opacity"
+              style={{ gap: 3, minHeight: 46, borderRadius: 'var(--radius-sm)', background: 'transparent', border: 'none', color: 'var(--text-2)' }}
+            >
+              <Icon className="w-[18px] h-[18px]" style={{ color: 'var(--text-3)' }} />
+              <span style={{ fontSize: 'var(--fs-caption)', fontWeight: 600 }}>{label}</span>
+            </button>
+          ))}
+        </nav>
       </div>
     </div>
   );

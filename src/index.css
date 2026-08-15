@@ -43,6 +43,32 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Desktop shell ─────────────────────────────────────────────
+   ResusIQ is a phone instrument. On wide viewports we present it as one:
+   the app renders at phone width, centred on a quiet dark backdrop, instead
+   of stretching tiles across a monitor (which reads as a dated web page).
+   Phones/small tablets (<720px) are untouched — the app fills the screen. */
+@media (min-width: 720px) {
+  body {
+    background:
+      radial-gradient(1200px 800px at 50% -10%, #232b36 0%, #14181e 55%, #0e1116 100%);
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+  #root {
+    width: 430px;
+    max-width: 430px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 24px 80px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+}
+@media (min-width: 720px) and (min-height: 960px) {
+  /* Plenty of vertical room: float the instrument with rounded corners. */
+  body { align-items: center; }
+  #root { height: 900px; border-radius: 40px; }
+}
+
 /* ── iOS PWA: prevent zoom on double-tap / input ──────────── */
 input, select, textarea, button {
   font-size: 16px;
@@ -154,6 +180,48 @@ input, select, textarea, button {
 /* Tabular numbers for timers/counters */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Data numerals — every dose, timer, counter renders in tabular mono */
+.riq-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Printed-script "document" — a light card inside the dark console Deck's 999
+   tab. CallScriptContent is authored in the Ward (light) palette; on the dark
+   sheet its --text-1/2/3 would be near-white on white cards (invisible), so this
+   wrapper resets just those tokens to their Ward values via the raw scales that
+   .theatre never overrides. The result reads as an intentional printed script. */
+.riq-script-doc {
+  --text-1: var(--ink-900);
+  --text-2: var(--ink-500);
+  --text-3: var(--ink-400);
+  --brand: var(--brand-600);
+  --surface-2: var(--surface-2sand);
+  background: var(--surface);
+  color: var(--ink-900);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+}
+
+/* Keyboard focus ring for the console's inline-styled controls — :focus-visible
+   can't be expressed in an inline style prop. Uses outline (not the --focus-ring
+   box-shadow) so the 100dvh overflow:hidden shell and the scrolling <main> can't
+   clip it; --focus-color is the bright theatre blue, visible on the dark ground. */
+.theatre a:focus-visible,
+.theatre button:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Ward home keyboard focus. The global :focus-visible indicator (base.css) is a
+   box-shadow; the tiles and the Call 999 anchor carry an inline box-shadow, and
+   inline styles override the stylesheet box-shadow — leaving those controls with
+   no visible focus. Use outline here (a different property inline can't clobber),
+   same idiom as .theatre above. */
+.riq-ward-focus a:focus-visible,
+.riq-ward-focus button:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
 }
 
 /* ── Clear Signal shared primitives ─────────────────────────── */
