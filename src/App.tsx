@@ -65,22 +65,6 @@ function renderScreen(currentScreen: ReturnType<typeof useAppStore.getState>['cu
   }
 }
 
-// Public-demo ribbon (resusiq.app/demo). pointer-events:none so it can never
-// intercept a tap; it overlays the top 22px, which every screen's header
-// padding clears. role=note so screen readers announce the demo status once.
-function DemoRibbon() {
-  return (
-    <div
-      role="note"
-      aria-label="Demo - not for clinical use"
-      className="fixed top-0 left-0 right-0 flex items-center justify-center"
-      style={{ height: 22, zIndex: 80, pointerEvents: 'none', background: 'rgba(255, 178, 36, 0.14)', borderBottom: '1px solid rgba(255, 178, 36, 0.35)', color: '#FFB224', fontSize: 11, fontWeight: 800, letterSpacing: '0.14em' }}
-    >
-      DEMO - NOT FOR CLINICAL USE
-    </div>
-  );
-}
-
 function App() {
   const { currentScreen, isEmergencyActive, activeProtocol } = useAppStore();
 
@@ -103,7 +87,6 @@ function App() {
       <>
         <ProtocolRunner />
         {guard}
-        {isDemoMode && <DemoRibbon />}
       </>
     );
   }
@@ -112,7 +95,6 @@ function App() {
     <>
       <Suspense fallback={<ScreenLoading />}>{renderScreen(currentScreen)}</Suspense>
       {guard}
-      {isDemoMode && <DemoRibbon />}
     </>
   );
 }
