@@ -196,7 +196,7 @@ input, select, textarea, button {
   --text-3: var(--ink-400);
   --brand: var(--brand-600);
   --surface-2: var(--surface-2sand);
-  background: var(--surface);
+  background: var(--white);
   color: var(--ink-900);
   border: 1px solid var(--ink-100);
   border-radius: var(--radius-lg);

@@ -64,7 +64,7 @@
   --ink-200: #CDD5DD;
   --ink-100: #E1E7EE; /* hairline borders */
   --canvas:    #F4F6F9; /* app background â€” cool ward grey */
-  --surface:   #FFFFFF; /* cards */
+  --surface:   #151D29; /* cards - ALL-DARK: raw follows the flip; light islands use --white */
   --surface-2sand: #FAFBFD; /* sunken / inset surfaces */
   --white:     #FFFFFF;
 
