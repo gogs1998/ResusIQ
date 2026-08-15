@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Phone, X } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { isDemoMode } from '../lib/demoMode';
 
 // Training mode dialled a real ambulance.
 //
 // Every 999 control in the app is a plain `tel:999` anchor, which is exactly
-// right in an emergency — the dialler is one tap, with nothing in front of it.
+// right in an emergency â€” the dialler is one tap, with nothing in front of it.
 // But training mode ran drills through those same controls, so a practice
 // rehearsing anaphylaxis could put a real 999 call into the system (Grok F12).
 //
 // The guard is a single capture-phase listener rather than a change to the
 // three call sites, for one reason: the real-emergency path must not gain a
 // millisecond of friction or a line of new code. When training mode is off this
-// component renders nothing and registers nothing — the anchors behave exactly
+// component renders nothing and registers nothing â€” the anchors behave exactly
 // as they always have.
 //
 // It intercepts the click, not the store: an anchor navigation is what dials,
@@ -20,10 +21,14 @@ import { useAppStore } from '../store/appStore';
 // the navigation directly.
 export function TrainingDialGuard() {
   const isTrainingMode = useAppStore((s) => s.isTrainingMode);
+  // Demo mode gets the same interception: a public visitor exploring the demo
+  // must never pocket-dial an ambulance. isDemoMode is a boot constant, so
+  // including it here adds nothing to a real (non-demo) emergency path.
+  const active = isTrainingMode || isDemoMode;
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
-    if (!isTrainingMode) return;
+    if (!active) return;
     const onClick = (e: MouseEvent) => {
       const target = e.target as Element | null;
       const link = target?.closest?.('a[href="tel:999"]');
@@ -39,14 +44,14 @@ export function TrainingDialGuard() {
       // training mode cannot resurrect a dialog nobody asked for.
       setAsking(false);
     };
-  }, [isTrainingMode]);
+  }, [active]);
 
-  if (!isTrainingMode || !asking) return null;
+  if (!active || !asking) return null;
 
   return (
     <div
       role="alertdialog"
-      aria-label="Training mode — this dials a real ambulance"
+      aria-label="Training mode â€” this dials a real ambulance"
       className="fixed inset-0 flex items-end justify-center"
       style={{ background: 'var(--scrim)', zIndex: 60, padding: 16 }}
     >
@@ -62,10 +67,10 @@ export function TrainingDialGuard() {
         }}
       >
         <p className="font-extrabold" style={{ margin: 0, fontSize: 18, color: 'var(--text-1)' }}>
-          Training mode
+          {isDemoMode ? 'This is a demo' : 'Training mode'}
         </p>
         <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-body-sm)', color: 'var(--text-2)', lineHeight: 1.4 }}>
-          This dials a real ambulance. Nothing about a drill needs a 999 call.
+          {isDemoMode ? 'It would dial 999 for real — the live emergency number.' : 'This dials a real ambulance. Nothing about a drill needs a 999 call.'}
         </p>
         <div className="flex items-stretch" style={{ gap: 10, marginTop: 16 }}>
           <button
