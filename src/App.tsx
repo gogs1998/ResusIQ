@@ -10,8 +10,8 @@ import { isDemoMode, DEMO_PRACTICE } from './lib/demoMode';
 import './index.css';
 
 // Non-emergency routes are code-split so they (and heavy deps like `motion`)
-// stay out of the initial/emergency bundle. Emergency-path screens â€” dashboard,
-// runner, triage, 999 call script, SBAR handover â€” stay EAGER so they never
+// stay out of the initial/emergency bundle. Emergency-path screens — dashboard,
+// runner, triage, 999 call script, SBAR handover — stay EAGER so they never
 // show a loading state mid-emergency.
 const PracticeSetupWizard = lazy(() =>
   import('./components/PracticeSetup').then((m) => ({ default: m.PracticeSetupWizard }))
@@ -32,7 +32,7 @@ const AIAssistant = lazy(() =>
 function ScreenLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
-      <p className="text-sm" style={{ color: 'var(--text-3)' }}>Loadingâ€¦</p>
+      <p className="text-sm" style={{ color: 'var(--text-3)' }}>Loading…</p>
     </div>
   );
 }

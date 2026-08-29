@@ -1,25 +1,25 @@
-/* ResusIQ â€” Colour system (the "Instrument" console, 2026 rebuild)
+/* ResusIQ — Colour system (the "Instrument" console, 2026 rebuild)
    Colour is a four-meaning language, nothing more. Every hue on screen means
    exactly one thing, so a glance is unambiguous under stress:
-     â€¢ RED   = life threat / Call 999 / contraindication â€” reserved, never decorative.
-     â€¢ AMBER = safety gate â€” "stop and check", a decision the user must make.
-     â€¢ GREEN = confirmed done â€” a step completed, a dose given.
-     â€¢ BLUE  = information / voice / the app talking â€” brand + AI + timed cues.
+     • RED   = life threat / Call 999 / contraindication — reserved, never decorative.
+     • AMBER = safety gate — "stop and check", a decision the user must make.
+     • GREEN = confirmed done — a step completed, a dose given.
+     • BLUE  = information / voice / the app talking — brand + AI + timed cues.
    Everything else is a cool, near-neutral ink on a precise ward-grey canvas.
    The step-type rainbow is gone: structural accents are ink, not colour, so the
    four meanings above keep their signal.
 
    Two surface worlds share this one semantic layer:
-     â€¢ WARD  (:root) â€” cool light surfaces for routine, pre-emergency screens.
-     â€¢ THEATRE (.theatre) â€” dark surfaces applied on the root of ProtocolRunner /
+     • WARD  (:root) — cool light surfaces for routine, pre-emergency screens.
+     • THEATRE (.theatre) — dark surfaces applied on the root of ProtocolRunner /
        CPRMode / TriageWizard during an active emergency. It redefines the SAME
        semantic names for dark; components keep consuming the same tokens.
 
-   Both the raw scales (--ink-900, --canvas â€¦) AND the semantic names the screens
-   consume inline (--bg, --text-1, --brand, --red â€¦) are defined here. */
+   Both the raw scales (--ink-900, --canvas …) AND the semantic names the screens
+   consume inline (--bg, --text-1, --brand, --red …) are defined here. */
 
 :root {
-  /* ---- Brand blue (information / voice â€” the app talking) ---- */
+  /* ---- Brand blue (information / voice — the app talking) ---- */
   --brand-900: #0B2E6B;
   --brand-800: #103A82;
   --brand-700: #12459E;
@@ -30,7 +30,7 @@
   --brand-100: #D6E3FA;
   --brand-50:  #EAF1FC;
 
-  /* (Legacy teal scale removed 2026-07-04 â€” its last consumers were swept to
+  /* (Legacy teal scale removed 2026-07-04 — its last consumers were swept to
      the brand blues; grep confirms zero --teal-* references remain.) */
 
   /* ---- Emergency red (999 + critical only) ---- */
@@ -63,14 +63,14 @@
   --ink-300: #A6B0BA;
   --ink-200: #CDD5DD;
   --ink-100: #E1E7EE; /* hairline borders */
-  --canvas:    #F4F6F9; /* app background â€” cool ward grey */
+  --canvas:    #F4F6F9; /* app background — cool ward grey */
   --surface:   #151D29; /* cards - ALL-DARK: raw follows the flip; light islands use --white */
   --surface-2sand: #FAFBFD; /* sunken / inset surfaces */
   --white:     #FFFFFF;
 
-  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-     Compatibility layer: semantic names â†’ Ward palette values.
-     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Compatibility layer: semantic names → Ward palette values.
+     ───────────────────────────────────────────────────────────────────────── */
 
   /* ---- Base surfaces ---- */
   --bg:            #0C1118; /* ALL-DARK 2026-08-15: Ward retired */
@@ -91,7 +91,7 @@
   --text-3:        #8FA0B3;   /* muted / meta */
   --text-disabled: #5B6873;
   --text-on-color: #FFFFFF;          /* on saturated fills */
-  --text-on-light: #FFFFFF;          /* on brand/green fills â€” white */
+  --text-on-light: #FFFFFF;          /* on brand/green fills — white */
 
   /* ---- Brand (information / voice) ---- */
   --brand:         #54C1FF;
@@ -111,7 +111,7 @@
   --green-tint:    rgba(61, 214, 140, 0.14);
   --green-bright:  #3DD68C;
 
-  /* ---- Step-type accents â€” rainbow killed; structure is ink, not colour ---- */
+  /* ---- Step-type accents — rainbow killed; structure is ink, not colour ---- */
   --drug:          var(--text-1);
   --drug-tint:     var(--surface-3);
   --decision:      var(--warn);
@@ -122,7 +122,7 @@
   --roles-tint:    var(--surface-3);
   --instruction:   var(--text-1);
 
-  /* ---- AI / voice â€” mapped onto the brand blues ---- */
+  /* ---- AI / voice — mapped onto the brand blues ---- */
   --ai-from:       var(--brand);
   --ai-to:         var(--brand-strong);
   --ai-tint:       var(--brand-tint);
@@ -141,7 +141,7 @@
   --focus-ring:    0 0 0 4px rgba(84, 193, 255, 0.35);
   --focus-ring-tight: 0 0 0 3px rgba(84, 193, 255, 0.35);
 
-  /* ---- Per-condition tile hues â€” only genuinely-critical tiles get red ---- */
+  /* ---- Per-condition tile hues — only genuinely-critical tiles get red ---- */
   --cond-cardiac:  #FF6B6B;
   --cond-anaphyl:  #FF6B6B;
   --cond-choking:  var(--text-3);
@@ -154,9 +154,9 @@
   --cond-adrenal:  var(--text-3);
 }
 
-/* â”€â”€ Theatre: dark emergency surfaces. Applied as a class on the root of
-   ProtocolRunner / CPRMode / TriageWizard. Redefines the semantic layer only â€”
-   components keep consuming the same names. â”€â”€ */
+/* ── Theatre: dark emergency surfaces. Applied as a class on the root of
+   ProtocolRunner / CPRMode / TriageWizard. Redefines the semantic layer only —
+   components keep consuming the same names. ── */
 .theatre {
   --bg: #0C1118;
   --surface-1: #151D29;
@@ -203,7 +203,7 @@
 
   /* Theatre is lit from within, not floated. On near-black surfaces a drop
      shadow is invisible at best and a grey smear at worst, so panels are
-     BORDERED here â€” the elevation tokens collapse to nothing and the borders
+     BORDERED here — the elevation tokens collapse to nothing and the borders
      carry the separation. It is also what stops the dark screens reading as
      light-mode cards with the colours inverted. */
   --shadow-sm: none;

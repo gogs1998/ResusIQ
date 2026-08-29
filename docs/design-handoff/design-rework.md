@@ -44,7 +44,7 @@ rest), and style them as a hierarchy, not a blob:
 always the safe "hero" (it is today, but they own that ruling).
 
 ### R2. Literal symbols + mojibake in step text — *"why the symbols"*
-**Wrong:** `show` strings contain literal `•`, `⚠️`, and **mojibake** — `â€¢` (a UTF-8 `•`
+**Wrong:** `show` strings contain literal `•`, `⚠️`, and **mojibake** — `•` (a UTF-8 `•`
 decoded as Latin-1), `âš ï¸` (a mangled `⚠️`). 29 occurrences across `protocols.ts`. These
 render as garbage glyphs in the hero-weight text. This is a **data-encoding bug**, not styling.
 

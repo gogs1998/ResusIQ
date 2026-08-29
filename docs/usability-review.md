@@ -69,7 +69,7 @@ The user's sharpest point. The operator has **already chosen the condition** (ti
 
 Validated. Step `show` strings in `protocols.ts` carry inline text glyphs (`•`, `✓`, `✗`, `⚠️`) as part of the displayed copy, rendered verbatim via `whitespace-pre-line` (`ProtocolRunner.tsx:285`). Two problems:
 
-1. **Mojibake / encoding corruption.** Many strings contain `â€¢` (a broken `•`) and `âš ï¸` (a broken `⚠️`) — e.g. `anaphylaxis` step `position_flat:219`, `aed_attach:110`, and most asthma/hypo/syncope/seizure/choking steps. These render as literal garbage characters on screen. **This is a real, shipping visual defect**, not just a preference. (The newer adrenal_crisis/stroke strings use correct `⚠️`/`✓`, so the corruption is in the older protocol blocks.)
+1. **Mojibake / encoding corruption.** Many strings contain `•` (a broken `•`) and `âš ï¸` (a broken `⚠️`) — e.g. `anaphylaxis` step `position_flat:219`, `aed_attach:110`, and most asthma/hypo/syncope/seizure/choking steps. These render as literal garbage characters on screen. **This is a real, shipping visual defect**, not just a preference. (The newer adrenal_crisis/stroke strings use correct `⚠️`/`✓`, so the corruption is in the older protocol blocks.)
 2. **Glyphs add scan load.** Bullets and ✓/✗ in body text compete with the actual words. The app already has a clean lucide icon system (the step-type badge, role chips, drug pill). Body copy should lead with one short imperative and use real iconography, not inline text symbols.
 
 **Owner:** the encoding fix is a data correctness bug (code-reviewer / clinical-reviewer to re-verify the strings after a clean re-encode of `protocols.ts` as UTF-8). The "lead-with-one-line, demote bullets, replace glyphs with lucide" layout is design-lead.
@@ -103,7 +103,7 @@ Target loop, on by default while `isEmergencyActive`:
 - Render a collapsed "confirm signs" expander for asthma/hypo/syncope; a non-blocking banner for anaphylaxis/chest_pain; **flip chest_pain so 999 is step 1**; leave adrenal_crisis & stroke fully blocking. Data stays in `protocols.ts` (never deleted), render logic in `ProtocolRunner.tsx`. (clinical-reviewer signs off final treatment; code-reviewer implements.)
 
 ### 5.4 Content / data
-- **Re-encode `protocols.ts` as UTF-8** to kill the `â€¢` / `âš ï¸` mojibake.
+- **Re-encode `protocols.ts` as UTF-8** to kill the `•` / `âš ï¸` mojibake.
 - Each step's `show` should lead with **one short imperative line**; demote supporting bullets; replace inline glyphs with lucide icons.
 
 ---
@@ -112,7 +112,7 @@ Target loop, on by default while `isEmergencyActive`:
 
 ### P0 — safety / usability blockers
 1. **Flip chest_pain so CALL 999 is step 1** (recognition demoted to banner). Clinically endorsed; time-critical. *Data: `protocols.ts` chest_pain. Owner: clinical-reviewer + code-reviewer.*
-2. **Fix mojibake in `protocols.ts`** (`â€¢`, `âš ï¸` rendering as garbage in live step text). Shipping visual defect. *Owner: code-reviewer (re-encode), clinical-reviewer (re-verify strings).*
+2. **Fix mojibake in `protocols.ts`** (`•`, `âš ï¸` rendering as garbage in live step text). Shipping visual defect. *Owner: code-reviewer (re-encode), clinical-reviewer (re-verify strings).*
 3. **Voice-first hands-free loop as the emergency default** (auto-speak → auto-listen → advance on "next"/"done" with visible+audible confirm). The product's core promise for a gloved/compressing operator. *Owner: code-reviewer (loop wiring in `ProtocolRunner.tsx`), **blocked on** ios-architect native STT for the iPhone install target.*
 4. **Native STT on iOS** via Capacitor + `@capacitor-community/speech-recognition` (so #3 works in the installed iPhone app). *Owner: ios-architect + code-reviewer. Upstream blocker: Apple Developer enrolment (Phase 0) → Capacitor shell (Phase 1) → STT + AVAudioSession as one Phase-2 unit.*
 

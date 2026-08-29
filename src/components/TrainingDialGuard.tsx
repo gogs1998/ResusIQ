@@ -6,14 +6,14 @@ import { isDemoMode } from '../lib/demoMode';
 // Training mode dialled a real ambulance.
 //
 // Every 999 control in the app is a plain `tel:999` anchor, which is exactly
-// right in an emergency â€” the dialler is one tap, with nothing in front of it.
+// right in an emergency — the dialler is one tap, with nothing in front of it.
 // But training mode ran drills through those same controls, so a practice
 // rehearsing anaphylaxis could put a real 999 call into the system (Grok F12).
 //
 // The guard is a single capture-phase listener rather than a change to the
 // three call sites, for one reason: the real-emergency path must not gain a
 // millisecond of friction or a line of new code. When training mode is off this
-// component renders nothing and registers nothing â€” the anchors behave exactly
+// component renders nothing and registers nothing — the anchors behave exactly
 // as they always have.
 //
 // It intercepts the click, not the store: an anchor navigation is what dials,
@@ -51,7 +51,7 @@ export function TrainingDialGuard() {
   return (
     <div
       role="alertdialog"
-      aria-label="Training mode â€” this dials a real ambulance"
+      aria-label="Training mode — this dials a real ambulance"
       className="fixed inset-0 flex items-end justify-center"
       style={{ background: 'var(--scrim)', zIndex: 60, padding: 16 }}
     >
