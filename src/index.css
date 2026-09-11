@@ -66,7 +66,7 @@ body {
 @media (min-width: 720px) and (min-height: 960px) {
   /* Plenty of vertical room: float the instrument with rounded corners. */
   body { align-items: center; }
-  #root { height: 900px; border-radius: 40px; }
+  #root { height: min(900px, 100dvh); border-radius: 40px; }
 }
 
 /* ── iOS PWA: prevent zoom on double-tap / input ──────────── */
@@ -169,13 +169,14 @@ input, select, textarea, button {
   min-width: 44px;
 }
 
-/* iOS standalone: fill status bar area */
-@media all and (display-mode: standalone) {
-  body {
-    /* Extra safety for standalone mode */
-    padding-top: env(safe-area-inset-top);
-  }
-}
+/* NOTE: there is deliberately NO standalone body padding here.
+   Every screen shell already applies .safe-area-top. Adding padding-top to
+   <body> as well double-counted env(safe-area-inset-top): #root resolved to
+   (viewport - inset) while each shell declared height:100dvh, so every shell
+   ran one inset TALLER than its container and the bottom of each screen --
+   the deck tabs, the pinned footer -- was pushed below the fold, with ~118px
+   of dead space above the header. Reproducible ONLY in an installed PWA,
+   which is why browser testing never caught it. Do not reinstate. */
 
 /* Tabular numbers for timers/counters */
 .tabular-nums {
