@@ -344,6 +344,23 @@ describe('holding step integrity', () => {
         .toHaveLength(0);
     });
   }
+
+  it('no end-state step is a timer_block', () => {
+    // `handleNext` is both the footer CTA and TimerDisplay's onComplete, and it
+    // now refuses to advance off an end state (the voice path must not do by
+    // ear what the screen refuses to do by thumb). That refusal is only safe
+    // while no such step counts down: a timer_block that became holding or
+    // terminal would have its expiry silently swallowed, parking the team on a
+    // dead 00:00 clock with no way forward.
+    for (const key of [...HOLDING_STEPS, ...Object.keys(TERMINAL_STEPS)]) {
+      const [protocolId, stepId] = key.split('#');
+      const step = protocols
+        .find((p) => p.id === protocolId)!
+        .steps.find((s) => s.id === stepId)!;
+      expect(step.type, `${key} is a timer_block whose expiry would be swallowed`)
+        .not.toBe('timer_block');
+    }
+  });
 });
 
 describe('monotonic timer step integrity', () => {

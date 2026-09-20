@@ -18,12 +18,36 @@ import { HOLDING_STEPS, TERMINAL_LINES } from '../lib/terminalSteps';
 // answer, so the medico-legal record counted double for standing still.
 //
 // What this file pins: the honest line, a "Check again" primary that goes to
-// the re-check, the end affordance, the deterioration escapes (rail + 999), and
-// exactly ONE step_completed per lap.
+// the re-check, the end affordance, the deterioration escapes (rail + 999),
+// exactly ONE step_completed per lap — and the hands-free path, which reaches
+// the same handler as the footer CTA and must behave the same way.
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
+
+// The first voice tests in the repo. useVoiceCommands owns a live
+// SpeechRecognition instance that jsdom has no implementation of, so it is
+// replaced with a capture of the handler the runner hands it; calling that
+// handler is precisely what recognition.onresult does with a transcript.
+// useSpeech itself stays real, so the render path is unchanged.
+const voice = vi.hoisted(() => ({ say: null as ((command: string) => void) | null }));
+
+vi.mock('../hooks/useSpeech', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useSpeech')>();
+  return {
+    ...actual,
+    useVoiceCommands: (onCommand: (command: string) => void) => {
+      voice.say = onCommand;
+      return {
+        isListening: false,
+        startListening: () => {},
+        stopListening: () => {},
+        error: null,
+      };
+    },
+  };
+});
 
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -58,7 +82,16 @@ const unmount = () => {
   container.remove();
 };
 
-afterEach(unmount);
+// The component reads goToStep out of the store at render, so a vi.spyOn on the
+// getState() snapshot would not be the function it calls. One test replaces the
+// store's own action with a wrapper; this hands the real one back afterwards so
+// it cannot leak into the next test.
+const realGoToStep = useAppStore.getState().goToStep;
+
+afterEach(() => {
+  unmount();
+  useAppStore.setState({ goToStep: realGoToStep });
+});
 afterAll(() => vi.unstubAllGlobals());
 
 const buttonWithText = (text: string) =>
@@ -102,6 +135,11 @@ describe('holding steps', () => {
       openStep(protocolId, stepId);
 
       expect(container.textContent, key).toContain(TERMINAL_LINES.holding);
+      // Pinned literally as well: asserting only against the constant is a
+      // tautology — rewording it to "Done — next step." would leave this green.
+      expect(container.textContent, key).toContain('check them again regularly');
+      // And it must not make the terminal steps' claim: there IS a further step.
+      expect(container.textContent, key).not.toContain('No further steps');
       expect(buttonWithText('Check again'), key).toBeDefined();
       // The lie, and its hard-block twin.
       expect(buttonWithText('Done — next step'), key).toBeUndefined();
@@ -183,9 +221,18 @@ describe('holding steps', () => {
   it('a double-tap on "Check again" navigates once', () => {
     // Same frame, no render between the two clicks — the case a click-then-
     // assert test would miss.
+    //
+    // Asserting only the landing step cannot fail: two hops to the same target
+    // are indistinguishable from one, so checkAgain looks idempotent even with
+    // runOnce removed. The store's goToStep is wrapped instead, and the barrier
+    // is judged on the CALL COUNT.
     const protocol = protocols.find((p) => p.id === 'chest_pain')!;
+    const spy = vi.fn(realGoToStep);
+    useAppStore.setState({ goToStep: spy });
+
     openStep('chest_pain', 'monitor_chest');
     const before = completedCount();
+    spy.mockClear(); // openStep navigates too.
 
     act(() => {
       const again = buttonWithText('Check again')!;
@@ -193,10 +240,49 @@ describe('holding steps', () => {
       again.click();
     });
 
+    expect(spy).toHaveBeenCalledTimes(1);
     const after = useAppStore.getState();
     expect(after.activeProtocol!.steps[after.currentStepIndex].id).toBe('deterioration_check');
     expect(completedCount()).toBe(before);
     // ...and it really is one hop, not two that happened to land here.
     expect(protocol.steps.find((s) => s.id === 'monitor_chest')!.next).toBe('deterioration_check');
+  });
+
+  // The hands-free path. "Done"/"next"/"continue" reach handleNext, the same
+  // handler as the footer's primary — so a screen whose footer refuses to
+  // advance must refuse by voice too, or the fix only covers the thumb.
+  it('voice "done" on a holding step checks again — it does not complete it', () => {
+    for (const key of HOLDING_STEPS) {
+      const [protocolId, stepId] = key.split('#');
+      const protocol = protocols.find((p) => p.id === protocolId)!;
+      const holding = protocol.steps.find((s) => s.id === stepId)!;
+
+      openStep(protocolId, stepId);
+      const before = completedCount();
+      expect(voice.say, 'the runner never registered a voice handler').not.toBeNull();
+
+      act(() => voice.say!('done'));
+
+      // Same destination as the button, and the same silence in the record.
+      expect(currentStepId(), key).toBe(holding.next);
+      expect(completedCount(), `${key}: voice logged a completion`).toBe(before);
+
+      unmount();
+      reset();
+    }
+  });
+
+  it('voice "done" on a true terminal step does nothing at all', () => {
+    // seizure#monitor_seizure has no successor, so advancing fell through to
+    // the array-order neighbour: "Seizure stopped — recovery position". The
+    // footer stopped offering that; the microphone was still doing it.
+    openStep('seizure', 'monitor_seizure');
+    const indexBefore = useAppStore.getState().currentStepIndex;
+    const eventsBefore = useAppStore.getState().activeEvent!.events.length;
+
+    act(() => voice.say!('done'));
+
+    expect(useAppStore.getState().currentStepIndex).toBe(indexBefore);
+    expect(useAppStore.getState().activeEvent!.events.length).toBe(eventsBefore);
   });
 });

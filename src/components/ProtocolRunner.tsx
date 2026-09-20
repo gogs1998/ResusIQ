@@ -178,6 +178,16 @@ export function ProtocolRunner() {
   // footer says so instead of offering a next step it cannot deliver.
   const endState = terminalGroup(activeProtocol?.id, currentStep?.id);
 
+  // Where "Check again" goes, resolved once. A holding step only earns the
+  // button if its loop actually exists in the data: if `next` stopped resolving
+  // this falls to -1, the button is not rendered at all, and the footer is the
+  // plain end-state shape (line + End emergency) rather than a control that
+  // would do nothing under the thumb.
+  const holdingNextIndex =
+    endState === 'holding' && currentStep?.next
+      ? activeProtocol?.steps.findIndex((s) => s.id === currentStep.next) ?? -1
+      : -1;
+
   // Speak each step once when it becomes current. Guard on the step id so a
   // change in `speak` identity alone — it is recreated on the `voiceschanged`
   // event as voices load — can't re-speak the same step (the first-step
@@ -302,11 +312,12 @@ export function ProtocolRunner() {
   // side-effect the operator performed once.
   const checkAgain = useCallback(() => {
     runOnce(() => {
-      if (!currentStep?.next || !activeProtocol) return;
-      const byId = activeProtocol.steps.findIndex(s => s.id === currentStep.next);
-      if (byId >= 0) goToStep(byId);
+      // Belt as well as braces: the button is already withheld when the target
+      // does not resolve, but the voice path reaches this without a button.
+      if (holdingNextIndex < 0) return;
+      goToStep(holdingNextIndex);
     });
-  }, [runOnce, currentStep, activeProtocol, goToStep]);
+  }, [runOnce, holdingNextIndex, goToStep]);
 
   // Decision steps resolve in ONE tap: choosing an answer logs the choice, runs
   // any step actions, and jumps straight to that branch's target step. Navigation
@@ -366,6 +377,25 @@ export function ProtocolRunner() {
   }, [runOnce, log999Called, performAdvance]);
 
   const handleNext = useCallback(() => {
+    // An end state has no ordinary "next", and the footer already says so — but
+    // this handler is ALSO the hands-free path ("done" / "next" / "continue"),
+    // and voice must not do by ear what the screen refuses to do by thumb.
+    // Without this, saying "done" ran performAdvance: on a holding step it
+    // logged a completion for an instruction nobody completed (the double-log
+    // this fix removed from the button) and, on a true terminal step, it
+    // array-walked seizure#monitor_seizure into "Seizure stopped — recovery
+    // position" — the exact defect the terminal fix removed from the screen.
+    //
+    // Holding maps to the same Check again the button gives; a true terminal
+    // does nothing, matching a footer that offers no CTA at all.
+    //
+    // handleNext is also TimerDisplay's onComplete. No holding or terminal step
+    // is a timer_block — a data-integrity test holds that — so this cannot
+    // swallow a countdown's expiry and park the team on a dead clock.
+    if (endState) {
+      if (endState === 'holding') checkAgain();
+      return;
+    }
     // A hard-blocked drug step offers plain onward navigation, not another
     // confirm — including for the voice command, which must never stall on a
     // refusal. An escalated step still confirms: the dose is not forbidden.
@@ -374,7 +404,7 @@ export function ProtocolRunner() {
     } else {
       advance();
     }
-  }, [currentStep, hardBlocked, handleConfirm, advance]);
+  }, [currentStep, hardBlocked, handleConfirm, advance, endState, checkAgain]);
 
   // The backstop (R4). Once the wall clock is spent the step routes onward to
   // the still-seizing check — including on arrival, so coming back round the
@@ -789,11 +819,16 @@ export function ProtocolRunner() {
               >
                 {TERMINAL_LINES[endState]}
               </p>
-              {endState === 'holding' && (
+              {/* --touch-comfort, not --touch-hero: this footer carries a
+                  status line AND two buttons, and at hero height on a 375×667
+                  screen the pair pushed "be ready to start CPR if they
+                  collapse" below the fold. A stop-gap until Phase 3 rebuilds
+                  the step screen; the colour and weight still say primary. */}
+              {holdingNextIndex >= 0 && (
                 <button
                   onClick={checkAgain}
                   className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
-                  style={{ gap: 10, marginBottom: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
+                  style={{ gap: 10, marginBottom: 10, minHeight: 'var(--touch-comfort)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
                 >
                   <ChevronRight className="w-6 h-6" />
                   <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Check again</span>
