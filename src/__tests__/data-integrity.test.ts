@@ -345,20 +345,21 @@ describe('holding step integrity', () => {
     });
   }
 
-  it('no end-state step is a timer_block', () => {
+  it('every end-state step is a plain instruction (the handleNext endState guard relies on it)', () => {
     // `handleNext` is both the footer CTA and TimerDisplay's onComplete, and it
     // now refuses to advance off an end state (the voice path must not do by
     // ear what the screen refuses to do by thumb). That refusal is only safe
-    // while no such step counts down: a timer_block that became holding or
-    // terminal would have its expiry silently swallowed, parking the team on a
-    // dead 00:00 clock with no way forward.
+    // while every such step is inert: a timer_block would have its expiry
+    // silently swallowed, parking the team on a dead 00:00 clock; a cpr_mode,
+    // drug or decision step would likewise offer an onward action the guard
+    // eats. Pinning the type to `instruction` covers all four at once.
     for (const key of [...HOLDING_STEPS, ...Object.keys(TERMINAL_STEPS)]) {
       const [protocolId, stepId] = key.split('#');
       const step = protocols
         .find((p) => p.id === protocolId)!
         .steps.find((s) => s.id === stepId)!;
-      expect(step.type, `${key} is a timer_block whose expiry would be swallowed`)
-        .not.toBe('timer_block');
+      expect(step.type, `${key} is not a plain instruction — its onward action would be swallowed`)
+        .toBe('instruction');
     }
   });
 });
