@@ -162,6 +162,22 @@ export interface EquipmentItem {
 
 // ==================== EVENT LOGGING ====================
 
+// How a record ended, where the app itself knows. A closed union rather than a
+// free string: Reports decides what an archived record CLAIMS about itself
+// from this value, and a typo would silently downgrade a drill (or a record the
+// app closed on the team's behalf) to a green "Completed" — a claim no test
+// would catch and no reader could question. Add a member here, and a label in
+// EventReports' OUTCOME_LABEL, rather than writing a new string at a call site.
+//
+//   unresumable    — the app restarted and the guide could not be picked up.
+//   training_drill — a drill, not a patient.
+//
+// Absent means the ordinary case: the team ran the emergency and ended it.
+export type EventOutcome = 'unresumable' | 'training_drill';
+
+export const OUTCOME_UNRESUMABLE = 'unresumable' satisfies EventOutcome;
+export const OUTCOME_TRAINING_DRILL = 'training_drill' satisfies EventOutcome;
+
 export interface EmergencyEvent {
   id: string;
   timestamp: string;
@@ -169,7 +185,7 @@ export interface EmergencyEvent {
   protocol_version: string;
   practice_id: string;
   events: EventLogEntry[];
-  outcome?: string;
+  outcome?: EventOutcome;
   notes?: string;
   staff_initials?: string[];
   completed: boolean;

@@ -75,13 +75,26 @@ function needsResume(ctx: AudioContext): boolean {
   return ctx.state !== 'running' && ctx.state !== 'closed';
 }
 
-export function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+/**
+ * The platform's AudioContext constructor, or undefined where there is none.
+ *
+ * Its ABSENCE is the one permanent failure in this module: no amount of tapping
+ * will conjure Web Audio onto a browser that does not implement it. Everything
+ * else here — a constructor that throws, a resume that never settles — is
+ * transient and worth another go, which is the distinction unlockAudio() turns
+ * on below.
+ */
+function audioContextCtor(): typeof AudioContext | undefined {
+  if (typeof window === 'undefined') return undefined;
   const w = window as unknown as {
     AudioContext?: typeof AudioContext;
     webkitAudioContext?: typeof AudioContext;
   };
-  const Ctor = w.AudioContext || w.webkitAudioContext;
+  return w.AudioContext || w.webkitAudioContext;
+}
+
+export function getAudioContext(): AudioContext | null {
+  const Ctor = audioContextCtor();
   if (!Ctor) return null;
   if (!sharedCtx) {
     // iOS throws here when it cannot allocate a context. Return null rather
@@ -127,6 +140,21 @@ export function unlockAudio(): void {
       g.gain.value = 0; osc.connect(g); g.connect(ctx.destination);
       osc.start(); osc.stop(ctx.currentTime + 0.01);
     } catch { /* priming is best-effort */ }
+  } else if (audioContextCtor()) {
+    // The platform HAS Web Audio and the allocation still failed — iOS does
+    // refuse it under memory pressure, and the 999 call on this same phone is
+    // exactly the pressure. The latch above and the {once} listeners were both
+    // spent BEFORE we knew that, so without this one unlucky tap would be
+    // permanent: no metronome for the rest of the resuscitation, and no gesture
+    // left that could ever try again. Give the next tap another go.
+    //
+    // Guarded on the constructor existing, because a browser with no Web Audio
+    // at all is not going to grow some: re-arming there would put three
+    // listeners back on window after every single tap, forever, to retry
+    // something that cannot work. The speech prime below runs either way — it
+    // is the half that still works on such a device.
+    unlocked = false;
+    armGestureListeners();
   }
   if (typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined') {
     try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch { /* ignore */ }

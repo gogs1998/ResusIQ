@@ -396,6 +396,11 @@ export function ProtocolRunner() {
   // is now one of its callers (a terminal "done" re-speaks rather than falling
   // silent) and a useCallback dependency array is evaluated eagerly — a
   // reference to a `const` declared further down would throw on first render.
+  //
+  // What happens when the app is MUTED: speak() is a no-op, so the terminal-step
+  // "done" below produces no sound at all. Deliberate, and not a gap in that
+  // fix — muted means do not talk, and a screen the team has silenced does not
+  // get to override them.
   const handleRepeat = useCallback(() => {
     if (currentStep) speak(currentStep.say);
   }, [currentStep, speak]);

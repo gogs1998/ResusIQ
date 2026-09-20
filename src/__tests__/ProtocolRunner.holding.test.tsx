@@ -305,21 +305,27 @@ describe('holding steps', () => {
     const step = protocol.steps.find((s) => s.id === 'monitor_seizure')!;
 
     reset();
+    // The only case in this file that needs the voice unmuted. try/finally, not
+    // a restore at the end of the body: a failing assertion throws past a
+    // trailing statement, and every later case would then run unmuted off the
+    // back of this one.
     useAppStore.setState({ isMuted: false });
-    openStep('seizure', 'monitor_seizure');
+    try {
+      openStep('seizure', 'monitor_seizure');
 
-    const indexBefore = useAppStore.getState().currentStepIndex;
-    const eventsBefore = useAppStore.getState().activeEvent!.events.length;
-    spoken.length = 0;
+      const indexBefore = useAppStore.getState().currentStepIndex;
+      const eventsBefore = useAppStore.getState().activeEvent!.events.length;
+      spoken.length = 0;
 
-    act(() => voice.say!('done'));
+      act(() => voice.say!('done'));
 
-    // Said again — the same words the screen is showing.
-    expect(spoken).toContain(step.say);
-    // ...and still nothing moved, and nothing was recorded as done.
-    expect(useAppStore.getState().currentStepIndex).toBe(indexBefore);
-    expect(useAppStore.getState().activeEvent!.events.length).toBe(eventsBefore);
-
-    useAppStore.setState({ isMuted: true });
+      // Said again — the same words the screen is showing.
+      expect(spoken).toContain(step.say);
+      // ...and still nothing moved, and nothing was recorded as done.
+      expect(useAppStore.getState().currentStepIndex).toBe(indexBefore);
+      expect(useAppStore.getState().activeEvent!.events.length).toBe(eventsBefore);
+    } finally {
+      useAppStore.setState({ isMuted: true });
+    }
   });
 });

@@ -10,8 +10,27 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { format } from 'date-fns';
-import type { EmergencyEvent } from '../types';
+import type { EmergencyEvent, EventOutcome } from '../types';
+import { OUTCOME_TRAINING_DRILL, OUTCOME_UNRESUMABLE } from '../types';
 import { protocols } from '../data/protocols';
+
+// What each stored outcome is CALLED in front of a human. Nothing on this
+// screen leaves the building as a raw token: the exported incident report goes
+// to a practice review, a defence union or a coroner, and "Outcome:
+// unresumable" is an internal enum handed to someone with no way to read it.
+//
+// Imported constants, never re-typed literals: a typo here would quietly fall
+// through to the default and print the token anyway.
+const OUTCOME_LABEL: Record<EventOutcome, string> = {
+  [OUTCOME_UNRESUMABLE]: 'Record closed — the app restarted and the guide could not be resumed',
+  [OUTCOME_TRAINING_DRILL]: 'Training drill',
+};
+
+// The parameter is a loose string on purpose. `outcome` is typed, but these
+// records come off disk, where a blob written by another build (or by hand) can
+// hold anything — showing that value unchanged beats showing nothing.
+const outcomeLabel = (outcome?: string): string =>
+  outcome ? OUTCOME_LABEL[outcome as EventOutcome] ?? outcome : 'Not recorded';
 
 export function EventReports() {
   const { eventHistory, setScreen } = useAppStore();
@@ -31,8 +50,18 @@ export function EventReports() {
     return `${mins}m ${secs}s`;
   };
 
+  // Every heading in this screen — list row, detail header, exported report —
+  // comes through here, so an unresolvable id can never render as a blank title
+  // or as a bare machine token on a medico-legal record. A salvaged stub is
+  // stored as 'unknown' (see the store's merge); an id that simply no longer
+  // exists in the data keeps its id alongside the wording, because that is the
+  // only thing left saying which emergency this was.
   const getProtocolTitle = (protocolId: string) => {
-    return protocols.find(p => p.id === protocolId)?.title || protocolId;
+    const title = protocols.find(p => p.id === protocolId)?.title;
+    if (title) return title;
+    return protocolId && protocolId !== 'unknown'
+      ? `Emergency — record incomplete (${protocolId})`
+      : 'Emergency — record incomplete';
   };
 
   // Semantic colour per event type (colour + label, never colour alone).
@@ -45,8 +74,6 @@ export function EventReports() {
     'var(--roles)';
 
   const generateReport = (event: EmergencyEvent) => {
-    const protocol = protocols.find(p => p.id === event.protocol_id);
-
     const report = `
 EMERGENCY INCIDENT REPORT
 =========================
@@ -55,10 +82,10 @@ Generated: ${format(new Date(), 'dd MMMM yyyy HH:mm')}
 INCIDENT DETAILS
 ----------------
 Date/Time: ${formatDate(event.timestamp)}
-Protocol: ${protocol?.title || event.protocol_id}
+Protocol: ${getProtocolTitle(event.protocol_id)}
 Protocol Version: ${event.protocol_version}
 Duration: ${formatDuration(event.timestamp, event.events)}
-Outcome: ${event.outcome || 'Not recorded'}
+Outcome: ${outcomeLabel(event.outcome)}
 
 EVENT LOG
 ---------
@@ -116,8 +143,6 @@ For audit and training purposes only.
   };
 
   if (selectedEvent) {
-    const protocol = protocols.find(p => p.id === selectedEvent.protocol_id);
-
     return (
       <div className="riq-ward-focus min-h-screen flex flex-col safe-area-top" style={{ background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex items-center gap-3 px-6" style={{ height: 'var(--appbar-h)' }}>
@@ -130,7 +155,7 @@ For audit and training purposes only.
             <ArrowLeft className="w-7 h-7" style={{ color: 'var(--text-2)' }} />
           </button>
           <div className="flex-1">
-            <h1 className="font-bold" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body)' }}>{protocol?.title}</h1>
+            <h1 className="font-bold" style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body)' }}>{getProtocolTitle(selectedEvent.protocol_id)}</h1>
             <p className="mt-0.5" style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>{formatDate(selectedEvent.timestamp)}</p>
           </div>
         </header>
@@ -153,7 +178,7 @@ For audit and training purposes only.
               </div>
               <div>
                 <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Outcome</p>
-                <p style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{selectedEvent.outcome || 'Not recorded'}</p>
+                <p style={{ color: 'var(--text-1)', fontSize: 'var(--fs-body-sm)', fontWeight: 600 }}>{outcomeLabel(selectedEvent.outcome)}</p>
               </div>
               <div>
                 <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-caption)' }}>Protocol version</p>
@@ -313,13 +338,26 @@ For audit and training purposes only.
                   >
                     {event.events.length} events
                   </span>
-                  {/* A record closed by a restart is NOT a completion. The team
-                      never finished this one — the app went away underneath
-                      them — and a green "Completed" on an archive row is a
-                      claim the record cannot support (clinical review
-                      2026-09-20). Amber, and it says what actually happened. */}
+                  {/* Green "Completed" is a claim, and two kinds of record
+                      cannot support it.
+
+                      A record closed by a restart: the team never finished this
+                      one, the app went away underneath them (clinical review
+                      2026-09-20). Amber, and it says what actually happened.
+
+                      A drill: nobody was ever ill. Read six months later in a
+                      practice review, an unlabelled drill is a resuscitation
+                      that never happened — so it is labelled at a glance, in
+                      the calm brand blue rather than a clinical colour. */}
                   {event.completed && (
-                    event.outcome === 'unresumable' ? (
+                    event.outcome === OUTCOME_TRAINING_DRILL ? (
+                      <span
+                        className="px-3 py-1"
+                        style={{ background: 'var(--brand-tint)', color: 'var(--brand)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                      >
+                        Training drill
+                      </span>
+                    ) : event.outcome === OUTCOME_UNRESUMABLE ? (
                       <span
                         className="px-3 py-1"
                         style={{ background: 'var(--warn-tint)', color: 'var(--warn)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}

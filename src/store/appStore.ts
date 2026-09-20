@@ -8,8 +8,10 @@ import type {
   EventLogEntry,
   PracticeSetup,
   EventType,
+  EventOutcome,
   Drug
 } from '../types';
+import { OUTCOME_TRAINING_DRILL, OUTCOME_UNRESUMABLE } from '../types';
 import { protocols } from '../data/protocols';
 import { enableWakeLock, disableWakeLock } from '../lib/wakeLock';
 import { enterEmergencyChrome, exitEmergencyChrome } from '../lib/osChrome';
@@ -71,7 +73,7 @@ interface AppState {
   // lib/monotonicTimers for which steps qualify and why.
   timerAnchors: Record<string, string>;
   anchorTimer: (key: string) => string | null;
-  endEvent: (outcome?: string, notes?: string) => void;
+  endEvent: (outcome?: EventOutcome, notes?: string) => void;
   
   // Voice
   isVoiceEnabled: boolean;
@@ -240,6 +242,13 @@ function isEmergencyEventish(value: unknown): value is EmergencyEvent {
 // silently continue a record with a hole in it), but it is still evidence that
 // an emergency happened, and losing that silently is the worse of the two
 // failures. So it is salvaged into history and closed, never resumed.
+//
+// The floor is the timestamp, and losing what falls below it is DELIBERATE: an
+// event with an id but no timestamp cannot be placed on a timeline, so it can
+// state neither when the emergency happened nor when it stopped. It is the one
+// silent loss in this module — recording "something happened, at no time" in an
+// archive that is read as a medico-legal record would be worse than recording
+// nothing. Every other missing field is defaulted rather than dropped.
 function isEmergencyEventStub(
   value: unknown
 ): value is Partial<EmergencyEvent> & { id: string; timestamp: string } {
@@ -259,7 +268,7 @@ function closeUnresumableEvent(event: EmergencyEvent): EmergencyEvent {
     // NOT 'completed' as an outcome: the team did not finish this, the app
     // restarted underneath them. Reports keys its badge off this so the archive
     // never claims a completion that nobody made (clinical review 2026-09-20).
-    outcome: 'unresumable',
+    outcome: OUTCOME_UNRESUMABLE,
     events: [
       ...event.events,
       {
@@ -331,6 +340,12 @@ export const useAppStore = create<AppState>()(
               type: 'protocol_started',
               label: `Started: ${protocol.title}`
             }],
+            // I1. A drill and a real resuscitation are otherwise identical in
+            // the archive, and a practice review (or anyone reading the record
+            // from outside) has no way to tell them apart. Stamped at the START,
+            // not at the end: the drill is what this event IS, and an end-time
+            // stamp would miss every drill that never reached endEmergency.
+            ...(get().isTrainingMode ? { outcome: OUTCOME_TRAINING_DRILL } : {}),
             completed: false
           };
           set({
@@ -462,7 +477,7 @@ export const useAppStore = create<AppState>()(
         exitEmergencyChrome();
         if (activeEvent) {
           const completedEvent = { ...activeEvent, completed: true };
-          set({ 
+          set({
             isEmergencyActive: false,
             activeProtocol: null,
             currentStepIndex: 0,
@@ -470,7 +485,14 @@ export const useAppStore = create<AppState>()(
             activeEvent: null,
             eventHistory: [...eventHistory, completedEvent],
             timerAnchors: {},
-            resumedAt: null
+            resumedAt: null,
+            // C1. The drill ends HERE, on both branches. setTrainingMode(false)
+            // is only ever called by TrainingMode's "back to the list" button,
+            // and the path a drill actually takes — Training → scenario → Run
+            // protocol → runner → End emergency → home — never goes near it. So
+            // the guard used to outlive its drill: the next tap on a 999 control
+            // was a real emergency meeting a "this is only practice" dialog.
+            isTrainingMode: false
           });
         } else {
           set({
@@ -479,7 +501,8 @@ export const useAppStore = create<AppState>()(
             currentStepIndex: 0,
             currentScreen: 'home',
             timerAnchors: {},
-            resumedAt: null
+            resumedAt: null,
+            isTrainingMode: false
           });
         }
       },
@@ -677,9 +700,15 @@ export const useAppStore = create<AppState>()(
         currentStepIndex: state.currentStepIndex,
         activeEvent: state.activeEvent,
         timerAnchors: state.timerAnchors,
-        // Task 0.6: a reload must not silently end the drill and re-arm the
-        // real 999 dialler. See PersistedAppState.
-        isTrainingMode: state.isTrainingMode
+        // Task 0.6: a reload mid-drill must not silently end the drill and
+        // re-arm the real 999 dialler. See PersistedAppState.
+        //
+        // C1: ...but only while there is a drill behind it. A persisted `true`
+        // with no emergency in the blob is a guard with nothing to guard: it
+        // would survive every reload from here on, and a REAL 999 call days
+        // later would meet a confirmation dialog. Tied to the emergency, the
+        // flag can never outlive the thing that justified it.
+        isTrainingMode: state.isEmergencyActive ? state.isTrainingMode : false
       }),
       migrate: (persistedState, version): PersistedAppState => {
         const state = (persistedState ?? {}) as Partial<PersistedAppState>;
@@ -814,7 +843,18 @@ export const useAppStore = create<AppState>()(
             (isEmergencyEventStub(p.activeEvent)
               ? ({
                   ...p.activeEvent,
-                  events: Array.isArray(p.activeEvent.events) ? p.activeEvent.events : []
+                  events: Array.isArray(p.activeEvent.events) ? p.activeEvent.events : [],
+                  // M1. The stub check asks only for an id and a timestamp, so
+                  // a salvaged record can arrive with no protocol_id — and
+                  // Reports titles every archive row off exactly that field.
+                  // Without this the worst record in the system is the one that
+                  // renders with no heading at all. 'unknown' is a value Reports
+                  // knows to word ("Emergency — record incomplete"); an empty
+                  // string is not.
+                  protocol_id:
+                    typeof p.activeEvent.protocol_id === 'string' && p.activeEvent.protocol_id
+                      ? p.activeEvent.protocol_id
+                      : 'unknown'
                 } as EmergencyEvent)
               : null);
 
@@ -863,7 +903,12 @@ export const useAppStore = create<AppState>()(
             activeEvent: null,
             timerAnchors: {},
             // Nothing resumed, so there is nothing to announce.
-            resumedAt: null
+            resumedAt: null,
+            // C1: and no drill in flight, so no guard. `base` carried the
+            // persisted flag forward, which was right while a resume was still
+            // possible — on this branch it is not, and an armed guard with no
+            // drill behind it would sit in front of the next REAL 999 call.
+            isTrainingMode: false
           };
         } catch (err) {
           console.error('[appStore] persist merge failed; falling back to in-memory defaults', err);

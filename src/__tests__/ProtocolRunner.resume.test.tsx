@@ -81,6 +81,11 @@ const seedResumable = (extra: Record<string, unknown> = {}) =>
     })
   );
 
+// The same blob with the one thing that makes a resume impossible: a protocol
+// id that is gone from the data. The record itself is perfectly good, so merge
+// closes it into the archive rather than losing it.
+const seedUnresumable = () => seedResumable({ activeProtocolId: 'no_such_protocol' });
+
 let container: HTMLDivElement;
 let root: Root | null = null;
 
@@ -163,24 +168,7 @@ describe('a drill that survives a reload keeps its 999 guard', () => {
 // not be picked up.
 describe('the record of a restart that could not resume', () => {
   it('reads as closed, not completed', async () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        state: {
-          practiceSetup: null,
-          eventHistory: [],
-          isVoiceEnabled: true,
-          isEmergencyActive: true,
-          // Gone from the data — the one thing that makes a resume impossible
-          // while the record itself is perfectly good.
-          activeProtocolId: 'no_such_protocol',
-          currentStepIndex: 2,
-          activeEvent: anEvent(),
-          timerAnchors: {},
-        },
-        version: VERSION,
-      })
-    );
+    seedUnresumable();
 
     await act(async () => {
       await useAppStore.persist.rehydrate();
@@ -191,6 +179,142 @@ describe('the record of a restart that could not resume', () => {
 
     expect(container.textContent).toContain('Record closed');
     expect(container.textContent).not.toContain('Completed');
+  });
+});
+
+// I1 + the addendum. Two audiences read this archive: the practice reviewing
+// its own emergencies, and, one day, someone from outside. Neither may be left
+// to guess whether a record is a real resuscitation or a Tuesday-afternoon
+// drill — and neither should be shown the machine token we happen to store.
+describe('what the archive says about a record', () => {
+  // The real drill path, end to end: Training → run → end.
+  const runDrill = () =>
+    act(() => {
+      useAppStore.getState().setTrainingMode(true);
+      useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+      useAppStore.getState().endEmergency();
+    });
+
+  const runRealEmergency = () =>
+    act(() => {
+      useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+      useAppStore.getState().endEmergency();
+    });
+
+  // The archive row for the one and only record on screen. Identified as the
+  // one button that is not the labelled Back control, so it does not depend on
+  // the row's wording — which is the thing under test.
+  const openTheRecord = () => {
+    const row = [...container.querySelectorAll('button')].find(
+      (b) => !b.getAttribute('aria-label')
+    );
+    expect(row, 'no archive row to open').toBeDefined();
+    act(() => {
+      row!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  };
+
+  // What Export actually writes. The report leaves the building — it is the
+  // artefact a defence union or a coroner reads — so it is asserted on the
+  // real Blob the export path builds, not on a re-derived string.
+  const exportTheRecord = async () => {
+    const blobs: Blob[] = [];
+    const urlApi = URL as unknown as {
+      createObjectURL?: (b: Blob) => string;
+      revokeObjectURL?: (u: string) => void;
+    };
+    const originalCreate = urlApi.createObjectURL;
+    const originalRevoke = urlApi.revokeObjectURL;
+    urlApi.createObjectURL = (b: Blob) => {
+      blobs.push(b);
+      return 'blob:report';
+    };
+    urlApi.revokeObjectURL = () => {};
+    try {
+      const button = [...container.querySelectorAll('button')].find(
+        (b) => (b.textContent ?? '').trim() === 'Export'
+      );
+      expect(button, 'no Export button on the record').toBeDefined();
+      act(() => {
+        button!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+    } finally {
+      urlApi.createObjectURL = originalCreate;
+      urlApi.revokeObjectURL = originalRevoke;
+    }
+    expect(blobs).toHaveLength(1);
+    return blobs[0].text();
+  };
+
+  it('labels a drill as a drill, and never as a completion', () => {
+    runDrill();
+    render(<EventReports />);
+
+    expect(container.textContent).toContain('Training drill');
+    expect(container.textContent).not.toContain('Completed');
+  });
+
+  it('leaves a real emergency unlabelled — it reads as completed', () => {
+    runRealEmergency();
+    render(<EventReports />);
+
+    expect(container.textContent).toContain('Completed');
+    expect(container.textContent).not.toContain('Training drill');
+  });
+
+  it('exports a drill saying so, in words', async () => {
+    runDrill();
+    render(<EventReports />);
+    openTheRecord();
+
+    // The detail view first: it printed the raw token before this.
+    expect(container.textContent).toContain('Training drill');
+    expect(container.textContent).not.toContain('training_drill');
+
+    const report = await exportTheRecord();
+    expect(report).toContain('Training drill');
+    expect(report).not.toContain('training_drill');
+  });
+
+  it('exports a closed record in words, not in the token we store', async () => {
+    seedUnresumable();
+    await act(async () => {
+      await useAppStore.persist.rehydrate();
+    });
+    render(<EventReports />);
+    openTheRecord();
+
+    expect(container.textContent).not.toContain('unresumable');
+
+    const report = await exportTheRecord();
+    // The whole point: 'Outcome: unresumable' in an exported incident report is
+    // an internal enum handed to someone who has no way to read it.
+    expect(report).not.toContain('unresumable');
+    expect(report).toContain('Record closed');
+  });
+
+  // M1. A salvaged stub can reach the archive with no protocol_id of its own.
+  // Reports titles every row off that field, so the worst record in the system
+  // is the one most likely to render as a blank heading.
+  it('gives a record with no protocol something readable to be called', async () => {
+    act(() => {
+      useAppStore.setState({
+        eventHistory: [
+          {
+            id: 'evt-salvaged',
+            timestamp: EVENT_STARTED_AT,
+            protocol_id: 'unknown',
+            protocol_version: '2026.1',
+            practice_id: 'p1',
+            events: [],
+            completed: true,
+          },
+        ],
+      });
+    });
+    render(<EventReports />);
+
+    expect(container.textContent).toContain('Emergency — record incomplete');
   });
 });
 

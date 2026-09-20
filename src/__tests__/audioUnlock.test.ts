@@ -219,6 +219,10 @@ describe('audioUnlock', () => {
   });
 
   it('unlockAudio primes speechSynthesis with a silent utterance once', () => {
+    // Also the other side of the I3 retry: there is no AudioContext at all here
+    // (beforeEach deletes it), and a platform without Web Audio is never going
+    // to grow some — so the latch must hold rather than re-arm three listeners
+    // after every tap to retry something that cannot work.
     const { speak } = stubSpeechSynthesis();
     unlockAudio(); unlockAudio();
     expect(speak).toHaveBeenCalledTimes(1);
@@ -236,6 +240,43 @@ describe('audioUnlock', () => {
     // two assertions this test passes with that half deleted.
     expect(createOscillator).toHaveBeenCalledTimes(1);
     expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  // I3. The unlock latches `unlocked` and detaches the gesture listeners BEFORE
+  // it knows the context was built. iOS refuses the allocation under memory
+  // pressure — routinely, right when a 999 call has just been placed on the
+  // same phone — and the latch then made one unlucky tap permanent: no
+  // metronome for the rest of the resuscitation, with no way left to retry.
+  it('does not latch the unlock when the context could not be allocated', () => {
+    const constructed = vi.fn();
+    class FlakyContext {
+      state = 'running';
+      currentTime = 0;
+      destination = {};
+      createOscillator = () => ({ connect() {}, start() {}, stop() {}, frequency: { value: 0 } });
+      createGain = () => ({ connect() {}, gain: { value: 1 } });
+      resume = () => Promise.resolve();
+      constructor() {
+        constructed();
+        // Fails the first time only, so the retry has something to succeed at.
+        if (constructed.mock.calls.length === 1) throw new Error('NotSupportedError');
+      }
+    }
+    vi.stubGlobal('AudioContext', FlakyContext);
+    const { speak } = stubSpeechSynthesis();
+
+    installAudioUnlock();
+
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(constructed).toHaveBeenCalledTimes(1);
+    // The speech prime runs either way — half the audio is better than none.
+    expect(speak).toHaveBeenCalledTimes(1);
+
+    // The next tap gets another go, instead of meeting a latched `unlocked`
+    // and a window with no gesture listeners left on it.
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(constructed).toHaveBeenCalledTimes(2);
+    expect(speak).toHaveBeenCalledTimes(2);
   });
 
   it('removes the sibling once-listeners when the first gesture unlocks', () => {

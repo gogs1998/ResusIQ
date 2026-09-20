@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAppStore, countDosesGiven } from '../store/appStore';
+import { OUTCOME_TRAINING_DRILL, OUTCOME_UNRESUMABLE } from '../types';
 import { protocols } from '../data/protocols';
 import { drugs } from '../data/drugs';
 import { doseLimitClass } from '../lib/doseLimits';
@@ -917,27 +918,101 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   // on the 999 control and a real ambulance.
   // -------------------------------------------------------------------
 
-  it('training mode survives a reload', async () => {
+  // The flag survives the reload only while there is a drill behind it. Seeded
+  // mid-drill on purpose: a blob with the guard armed and NO emergency in it is
+  // the case below, and it must come back with the guard down.
+  it('training mode survives a reload mid-drill', async () => {
     seed(VERSION, {
       practiceSetup: null,
       eventHistory: [],
       isVoiceEnabled: true,
-      isEmergencyActive: false,
-      activeProtocolId: null,
-      currentStepIndex: 0,
-      activeEvent: null,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-drill-live'),
       timerAnchors: {},
       isTrainingMode: true,
     });
 
     await useAppStore.persist.rehydrate();
 
-    expect(useAppStore.getState().isTrainingMode).toBe(true);
+    const s = useAppStore.getState();
+    // The drill really did resume — otherwise this would assert the guard on a
+    // store that is simply idle.
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.isTrainingMode).toBe(true);
   });
 
-  it('persists training mode', () => {
+  it('persists training mode while the drill is running', () => {
     useAppStore.getState().setTrainingMode(true);
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
     expect(readPersisted().state.isTrainingMode).toBe(true);
+  });
+
+  // The guard is a property of a drill IN FLIGHT, never of the install. A
+  // persisted `true` with no emergency behind it is a guard that outlives the
+  // drill: a reload days later comes back with a confirmation dialog in front
+  // of a REAL 999 call, and nothing on screen explaining why.
+  it('an idle store never persists training mode', () => {
+    useAppStore.getState().setTrainingMode(true);
+
+    expect(useAppStore.getState().isEmergencyActive).toBe(false);
+    expect(readPersisted().state.isTrainingMode).toBe(false);
+  });
+
+  // The path the drill actually takes. TrainingMode's "back to the list" button
+  // is the ONLY caller of setTrainingMode(false) — and Training → scenario →
+  // "Run protocol" → runner → "End emergency" → home never touches it. So
+  // ending the drill has to be what disarms the guard.
+  it('ending a drill from the runner leaves the real 999 dialler unguarded', () => {
+    useAppStore.getState().setTrainingMode(true);
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    useAppStore.getState().endEmergency();
+
+    expect(useAppStore.getState().isTrainingMode).toBe(false);
+    // ...and on disk too: a reload after the drill must not re-arm it.
+    expect(readPersisted().state.isTrainingMode).toBe(false);
+  });
+
+  it('an unresumable drill blob does not leave the guard armed', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      // Gone from the data: there is no drill to come back to.
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-orphan-drill'),
+      timerAnchors: {},
+      isTrainingMode: true,
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.isTrainingMode).toBe(false);
+    // The record is still archived — disarming the guard costs nothing.
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-orphan-drill']);
+  });
+
+  // I1. A drill and a real emergency are indistinguishable in the archive
+  // otherwise — and a training run read later as a genuine resuscitation is a
+  // medico-legal problem, not a cosmetic one.
+  it('labels a drill in the record, and leaves a real emergency unlabelled', () => {
+    useAppStore.getState().setTrainingMode(true);
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    expect(useAppStore.getState().activeEvent?.outcome).toBe(OUTCOME_TRAINING_DRILL);
+
+    useAppStore.getState().endEmergency();
+    expect(useAppStore.getState().eventHistory[0].outcome).toBe(OUTCOME_TRAINING_DRILL);
+
+    // The real thing, on the same store, right after the drill.
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    expect(useAppStore.getState().activeEvent?.outcome).toBeUndefined();
+    useAppStore.getState().endEmergency();
+    expect(useAppStore.getState().eventHistory[1].outcome).toBeUndefined();
   });
 
   it('a v2 blob (no isTrainingMode) loads with training mode off', async () => {
@@ -1105,6 +1180,36 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     // record says when it stopped and why, rather than being un-renderable.
     expect(Array.isArray(s.eventHistory[0].events)).toBe(true);
     expect(s.eventHistory[0].events).toHaveLength(1);
+    expect(s.eventHistory[0].outcome).toBe(OUTCOME_UNRESUMABLE);
+  });
+
+  // M1. The stub check (isEmergencyEventStub) asks only for an id and a
+  // timestamp, so a salvaged record can arrive with no protocol_id at all —
+  // and Reports keys its title off exactly that field. Give it a value the
+  // archive can render rather than an empty heading on a medico-legal record.
+  it('gives a salvaged stub with no protocol id one Reports can render', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: {
+        id: 'evt-no-protocol',
+        timestamp: '2026-09-20T09:00:00.000Z',
+        // No protocol_id, and no usable log: the weakest thing still worth
+        // keeping.
+        events: 'not an array',
+      },
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-no-protocol']);
+    expect(s.eventHistory[0].protocol_id).toBe('unknown');
   });
 
   it('marks a resumed emergency as resumed — and only a resumed one', async () => {
