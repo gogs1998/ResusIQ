@@ -148,6 +148,12 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
     // asynchronous. A node started meanwhile is never heard and never
     // collected, so a 110bpm metronome would leak two per beat for as long as
     // the context stays down. Skip this beat; the next tick clicks.
+    //
+    // The leak is the quiet half. The audible half is worse: a suspended
+    // context's currentTime is FROZEN, so every node scheduled while it is down
+    // carries the same start time — and the moment it resumes they all fire at
+    // once, as a click-burst, instead of the steady 110bpm the team is
+    // compressing to. That is the symptom this guard actually prevents.
     if (ctx.state !== 'running') return;
 
     const oscillator = ctx.createOscillator();

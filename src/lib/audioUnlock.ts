@@ -48,6 +48,12 @@ function disarmGestureListeners(): void {
 /** Forget that audio was ever primed, so the next gesture primes it again. */
 function rearm(): void {
   unlocked = false;
+  // Whatever resume was in flight, the next gesture owns the retry. Clearing
+  // the guard here matters because a re-arm can happen while a resume() we
+  // started has not settled (and on old WebKit may never settle) — leaving it
+  // set would make the gesture's own getAudioContext() skip its resume, so the
+  // tap that is supposed to bring audio back would prime nothing.
+  resumePending = false;
   armGestureListeners();
 }
 

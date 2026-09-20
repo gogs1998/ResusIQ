@@ -157,6 +157,33 @@ describe('audioUnlock', () => {
     expect(resume).toHaveBeenCalledTimes(2);
   });
 
+  // The other half of that guard: it must be RELEASED when nothing will ever
+  // settle it. Both of these model old WebKit, where resume() is callback-style
+  // (returns undefined, so `.catch` on it throws) or simply blows up. The guard
+  // is set before the call, so if the synchronous failure path does not clear
+  // it, `resumePending` latches true for the life of the page and the metronome
+  // never asks for a resume again — silent CPR audio with no error anywhere.
+  it('releases the in-flight guard when resume() is not promise-returning', () => {
+    const { resume } = stubAudioContext({ state: 'suspended', resume: () => undefined });
+
+    // Deliberately no await between them: the release has to be synchronous,
+    // because nothing asynchronous is coming.
+    getAudioContext();
+    getAudioContext();
+    expect(resume).toHaveBeenCalledTimes(2);
+  });
+
+  it('releases the in-flight guard when resume() throws', () => {
+    const { resume } = stubAudioContext({
+      state: 'suspended',
+      resume: () => { throw new Error('boom'); },
+    });
+
+    expect(() => getAudioContext()).not.toThrow();
+    getAudioContext();
+    expect(resume).toHaveBeenCalledTimes(2);
+  });
+
   it('unlockAudio primes speechSynthesis with a silent utterance once', () => {
     const { speak } = stubSpeechSynthesis();
     unlockAudio(); unlockAudio();
