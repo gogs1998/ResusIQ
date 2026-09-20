@@ -499,6 +499,11 @@ export function ProtocolRunner() {
 
   // CPR mode is its own full-screen experience.
   if (currentStep.type === 'cpr_mode') {
+    // CPR takes the whole screen and this returns before the header, so the
+    // resume banner deliberately does NOT render here. That is the right
+    // trade: a team resuming into compressions needs the metronome and the
+    // cycle count, not a line about the reload, and `resumedAt` survives
+    // untouched for whenever they leave CPR mode without moving a step.
     return <CPRMode step={currentStep} onNext={handleNext} onEnd={endEmergency} />;
   }
 

@@ -184,6 +184,40 @@ describe('audioUnlock', () => {
     expect(resume).toHaveBeenCalledTimes(2);
   });
 
+  it('a re-arm releases a resume that is still in flight, so the next tap retries', async () => {
+    // The nastiest version of the guard latching. The first resume never
+    // settles (a real iOS behaviour when the context is interrupted by the 999
+    // call), so nothing will ever clear the guard from the promise side. The
+    // return to visible then resumes, that attempt RESOLVES while the context
+    // stays suspended, and the handler re-arms — handing recovery to the next
+    // gesture. If the re-arm does not also release the guard, that gesture's
+    // own getAudioContext() skips its resume and the tap primes nothing: the
+    // app comes back from the 999 call permanently silent.
+    let call = 0;
+    const { resume, instances } = stubAudioContext({
+      state: 'suspended',
+      resume: () => (call++ === 0 ? new Promise<void>(() => {}) : Promise.resolve()),
+    });
+    stubSpeechSynthesis();
+
+    installAudioUnlock();
+
+    // The in-flight resume that will never settle.
+    getAudioContext();
+    expect(resume).toHaveBeenCalledTimes(1);
+
+    // Back from the background: resume #2 resolves, but the context is still
+    // down, so the handler re-arms rather than believing the resolution.
+    fireVisibilityChange('visible');
+    await flush();
+    expect(resume).toHaveBeenCalledTimes(2);
+    expect(instances[0].state).toBe('suspended');
+
+    // The tap that is supposed to bring audio back.
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(resume).toHaveBeenCalledTimes(3);
+  });
+
   it('unlockAudio primes speechSynthesis with a silent utterance once', () => {
     const { speak } = stubSpeechSynthesis();
     unlockAudio(); unlockAudio();

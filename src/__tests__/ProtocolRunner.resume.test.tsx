@@ -163,6 +163,14 @@ describe('resume banner', () => {
     return el?.textContent ?? null;
   };
 
+  // Every interactive control on the screen, identified by what it IS and where
+  // it goes — not just the buttons.
+  const controls = () =>
+    [...container.querySelectorAll('button, a[href]')].map(
+      (el) =>
+        `${el.tagName}:${el.getAttribute('aria-label') ?? ''}:${el.getAttribute('href') ?? ''}:${el.textContent}`
+    );
+
   it('tells the team they have come back, and when this started', async () => {
     seedResumable();
 
@@ -209,13 +217,18 @@ describe('resume banner', () => {
 
     // The banner is one quiet line, not a gate: everything the runner offered
     // before it is still there and still reachable.
+    //
+    // Anchors as well as buttons. The single most important control on this
+    // screen — the 999 pill — is an `<a href="tel:999">`, so a diff of
+    // `<button>` alone would have watched the banner hide the dialler and
+    // called it a pass.
     expect(bannerText()).not.toBeNull();
-    const withBanner = [...container.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent);
+    const withBanner = controls();
+    expect(withBanner.some((c) => c.includes('tel:999'))).toBe(true);
 
     act(() => useAppStore.setState({ resumedAt: null }));
     expect(bannerText()).toBeNull();
-    const withoutBanner = [...container.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent);
 
-    expect(withBanner).toEqual(withoutBanner);
+    expect(withBanner).toEqual(controls());
   });
 });

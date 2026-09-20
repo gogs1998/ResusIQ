@@ -559,6 +559,11 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   // migration test below is that a v2 blob is a real historical shape, not
   // "whatever came before the current one".
   const V2 = 2;
+  // A version from the FUTURE. Not hypothetical: a PWA rollback (or a phone
+  // that updated, ran once and then reinstalled the cached older build) hands
+  // exactly this to an older client, and zustand runs `migrate` for any
+  // numeric version that is not the current one — forwards or backwards.
+  const NEWER_VERSION = 4;
 
   const seed = (version: number, state: Record<string, unknown>) =>
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, version }));
@@ -986,6 +991,122 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     expect(s.isTrainingMode).toBe(false);
   });
 
+  // A blob from a version this build has never heard of must not be treated as
+  // "pre-emergency, so blank it". `migrate` runs BEFORE `merge`, so anything it
+  // nulls is gone before the only code that knows how to archive a record ever
+  // sees it — and because a migration marks the state dirty, zustand writes the
+  // loss straight back to disk. The rule is the same either way: resumed, or
+  // archived. Never lost.
+  it('never loses the record from a blob written by a newer build', async () => {
+    seed(NEWER_VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-from-the-future'),
+      timerAnchors: {},
+      isTrainingMode: false,
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    // Deliberately not "it resumed": either outcome is acceptable, and pinning
+    // the conservative one would forbid the resume. What is NOT acceptable is
+    // the record existing in neither place.
+    expect(s.eventHistory.length + (s.activeEvent ? 1 : 0)).toBe(1);
+    const survivor = s.activeEvent ?? s.eventHistory[0];
+    expect(survivor.id).toBe('evt-from-the-future');
+    expect(survivor.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+  });
+
+  it('a v2 blob whose protocol is gone archives the record on the way to v3', async () => {
+    // The other half of the v2 branch: carrying the emergency keys across is
+    // what lets `merge` reach its close-into-history path at all. Blanking them
+    // in migrate would make this record vanish silently rather than be closed.
+    seed(V2, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-v2-orphan'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-v2-orphan']);
+    expect(s.eventHistory[0].completed).toBe(true);
+    // Closed through closeUnresumableEvent — the closing entry is what explains
+    // the gap to whoever reads this record later.
+    expect(s.eventHistory[0].events.length).toBeGreaterThan(1);
+    expect(s.eventHistory[0].events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+  });
+
+  it('refuses a non-boolean isTrainingMode', async () => {
+    // A hand-edited or half-written blob. `=== true` and not a truthiness test:
+    // the string 'true' is truthy, and arming the dial guard on one would put a
+    // confirmation dialog in front of a REAL 999 call.
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: false,
+      activeProtocolId: null,
+      currentStepIndex: 0,
+      activeEvent: null,
+      timerAnchors: {},
+      isTrainingMode: 'true',
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    expect(useAppStore.getState().isTrainingMode).toBe(false);
+  });
+
+  // Issue 7. An activeEvent that names a real emergency (id + timestamp) but
+  // whose log array is missing or corrupt used to fail the full check, become
+  // null, and vanish without ever reaching the archive. It cannot be RESUMED —
+  // there is no trustworthy log to append to — but it is still a record that an
+  // emergency ran, and losing it silently is the worse of the two failures.
+  it('salvages an activeEvent with a corrupt log array into the archive', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      // The protocol RESOLVES: this is not falling through the unresumable
+      // path by accident, it is being refused a resume on the event alone.
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: {
+        id: 'evt-no-log',
+        timestamp: '2026-09-20T09:00:00.000Z',
+        protocol_id: 'anaphylaxis',
+        events: 'not an array',
+      },
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeEvent).toBeNull();
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-no-log']);
+    expect(s.eventHistory[0].completed).toBe(true);
+    // The corrupt array is replaced by an empty one, then closed — so the
+    // record says when it stopped and why, rather than being un-renderable.
+    expect(Array.isArray(s.eventHistory[0].events)).toBe(true);
+    expect(s.eventHistory[0].events).toHaveLength(1);
+  });
+
   it('marks a resumed emergency as resumed — and only a resumed one', async () => {
     seed(VERSION, {
       practiceSetup: null,
@@ -1025,6 +1146,38 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     });
 
     await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).toBeNull();
+  });
+
+  it('Back and a deterioration switch retire the resume flag too', async () => {
+    // goToStep is the choke point for advancing, but it is not the only way the
+    // team moves: Back is a step change, and a deterioration switch moves them
+    // to a different protocol entirely — where a line naming the resumed one
+    // would be actively misleading.
+    const seedResumed = () =>
+      seed(VERSION, {
+        practiceSetup: null,
+        eventHistory: [],
+        isVoiceEnabled: true,
+        isEmergencyActive: true,
+        activeProtocolId: 'anaphylaxis',
+        currentStepIndex: 2,
+        activeEvent: anEvent('evt-live'),
+        timerAnchors: {},
+      });
+
+    seedResumed();
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).not.toBeNull();
+    useAppStore.getState().prevStep();
+    expect(useAppStore.getState().resumedAt).toBeNull();
+
+    localStorage.clear();
+    seedResumed();
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).not.toBeNull();
+    useAppStore.getState().switchProtocol('cardiac_arrest');
+    expect(useAppStore.getState().activeProtocol?.id).toBe('cardiac_arrest');
     expect(useAppStore.getState().resumedAt).toBeNull();
   });
 

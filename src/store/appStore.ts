@@ -43,6 +43,11 @@ interface AppState {
   // Deliberately NOT persisted: it describes this boot, not the record — a
   // persisted copy would announce a resume that had already been acknowledged,
   // reload after reload. Cleared the moment the team moves.
+  //
+  // Per MERGE, not per page load: `persist.rehydrate()` can be called again at
+  // runtime, and each call that resumes re-flags. That is the wanted behaviour
+  // (a second rehydrate IS a second resume, and the banner should say so), but
+  // it means this is not a "shown once ever" latch and must not be read as one.
   resumedAt: string | null;
   
   // Triage
@@ -225,6 +230,22 @@ function isEmergencyEventish(value: unknown): value is EmergencyEvent {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Partial<EmergencyEvent>;
   return typeof v.id === 'string' && typeof v.timestamp === 'string' && Array.isArray(v.events);
+}
+
+// The weaker check: enough to know this NAMES an emergency that ran, without
+// claiming its log is usable. An event with an id and a timestamp but a missing
+// or corrupt `events` array fails isEmergencyEventish — and used to become null
+// and vanish, archive and all, from a single bad field. It can never be
+// RESUMED (there is no trustworthy log to append doses to, and resuming would
+// silently continue a record with a hole in it), but it is still evidence that
+// an emergency happened, and losing that silently is the worse of the two
+// failures. So it is salvaged into history and closed, never resumed.
+function isEmergencyEventStub(
+  value: unknown
+): value is Partial<EmergencyEvent> & { id: string; timestamp: string } {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Partial<EmergencyEvent>;
+  return typeof v.id === 'string' && typeof v.timestamp === 'string';
 }
 
 // Close out an event whose emergency cannot be resumed. The flow is gone, but
@@ -575,7 +596,9 @@ export const useAppStore = create<AppState>()(
       // Currently unwired (endEmergency is the live path). Note before anything
       // calls it: it archives the event but leaves `isEmergencyActive` set, so
       // it must also clear the emergency flags — otherwise it persists exactly
-      // the eventless-active blob that `merge` now refuses to resume.
+      // the eventless-active blob that `merge` now refuses to resume. It must
+      // also clear `resumedAt` (Task 0.6), or the resume banner outlives the
+      // emergency it was describing and reappears over the next one.
       endEvent: (outcome, notes) => {
         const { activeEvent, eventHistory } = get();
         if (activeEvent) {
@@ -658,46 +681,55 @@ export const useAppStore = create<AppState>()(
             ? state.eventHistory.filter(isEmergencyEventish)
             : [],
           isVoiceEnabled: typeof state.isVoiceEnabled === 'boolean' ? state.isVoiceEnabled : true,
-          // New in v3, so absent from every shape this function can be handed.
-          // Absent means OFF, never "unknown, keep the last value": defaulting
-          // a training guard ON would put a confirmation dialog in front of a
-          // REAL 999 call.
-          isTrainingMode: false
+          // New in v3, so absent from v1 and v2 — and present again in
+          // anything newer. Narrowed to exactly `true`: absent, or anything
+          // that is not the boolean, means OFF. Never "unknown, keep the last
+          // value", because defaulting a training guard ON would put a
+          // confirmation dialog in front of a REAL 999 call.
+          isTrainingMode: state.isTrainingMode === true
         };
 
-        // v2 -> v3. THIS is the branch the M4 note below warned about: a v2
-        // blob can hold an emergency that is still in flight, so every
-        // emergency key is carried across untouched and `merge` (which is the
-        // only place that decides resumability) sees exactly what it would
-        // have seen without the version bump. Blanking them here would throw
-        // away a live medico-legal record on an app update.
-        if (version === 2) {
+        // v1 (any pre-emergency shape with a numeric version) -> v3. An
+        // unversioned blob never arrives here at all: zustand only calls
+        // migrate when `typeof version === 'number'`, so v0 rehydrates through
+        // `merge` directly. These shapes carried no emergency, so the emergency
+        // keys take their defaults and the app boots idle.
+        //
+        // M4: this used to ignore `version` entirely, which was correct while
+        // v1 was the only input — it predates the emergency keys, so "drop the
+        // emergency, keep the archive" held. It stopped being correct the
+        // moment v2 could hold an emergency that was still in flight.
+        if (version <= 1) {
           return {
             ...carried,
-            isEmergencyActive: state.isEmergencyActive ?? false,
-            activeProtocolId: state.activeProtocolId ?? null,
-            currentStepIndex: state.currentStepIndex ?? 0,
-            activeEvent: state.activeEvent ?? null,
-            timerAnchors: state.timerAnchors ?? {}
+            isEmergencyActive: false,
+            activeProtocolId: null,
+            currentStepIndex: 0,
+            activeEvent: null,
+            timerAnchors: {}
           };
         }
 
-        // v0 (unversioned) / v1 -> v3: those shapes carried no emergency at
-        // all, so the emergency keys take their defaults and the app boots
-        // idle.
+        // v2 and ANYTHING ELSE — including a version from the future, which a
+        // PWA rollback really does produce (zustand runs migrate for any
+        // numeric version that is not the current one, backwards as well as
+        // forwards). Blanking is the dangerous default here, not the safe one:
+        // migrate runs BEFORE merge, so a nulled activeEvent is gone before the
+        // only code that knows how to archive it ever sees it — and a migration
+        // marks the state dirty, so the loss is written back to disk.
         //
-        // M4: this used to ignore `version` entirely, which was correct while
-        // v0 and v1 were the only inputs — both predate the emergency keys, so
-        // "drop the emergency, keep the archive" held for all of them. It is
-        // NOT correct for v2, which is why the branch above exists. Any future
-        // version must decide for itself which side of that line it is on.
+        // Carrying the keys across costs nothing by comparison: `merge` is the
+        // one place that decides resumability, and it either resumes the
+        // emergency or closes it into eventHistory. Resumed or archived, never
+        // lost. Unknown extra keys from a newer shape are simply dropped by the
+        // explicit list below, and merge narrows every value it reads anyway.
         return {
           ...carried,
-          isEmergencyActive: false,
-          activeProtocolId: null,
-          currentStepIndex: 0,
-          activeEvent: null,
-          timerAnchors: {}
+          isEmergencyActive: state.isEmergencyActive ?? false,
+          activeProtocolId: state.activeProtocolId ?? null,
+          currentStepIndex: state.currentStepIndex ?? 0,
+          activeEvent: state.activeEvent ?? null,
+          timerAnchors: state.timerAnchors ?? {}
         };
       },
       // Rehydration decides whether the saved emergency can actually be
@@ -761,6 +793,19 @@ export const useAppStore = create<AppState>()(
             : 0;
           const savedEvent = isEmergencyEventish(p.activeEvent) ? p.activeEvent : null;
 
+          // The salvage. Only ever reaches the close-into-history path below —
+          // `savedEvent` (the full check) is what the resume test guards on, so
+          // an event with an unusable log can never be resumed into. See
+          // isEmergencyEventStub.
+          const salvagedEvent: EmergencyEvent | null =
+            savedEvent ??
+            (isEmergencyEventStub(p.activeEvent)
+              ? ({
+                  ...p.activeEvent,
+                  events: Array.isArray(p.activeEvent.events) ? p.activeEvent.events : []
+                } as EmergencyEvent)
+              : null);
+
           // `savedEvent` is part of the resumability test, not just cargo. An
           // emergency with no event is not an emergency: addEventLog,
           // log999Called and anchorTimer all no-op without one, so the runner
@@ -797,8 +842,8 @@ export const useAppStore = create<AppState>()(
           // record as well would compound the failure.
           return {
             ...base,
-            eventHistory: savedEvent
-              ? [...base.eventHistory, closeUnresumableEvent(savedEvent)]
+            eventHistory: salvagedEvent
+              ? [...base.eventHistory, closeUnresumableEvent(salvagedEvent)]
               : base.eventHistory,
             isEmergencyActive: false,
             activeProtocol: null,
