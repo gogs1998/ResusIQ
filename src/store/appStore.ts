@@ -38,6 +38,12 @@ interface AppState {
   prevStep: () => void;
   goToStep: (index: number) => void;
   endEmergency: () => void;
+
+  // Set by `merge` when a reload RESUMED an emergency, and by nothing else.
+  // Deliberately NOT persisted: it describes this boot, not the record — a
+  // persisted copy would announce a resume that had already been acknowledged,
+  // reload after reload. Cleared the moment the team moves.
+  resumedAt: string | null;
   
   // Triage
   triageAnswers: Record<string, boolean | string>;
@@ -189,6 +195,11 @@ interface PersistedAppState {
   // Wall-clock ISO strings (see anchorTimer), NOT performance.now() readings —
   // which is the only reason they mean anything after a reload.
   timerAnchors: Record<string, string>;
+  // Task 0.6. A reload used to turn training mode off, which took the 999 dial
+  // guard down with it — and now that an emergency resumes across a reload, a
+  // drill comes back up in the runner with nothing between a tap on a 999
+  // control and a real ambulance. `resumedAt` is NOT in here: see AppState.
+  isTrainingMode: boolean;
 }
 
 // A persisted timerAnchors blob is only usable if every value is a string; a
@@ -256,7 +267,9 @@ export const useAppStore = create<AppState>()(
       isEmergencyActive: false,
       activeProtocol: null,
       currentStepIndex: 0,
-      
+      // A first boot resumed nothing.
+      resumedAt: null,
+
       startEmergency: (protocolId, source, opts) => {
         const protocol = protocols.find(p => p.id === protocolId);
         if (protocol) {
@@ -295,7 +308,9 @@ export const useAppStore = create<AppState>()(
             activeEvent: event,
             // A new emergency times itself from scratch — never from a clock
             // left anchored by the last one.
-            timerAnchors: {}
+            timerAnchors: {},
+            // Nothing was resumed: this one starts here, in front of the team.
+            resumedAt: null
           });
           // Keep screen awake during emergency (re-acquires on foreground), and
           // take the OS chrome dark with the app.
@@ -337,6 +352,9 @@ export const useAppStore = create<AppState>()(
           activeProtocol: protocol,
           currentStepIndex: landingIndex >= 0 ? landingIndex : firstActionStepIndex(protocol.steps),
           currentScreen: 'protocol',
+          // A deterioration is the team moving, so the resume line has done its
+          // job — and it would otherwise sit above a protocol it never named.
+          resumedAt: null,
         });
         // Records the switch on the SAME event log.
         get().addEventLog('custom', `Switched to: ${protocol.title}`);
@@ -393,12 +411,16 @@ export const useAppStore = create<AppState>()(
       prevStep: () => {
         const { currentStepIndex } = get();
         if (currentStepIndex > 0) {
-          set({ currentStepIndex: currentStepIndex - 1 });
+          set({ currentStepIndex: currentStepIndex - 1, resumedAt: null });
         }
       },
-      
-      goToStep: (index) => set({ currentStepIndex: index }),
-      
+
+      // The single step-change choke point: the runner's advance() and its
+      // decision answers both route through here (neither logs from the store),
+      // which is why retiring the resume line needs exactly one clear. `Back`
+      // is the only other step change, and prevStep above clears it too.
+      goToStep: (index) => set({ currentStepIndex: index, resumedAt: null }),
+
       endEmergency: () => {
         const { activeEvent, eventHistory } = get();
         // Release wake lock (also stops the foreground re-acquire) and hand the
@@ -414,15 +436,17 @@ export const useAppStore = create<AppState>()(
             currentScreen: 'home',
             activeEvent: null,
             eventHistory: [...eventHistory, completedEvent],
-            timerAnchors: {}
+            timerAnchors: {},
+            resumedAt: null
           });
         } else {
-          set({ 
+          set({
             isEmergencyActive: false,
             activeProtocol: null,
             currentStepIndex: 0,
             currentScreen: 'home',
-            timerAnchors: {}
+            timerAnchors: {},
+            resumedAt: null
           });
         }
       },
@@ -604,7 +628,7 @@ export const useAppStore = create<AppState>()(
       // Bump `version` whenever the persisted shape below changes, and handle
       // the upgrade in `migrate`. Without this, a schema change silently
       // corrupts rehydrated eventHistory / practiceSetup from older installs.
-      version: 2,
+      version: 3,
       partialize: (state): PersistedAppState => ({
         practiceSetup: state.practiceSetup,
         eventHistory: state.eventHistory,
@@ -617,27 +641,58 @@ export const useAppStore = create<AppState>()(
         activeProtocolId: state.activeProtocol?.id ?? null,
         currentStepIndex: state.currentStepIndex,
         activeEvent: state.activeEvent,
-        timerAnchors: state.timerAnchors
+        timerAnchors: state.timerAnchors,
+        // Task 0.6: a reload must not silently end the drill and re-arm the
+        // real 999 dialler. See PersistedAppState.
+        isTrainingMode: state.isTrainingMode
       }),
-      migrate: (persistedState): PersistedAppState => {
-        // v0 (unversioned) / v1 -> v2: the older shapes carried no emergency at
-        // all, so the new keys take their defaults and the app boots idle. Also
-        // guards a partially-written or corrupt blob.
-        //
-        // M4: this deliberately ignores `version` — every shape it can be
-        // handed (v0, v1) predates the emergency keys, so "drop the emergency,
-        // keep the archive" is correct for all of them. A future v2 -> v3
-        // migration must NOT inherit that: by then a blob can hold an emergency
-        // that is still in flight, and blanking it would throw away a live
-        // medico-legal record. Branch on `version` when that day comes.
+      migrate: (persistedState, version): PersistedAppState => {
         const state = (persistedState ?? {}) as Partial<PersistedAppState>;
-        return {
+        // Shared by both branches — these keys mean the same thing in every
+        // version, and every one of them also guards a partially-written or
+        // hand-edited blob.
+        const carried = {
           practiceSetup: state.practiceSetup ?? null,
           // Element-wise: one malformed record must not cost the whole archive.
           eventHistory: Array.isArray(state.eventHistory)
             ? state.eventHistory.filter(isEmergencyEventish)
             : [],
           isVoiceEnabled: typeof state.isVoiceEnabled === 'boolean' ? state.isVoiceEnabled : true,
+          // New in v3, so absent from every shape this function can be handed.
+          // Absent means OFF, never "unknown, keep the last value": defaulting
+          // a training guard ON would put a confirmation dialog in front of a
+          // REAL 999 call.
+          isTrainingMode: false
+        };
+
+        // v2 -> v3. THIS is the branch the M4 note below warned about: a v2
+        // blob can hold an emergency that is still in flight, so every
+        // emergency key is carried across untouched and `merge` (which is the
+        // only place that decides resumability) sees exactly what it would
+        // have seen without the version bump. Blanking them here would throw
+        // away a live medico-legal record on an app update.
+        if (version === 2) {
+          return {
+            ...carried,
+            isEmergencyActive: state.isEmergencyActive ?? false,
+            activeProtocolId: state.activeProtocolId ?? null,
+            currentStepIndex: state.currentStepIndex ?? 0,
+            activeEvent: state.activeEvent ?? null,
+            timerAnchors: state.timerAnchors ?? {}
+          };
+        }
+
+        // v0 (unversioned) / v1 -> v3: those shapes carried no emergency at
+        // all, so the emergency keys take their defaults and the app boots
+        // idle.
+        //
+        // M4: this used to ignore `version` entirely, which was correct while
+        // v0 and v1 were the only inputs — both predate the emergency keys, so
+        // "drop the emergency, keep the archive" held for all of them. It is
+        // NOT correct for v2, which is why the branch above exists. Any future
+        // version must decide for itself which side of that line it is on.
+        return {
+          ...carried,
           isEmergencyActive: false,
           activeProtocolId: null,
           currentStepIndex: 0,
@@ -688,7 +743,12 @@ export const useAppStore = create<AppState>()(
               ? p.eventHistory.filter(isEmergencyEventish)
               : currentState.eventHistory,
             isVoiceEnabled:
-              typeof p.isVoiceEnabled === 'boolean' ? p.isVoiceEnabled : currentState.isVoiceEnabled
+              typeof p.isVoiceEnabled === 'boolean' ? p.isVoiceEnabled : currentState.isVoiceEnabled,
+            // Narrowed to exactly `true`, and OFF for anything else — a blob
+            // written by an older build has no such key, and a truthy string
+            // from a hand-edited one must not arm a guard in front of a real
+            // 999 call.
+            isTrainingMode: p.isTrainingMode === true
           };
 
           // Re-resolve the protocol from the LIVE data by id — see partialize.
@@ -722,7 +782,12 @@ export const useAppStore = create<AppState>()(
               currentStepIndex: stepIndex,
               currentScreen: 'protocol',
               activeEvent: savedEvent,
-              timerAnchors: isAnchorMap(p.timerAnchors) ? p.timerAnchors : {}
+              timerAnchors: isAnchorMap(p.timerAnchors) ? p.timerAnchors : {},
+              // Stamped HERE, atomically with the resume decision, so the flag
+              // and the resumed emergency can never disagree — an effect that
+              // set it afterwards would have a window where the runner is on
+              // screen mid-protocol with no sign that anything happened.
+              resumedAt: new Date().toISOString()
             };
           }
 
@@ -739,7 +804,9 @@ export const useAppStore = create<AppState>()(
             activeProtocol: null,
             currentStepIndex: 0,
             activeEvent: null,
-            timerAnchors: {}
+            timerAnchors: {},
+            // Nothing resumed, so there is nothing to announce.
+            resumedAt: null
           };
         } catch (err) {
           console.error('[appStore] persist merge failed; falling back to in-memory defaults', err);

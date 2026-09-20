@@ -554,6 +554,11 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   // The shape shipped before this change: practiceSetup / eventHistory /
   // isVoiceEnabled only.
   const PREVIOUS_VERSION = 1;
+  // Task 0.2's shape: the emergency keys, but no isTrainingMode. Named
+  // literally rather than as `VERSION - 1`, because the whole point of the
+  // migration test below is that a v2 blob is a real historical shape, not
+  // "whatever came before the current one".
+  const V2 = 2;
 
   const seed = (version: number, state: Record<string, unknown>) =>
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, version }));
@@ -584,7 +589,14 @@ describe('appStore persistence (an emergency survives a reload)', () => {
 
   beforeEach(() => {
     reset();
-    useAppStore.setState({ practiceSetup: null, isVoiceEnabled: true });
+    useAppStore.setState({
+      practiceSetup: null,
+      isVoiceEnabled: true,
+      // Both are Task 0.6 state and neither is in `reset()`'s emergency list,
+      // so without these a drill (or a resume banner) leaks into the next case.
+      isTrainingMode: false,
+      resumedAt: null,
+    });
     document.getElementById('riq-theme-color-emergency')?.remove();
     // AFTER the resets — setState itself writes through the persist middleware.
     localStorage.clear();
@@ -889,6 +901,170 @@ describe('appStore persistence (an emergency survives a reload)', () => {
 
     await useAppStore.persist.rehydrate();
     expect(document.getElementById('riq-theme-color-emergency')).toBeNull();
+  });
+
+  // -------------------------------------------------------------------
+  // Task 0.6: training mode survives the reload; the resume is announced.
+  //
+  // A reload used to turn training mode OFF, which silently took the 999 dial
+  // guard down with it — and now that an emergency resumes across a reload
+  // (Task 0.2), a drill comes back up in the runner with nothing between a tap
+  // on the 999 control and a real ambulance.
+  // -------------------------------------------------------------------
+
+  it('training mode survives a reload', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: false,
+      activeProtocolId: null,
+      currentStepIndex: 0,
+      activeEvent: null,
+      timerAnchors: {},
+      isTrainingMode: true,
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    expect(useAppStore.getState().isTrainingMode).toBe(true);
+  });
+
+  it('persists training mode', () => {
+    useAppStore.getState().setTrainingMode(true);
+    expect(readPersisted().state.isTrainingMode).toBe(true);
+  });
+
+  it('a v2 blob (no isTrainingMode) loads with training mode off', async () => {
+    seed(V2, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: false,
+      activeProtocolId: null,
+      currentStepIndex: 0,
+      activeEvent: null,
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    // Absent means off — never "unknown, so leave the last value". Defaulting a
+    // safety guard ON would be worse than useless: it would put the dial
+    // confirmation in front of a REAL 999 call.
+    expect(useAppStore.getState().isTrainingMode).toBe(false);
+  });
+
+  // The trap the 0.2 review flagged. The v0/v1 migration blanks the emergency
+  // keys, which is right for shapes that never had them — v2 DID. Inheriting
+  // that here would throw away a live medico-legal record on the version bump.
+  it('a v2 blob carrying an in-flight emergency migrates to v3 with it intact', async () => {
+    seed(V2, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-v2-live'),
+      timerAnchors: { 'anaphylaxis#adrenaline': '2026-09-20T09:00:00.000Z' },
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.activeProtocol).toBe(protocols.find((p) => p.id === 'anaphylaxis'));
+    expect(s.currentStepIndex).toBe(2);
+    expect(s.activeEvent?.id).toBe('evt-v2-live');
+    expect(s.activeEvent?.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+    expect(s.timerAnchors['anaphylaxis#adrenaline']).toBe('2026-09-20T09:00:00.000Z');
+    expect(s.currentScreen).toBe('protocol');
+    // Nothing was archived: the emergency is still running, not closed.
+    expect(s.eventHistory).toHaveLength(0);
+    // ...and the new key took its default rather than tripping the narrowing.
+    expect(s.isTrainingMode).toBe(false);
+  });
+
+  it('marks a resumed emergency as resumed — and only a resumed one', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).not.toBeNull();
+
+    // Moving on retires the flag: it says "you have just come back", and that
+    // stops being true the moment the team acts.
+    useAppStore.getState().goToStep(3);
+    expect(useAppStore.getState().resumedAt).toBeNull();
+  });
+
+  it('never marks a fresh emergency, or an unresumable one, as resumed', async () => {
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    expect(useAppStore.getState().resumedAt).toBeNull();
+    useAppStore.getState().endEmergency();
+
+    localStorage.clear();
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-orphan'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).toBeNull();
+  });
+
+  it('endEmergency clears the resume flag', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).not.toBeNull();
+
+    useAppStore.getState().endEmergency();
+    expect(useAppStore.getState().resumedAt).toBeNull();
+  });
+
+  it('never persists resumedAt — it describes this boot, not the record', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().resumedAt).not.toBeNull();
+
+    // Any ordinary write flushes the merged state back to disk.
+    useAppStore.getState().addEventLog('custom', 'anything');
+    expect(readPersisted().state).not.toHaveProperty('resumedAt');
   });
 
   it('a resume logs nothing — the record picks up exactly where it stopped', async () => {

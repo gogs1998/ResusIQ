@@ -92,6 +92,7 @@ export function ProtocolRunner() {
     anchorTimer,
     activeEvent,
     practiceSetup,
+    resumedAt,
   } = useAppStore();
 
   const { speak, isSpeaking } = useSpeech();
@@ -582,6 +583,29 @@ export function ProtocolRunner() {
             {currentStepIndex + 1} / {totalSteps}
           </span>
         </div>
+        )}
+
+        {/* Resumed — a reload (iOS evicting the backgrounded PWA while someone
+            answers the phone, or a pull-to-refresh) drops the team back into
+            the runner mid-protocol with the elapsed clock already minutes in.
+            Without a word, that reads as the app having lost its place. One
+            quiet line says what happened and when this started; it is a
+            STATUS, not a gate — no button, no prompt, nothing to dismiss, and
+            it retires itself the moment the team moves a step. */}
+        {resumedAt && activeEvent && (
+          <div
+            role="status"
+            style={{
+              marginTop: 10,
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--warn-tint)',
+              fontSize: 'var(--fs-body-sm)',
+              color: 'var(--text-2)',
+            }}
+          >
+            Resumed — started {hhmm(activeEvent.timestamp)}
+          </div>
         )}
 
         {/* Progress — a hairline, with the counter moved up beside the title so
