@@ -114,6 +114,16 @@ export default defineConfig({
     })
   ],
   build: {
+    // Vite 8 minifies CSS with Lightning CSS, and Lightning CSS rewrites
+    // `@media (max-height: 520px)` to the range syntax `(height <= 520px)` as
+    // soon as every target supports it. Range syntax is Safari 16.4+, so on an
+    // iPhone still on iOS 16.0-16.3 the whole at-rule is invalid and dropped —
+    // which is exactly the CPR landscape floor release in index.css. Vite does
+    // NOT read the `browserslist` field in package.json (that field records the
+    // support floor for the humans and for tools that do read it); `cssTarget`
+    // is the knob that actually reaches Lightning CSS, so the floor is pinned
+    // here too. Keep the two in step.
+    cssTarget: ['safari16', 'ios16', 'chrome111', 'firefox128'],
     rolldownOptions: {
       output: {
         // Force the Gemini SDK into a stably-named chunk so the service worker
