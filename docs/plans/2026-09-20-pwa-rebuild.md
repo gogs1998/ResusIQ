@@ -20,6 +20,7 @@
 6. Curly quotes (`’ —`) are used intentionally in clinical strings. Files are UTF-8; **never** write them with PowerShell `Set-Content` (BOM/cp1252 damage has shipped twice). `scripts/verify-encoding.mjs` must report only the two known doc false-positives.
 7. `ProtocolRunner` must always be reachable during an active emergency; the tab bar must hide when `isEmergencyActive`.
 8. Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+9. **`build.cssTarget` in `vite.config.ts` is the ONLY CSS support floor.** The `browserslist` field in `package.json` is documentation — Vite reads it nowhere (`grep browserslist node_modules/vite/dist/node/*.js` is empty) and Tailwind 4 hardcodes its own Lightning CSS targets. Vite 8 minifies CSS with Lightning CSS, which rewrites `@media (max-height: 520px)` to the range syntax `(height <= 520px)` — Safari 16.4+ only — as soon as every target supports it, silently dropping the whole at-rule on an iPhone still on iOS 16.0-16.3. Move the two together, and verify with `grep -o "(height[<>=][^)]*)" dist/assets/*.css` → must be empty.
 
 Run all gates with: `cd D:\VSCode\ResusIQ && npx tsc -b && npm test 2>&1 | grep -E "Test Files|Tests " && npm run build 2>&1 | tail -3`
 

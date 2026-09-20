@@ -24,18 +24,25 @@ function stubAudioContext(
   // a context (it fires outside a gesture, so iOS would hand back a suspended
   // one that can never be resumed, and the real prime would then be skipped).
   const constructed = vi.fn();
+  // The live instances, so a case can change `state` the way the OS does —
+  // WebKit flips a context to 'interrupted' when another audio session (the
+  // 999 call) takes over, and back to 'running' when a resume really works.
+  const instances: Array<{ state: string }> = [];
   class Stub {
     state = state;
     currentTime = 0;
     destination = {};
     createOscillator = createOscillator;
     createGain = createGain;
-    constructor() { constructed(); }
+    constructor() {
+      constructed();
+      instances.push(this as unknown as { state: string });
+    }
   }
   // `resume: null` models very old WebKit, which has no resume() at all.
   if (opts.resume !== null) (Stub.prototype as unknown as { resume: unknown }).resume = resume;
   vi.stubGlobal('AudioContext', Stub);
-  return { createOscillator, createGain, start, stop, resume, constructed };
+  return { createOscillator, createGain, start, stop, resume, constructed, instances };
 }
 
 function stubSpeechSynthesis(opts: { paused?: boolean } = {}) {
@@ -132,6 +139,24 @@ describe('audioUnlock', () => {
     await rejection.catch(() => {});
   });
 
+  it('does not stack a resume() per call while one is already in flight', async () => {
+    // useTimer's playClick calls getAudioContext() on every metronome tick —
+    // roughly 110 times a minute through the whole of CPR. After a re-arm the
+    // context can sit un-resumed for a while, and without a guard each tick
+    // fires another resume() and another swallowed promise.
+    const { resume } = stubAudioContext({ state: 'suspended' });
+
+    getAudioContext();
+    getAudioContext();
+    expect(resume).toHaveBeenCalledTimes(1);
+
+    // ...and the guard clears when the attempt settles, so a later tick can
+    // still try again. A guard that latched would be worse than none.
+    await flush();
+    getAudioContext();
+    expect(resume).toHaveBeenCalledTimes(2);
+  });
+
   it('unlockAudio primes speechSynthesis with a silent utterance once', () => {
     const { speak } = stubSpeechSynthesis();
     unlockAudio(); unlockAudio();
@@ -170,6 +195,13 @@ describe('audioUnlock', () => {
     expect(removed).toContain('touchend');
     expect(removed).toContain('keydown');
     expect(removed).toContain('pointerdown');
+    // The capture flag is part of the identity removeEventListener matches on:
+    // the listeners went on with capture:true, so they only come off with
+    // capture:true. Removing without it silently does nothing.
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) {
+      const call = remove.mock.calls.find((c) => c[0] === ev);
+      expect(call?.[2], `removeEventListener('${ev}') options`).toEqual({ capture: true });
+    }
   });
 });
 
@@ -203,6 +235,68 @@ describe('audioUnlock — re-arm after backgrounding', () => {
     await flush();
 
     expect(resume.mock.calls.length - before).toBe(1);
+  });
+
+  it("resumes a context WebKit has parked as 'interrupted'", async () => {
+    // Safari does not suspend a context that another audio session took over —
+    // it INTERRUPTS it, and reports `state === 'interrupted'`, a WebKit-only
+    // value that is not in the spec's AudioContextState. The 999 call placed on
+    // this same phone is exactly that other session. Gating on 'suspended'
+    // alone leaves the context interrupted for the rest of the resuscitation:
+    // no metronome, no narration, and nothing on screen saying so.
+    const { resume, instances } = stubAudioContext({ state: 'suspended' });
+    stubSpeechSynthesis();
+
+    installAudioUnlock();
+    window.dispatchEvent(new Event('pointerdown')); // now a context exists
+    instances[0].state = 'interrupted';
+    const before = resume.mock.calls.length;
+
+    fireVisibilityChange('visible');
+    await flush();
+
+    expect(resume.mock.calls.length - before).toBe(1);
+  });
+
+  it('re-arms when resume() RESOLVES but the state stays suspended', async () => {
+    // The common iOS case, and the reason Howler and Tone.js poll state rather
+    // than trust the promise: outside a gesture, resume() resolves and the
+    // context stays suspended. Keying the re-arm off rejection alone leaves
+    // `unlocked` latched and the listeners detached — the next tap primes
+    // nothing and the app is silent for the rest of the emergency.
+    stubAudioContext({ state: 'suspended', resume: () => Promise.resolve() });
+    const { speak } = stubSpeechSynthesis();
+
+    installAudioUnlock();
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(speak).toHaveBeenCalledTimes(1);
+
+    fireVisibilityChange('visible');
+    await flush();
+
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(speak).toHaveBeenCalledTimes(2);
+  });
+
+  it('does NOT re-arm when the resume actually worked', async () => {
+    // The other half of the same decision: a resume that really started the
+    // context must not throw away the prime and re-hook three listeners.
+    const stub = stubAudioContext({ state: 'suspended' });
+    stub.resume.mockImplementation(() => {
+      stub.instances[0].state = 'running';
+      return Promise.resolve();
+    });
+    const { speak } = stubSpeechSynthesis();
+
+    installAudioUnlock();
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(speak).toHaveBeenCalledTimes(1);
+
+    fireVisibilityChange('visible');
+    await flush();
+
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(speak).toHaveBeenCalledTimes(1);
   });
 
   it('re-arms the gesture unlock when the resume is rejected', async () => {
@@ -240,6 +334,11 @@ describe('audioUnlock — re-arm after backgrounding', () => {
     ).toHaveLength(1);
   });
 
+  // Deliberately no speechSynthesis.cancel() on the way out. It is tempting —
+  // it would stop a queued instruction being read to an empty room — but it
+  // throws away a HALF-SPOKEN instruction, and the operator comes back to a
+  // step they have only heard the first three words of. A stutter on return is
+  // the better failure mid-emergency.
   it('does nothing at all when the page is going hidden', async () => {
     const { resume, constructed } = stubAudioContext({ state: 'suspended' });
     const { resume: speechResume } = stubSpeechSynthesis({ paused: true });
@@ -302,31 +401,29 @@ describe('audioUnlock — re-arm after backgrounding', () => {
     installAudioUnlock();
     expect(() => fireVisibilityChange('visible')).not.toThrow();
     await flush();
-  });
 
-  it('un-pauses a speechSynthesis left paused by the background', async () => {
-    // A known iOS quirk: coming back from the background, speechSynthesis can
-    // be stuck paused, and speak() then queues silently forever.
-    stubAudioContext({ state: 'running' });
-    const { resume: speechResume } = stubSpeechSynthesis({ paused: true });
-
-    installAudioUnlock();
+    // Not-throwing is not enough: with no way to resume, the ONLY recovery is
+    // the next tap, so that path has to have re-armed.
     window.dispatchEvent(new Event('pointerdown'));
-    fireVisibilityChange('visible');
-    await flush();
-
-    expect(speechResume).toHaveBeenCalled();
+    expect(speak).toHaveBeenCalledTimes(2);
   });
 
-  it('leaves a speechSynthesis that is not paused alone', async () => {
-    stubAudioContext({ state: 'running' });
-    const { resume: speechResume } = stubSpeechSynthesis({ paused: false });
+  // A known iOS quirk: coming back from the background, the speech queue can be
+  // wedged and speak() then queues silently forever. `paused` is not a reliable
+  // report of that — the queue wedges with `paused === false` too — so the
+  // resume is unconditional. It is a spec no-op when there is nothing paused,
+  // which makes the false case free rather than wrong.
+  for (const paused of [true, false]) {
+    it(`calls speechSynthesis.resume() on return to visible (paused === ${paused})`, async () => {
+      stubAudioContext({ state: 'running' });
+      const { resume: speechResume } = stubSpeechSynthesis({ paused });
 
-    installAudioUnlock();
-    window.dispatchEvent(new Event('pointerdown'));
-    fireVisibilityChange('visible');
-    await flush();
+      installAudioUnlock();
+      window.dispatchEvent(new Event('pointerdown'));
+      fireVisibilityChange('visible');
+      await flush();
 
-    expect(speechResume).not.toHaveBeenCalled();
-  });
+      expect(speechResume).toHaveBeenCalled();
+    });
+  }
 });

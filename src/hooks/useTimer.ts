@@ -142,6 +142,13 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
     // callback) left it suspended forever on iOS — the metronome was silent.
     const ctx = getAudioContext();
     if (!ctx) return;
+    // Don't start nodes into a context that is not running. After the 999 call
+    // the shared context comes back suspended — or, on WebKit, interrupted —
+    // and getAudioContext() has just asked it to resume, but that is
+    // asynchronous. A node started meanwhile is never heard and never
+    // collected, so a 110bpm metronome would leak two per beat for as long as
+    // the context stays down. Skip this beat; the next tick clicks.
+    if (ctx.state !== 'running') return;
 
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();

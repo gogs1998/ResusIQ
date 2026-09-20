@@ -182,7 +182,9 @@ describe('layout invariants — centring a scroller', () => {
    * codebase indents consistently, and a real parser here would be more
    * machinery than the invariant is worth. A child introduced by a conditional
    * (`{cond && (`) is not counted as an end child — those are the ones whose
-   * margins do not decide the resting layout anyway.
+   * margins do not decide the resting layout anyway. The same blind spot
+   * applies to a mapped last child (`{list.map(...)}`): the element it renders
+   * is not inspected, so a `mb-*` inside the map would not be caught here.
    */
   const stackCenterEnds = (file: string): Array<{ first: EndChild; last: EndChild }> => {
     const lines = blankComments(src(file)).split('\n');

@@ -21,7 +21,7 @@ beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 });
 
-function stubRunningAudioContext() {
+function stubRunningAudioContext(state = 'running') {
   const connect = vi.fn();
   const start = vi.fn();
   const stop = vi.fn();
@@ -37,7 +37,7 @@ function stubRunningAudioContext() {
     gain: { value: 0, setValueAtTime, exponentialRampToValueAtTime },
   }));
   vi.stubGlobal('AudioContext', class {
-    state = 'running';
+    state = state;
     currentTime = 0;
     destination = {};
     resume = resume;
@@ -101,5 +101,28 @@ describe('useMetronome shared-context lifecycle', () => {
     expect(close).not.toHaveBeenCalled();
     // Still the same live instance — not closed, not rebuilt.
     expect(getAudioContext()).toBe(shared);
+  });
+
+  it('does not start oscillators into a context that is not running', () => {
+    // After the 999 call the shared context comes back suspended or (on
+    // WebKit) interrupted. getAudioContext() has already asked it to resume,
+    // but that is asynchronous — and a node started into a context that is not
+    // running is never heard and never collected, so a 110bpm metronome leaks
+    // two nodes a beat for as long as it stays down. Skip the beat instead;
+    // the next tick, 545ms later, clicks.
+    const { createOscillator, start: oscStart } = stubRunningAudioContext('suspended');
+
+    let startMetronome: (() => void) | null = null;
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => {
+      root!.render(<Metronome onReady={(s) => { startMetronome = s; }} />);
+    });
+
+    act(() => { startMetronome!(); });
+
+    expect(createOscillator).not.toHaveBeenCalled();
+    expect(oscStart).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,11 @@ let sharedCtx: AudioContext | null = null;
 let unlocked = false;
 let listenersArmed = false;
 let visibilityAttached = false;
+// True while a resume() we started has not settled. useTimer's playClick calls
+// getAudioContext() on every metronome tick — ~110 a minute for the length of
+// the CPR — and without this each tick would start another resume and another
+// swallowed promise on a context that is down.
+let resumePending = false;
 
 const GESTURES = ['pointerdown', 'touchend', 'keydown'] as const;
 
@@ -46,6 +51,24 @@ function rearm(): void {
   armGestureListeners();
 }
 
+/**
+ * Does this context need starting?
+ *
+ * Not `state === 'suspended'`: WebKit does not suspend a context that another
+ * audio session has taken over — it INTERRUPTS it and reports
+ * `state === 'interrupted'`, a WebKit-only value that is not in the spec's
+ * `AudioContextState` (which is why this is written as two `!==` rather than a
+ * list of the states that do need a resume — tsc rejects a comparison against
+ * a value the type does not have). The other audio session, here, is the 999
+ * call the practice has just placed on this same phone.
+ *
+ * 'closed' is excluded deliberately: resume() on a closed context rejects, and
+ * nothing recovers it, so retrying only produces noise.
+ */
+function needsResume(ctx: AudioContext): boolean {
+  return ctx.state !== 'running' && ctx.state !== 'closed';
+}
+
 export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as {
@@ -65,13 +88,21 @@ export function getAudioContext(): AudioContext | null {
       return null;
     }
   }
-  if (sharedCtx.state === 'suspended') {
+  if (needsResume(sharedCtx) && !resumePending) {
     // Outside a gesture iOS rejects resume(). That is expected, not fatal —
     // swallow it so it is never an unhandled rejection, and (same reason as
     // above) never a throw that escapes getAudioContext.
+    const settled = () => { resumePending = false; };
     try {
-      void sharedCtx.resume().catch(() => { /* stays suspended until the next gesture */ });
-    } catch { /* no promise-returning resume (very old WebKit) */ }
+      resumePending = true;
+      void sharedCtx.resume()
+        .catch(() => { /* stays suspended until the next gesture */ })
+        .then(settled, settled);
+    } catch {
+      // No promise-returning resume (very old WebKit) — nothing will settle,
+      // so release the guard now or the next tick would never try again.
+      resumePending = false;
+    }
   }
   return sharedCtx;
 }
@@ -96,14 +127,19 @@ export function unlockAudio(): void {
   }
 }
 
-// Coming back from the background, iOS can hand speechSynthesis back in a
-// paused state. speak() then queues silently forever — the app looks like it is
-// narrating and says nothing. resume() is a no-op when it is not paused.
+// Coming back from the background, iOS can hand the speech queue back wedged:
+// speak() then queues silently forever — the app looks like it is narrating and
+// says nothing. Called unconditionally rather than behind `paused`, because on
+// iOS `paused` does not reliably report it (the queue wedges with
+// `paused === false` too) and resume() is a spec no-op when nothing is paused.
+//
+// Note what is NOT here: a cancel() on the way to hidden. It would stop a
+// queued instruction being read to an empty room, but it also throws away a
+// HALF-SPOKEN one, and the operator returns to a step they heard three words
+// of. Mid-emergency a stutter is the better failure.
 function resumeStuckSpeech(): void {
   try {
-    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.paused) {
-      speechSynthesis.resume();
-    }
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.resume();
   } catch { /* ignore */ }
 }
 
@@ -118,7 +154,7 @@ function handleVisibilityChange(): void {
     // here would be born suspended and unresumable, and the real gesture would
     // then find one already cached and skip the prime.
     const ctx = sharedCtx;
-    if (ctx && ctx.state === 'suspended') {
+    if (ctx && needsResume(ctx)) {
       let pending: unknown;
       try {
         pending = (ctx as { resume?: () => unknown }).resume?.();
@@ -126,8 +162,14 @@ function handleVisibilityChange(): void {
         pending = undefined;
       }
       if (pending && typeof (pending as Promise<void>).then === 'function') {
-        // Rejected resume (iOS still wants a gesture) — make the next tap count.
-        void (pending as Promise<void>).then(undefined, rearm);
+        // Decide on the STATE once it settles, whichever way it settled. A
+        // rejection is the obvious failure, but the common iOS one is a resume
+        // that RESOLVES while the context stays suspended — which is why Howler
+        // and Tone.js poll state rather than trust the promise. Believing the
+        // resolution there leaves `unlocked` latched and the listeners
+        // detached, so the next tap primes nothing.
+        const check = () => { if (needsResume(ctx)) rearm(); };
+        void (pending as Promise<void>).then(check, check);
       } else {
         // Old WebKit: resume() is callback-style and returns nothing, or is not
         // there at all. No way to learn whether it worked, so assume not.
@@ -163,4 +205,5 @@ export function __resetForTests(): void {
   sharedCtx = null;
   unlocked = false;
   listenersArmed = false;
+  resumePending = false;
 }
