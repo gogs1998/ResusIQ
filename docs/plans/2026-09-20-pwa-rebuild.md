@@ -121,7 +121,7 @@ export function installAudioUnlock(): void {
 
 export function __resetForTests(): void { sharedCtx = null; unlocked = false; }
 ```
-In `src/main.tsx`, import and call `installAudioUnlock()` before render. In `useTimer.ts` `playClick`: replace `new AudioContext()` with `getAudioContext()` and early-return if null.
+In `src/main.tsx`, import and call `installAudioUnlock()` before render. In `useTimer.ts` `playClick`: replace `new AudioContext()` with `getAudioContext()` and early-return if null. **Also remove `audioContextRef` and its unmount `close()`** — with a shared context, closing it on CPR-mode unmount permanently silences ALL later audio (a closed AudioContext is terminal and the lazy guard never recreates it); leave a comment that the context is owned by `lib/audioUnlock`. In `audioUnlock.ts`, wrap `new Ctor()` in try/catch (return null) so a Web Audio failure never blocks the speechSynthesis prime, and `.catch(() => {})` the `resume()` promise (`playClick` calls it every beat). Add a metronome mount/unmount test asserting `close` is never called. *(Amended 2026-09-20 after the Task 0.1 code-quality review.)*
 
 **Step 4:** run the test file → PASS. **Step 5:** run the full gate. **Step 6:** commit `fix(audio): unlock speech + AudioContext inside the first user gesture`.
 
@@ -146,6 +146,24 @@ In `src/main.tsx`, import and call `installAudioUnlock()` before render. In `use
 **Files:** `src/components/ProtocolRunner.tsx` (main `ref` + scroll-to-top on `currentStepIndex`; `<main>` overflow-y auto fallback), `CPRMode.tsx:177` (`minHeight: 'min(300px, 100%)'`), `TriageWizard.tsx:180,238` (`justifyContent: 'safe center'`) + result screen `safe-area-bottom`, `AIAssistant.tsx` + `ProtocolLibrary.tsx:106,196` `safe-area-bottom`, `vite.config.ts` `theme_color`/`background_color` → `#0C1118`, `Deck.tsx:146` `40vh`→`40dvh`, and change the five shells' `height: '100dvh'` → `'100%'`.
 **Test:** `src/__tests__/layoutInvariants.test.ts` — grep-style assertions that no component file contains `height: '100dvh'` and that the three named containers include `safe-area-bottom`.
 **Commit:** `fix(layout): scroll reset, safe-area-bottom, landscape fallback, shells use 100%`.
+
+### Task 0.5: Re-arm audio after backgrounding
+
+**Files:** Modify `src/lib/audioUnlock.ts`; Test: extend `src/__tests__/audioUnlock.test.ts`.
+
+iOS suspends the shared `AudioContext` when the PWA is backgrounded — realistic mid-emergency, because the same phone often dialled 999. `src/lib/wakeLock.ts` already has the house pattern (`handleVisibilityChange` → re-acquire on `visible`). Mirror it: on `visibilitychange` → `visible`, call `resume()` on the shared context; if it rejects (Safari refuses outside a gesture), re-arm the one-shot gesture listeners (`installAudioUnlock` must be idempotent — track whether listeners are armed) and reset `unlocked` so the next tap primes again.
+
+**Step 1: Failing tests** — (i) with a stubbed context whose `resume` resolves, dispatching `visibilitychange` with `document.visibilityState === "visible"` calls `resume` once; (ii) with `resume` rejecting, the next `pointerdown` calls `speechSynthesis.speak` again (the one-shot listeners were re-armed and `unlocked` reset). **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS + full gate. **Step 5:** commit `fix(audio): re-arm the shared context and gesture unlock after backgrounding`.
+
+Also add the two old-WebKit probe tests the 0.1 review left as nice-to-have: `resume()` returning `undefined`, and a context with no `resume()` at all — both must not throw and must still let `unlockAudio()` prime speech (they pin the only unpinned guard in `audioUnlock.ts`). **Device check (cannot be automated):** install the PWA on an iPhone → collapse door → first narration audible → CPR → metronome ticks → background 10 s → return → both still work. Record the result in memory; the unit tests prove priming fires, not that iOS accepts it.
+
+### Task 0.6: Persist training mode; resume banner
+
+**Files:** `src/store/appStore.ts` (`partialize` + `migrate`: add `isTrainingMode`), `src/components/ProtocolRunner.tsx` (banner); tests in `appStore.test.ts` and `ProtocolRunner` tests.
+
+Found during Task 0.2: `isTrainingMode` is not persisted, so a reload silently turns training mode OFF and drops the 999 dial guard — a drill could ring a real ambulance. Persist it (version bump + migrate). Separately, a resumed emergency currently drops the team into `ProtocolRunner` mid-protocol with no signal that it is a resume and the elapsed clock jumps: add a one-line, non-blocking banner in the runner header area — `Resumed — started HH:MM` — shown only when the store rehydrated an active emergency (set a transient `resumedAt` in the rehydrate handler; clear it on the next step change). No blocking prompt on the emergency path.
+
+**Steps:** failing tests (training flag survives rehydrate; dial guard still active after rehydrate; banner renders only on resume and disappears on step change) → implement → gate → commit `fix(store,runner): persist training mode; show a resume banner`.
 
 ---
 
