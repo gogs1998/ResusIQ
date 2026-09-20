@@ -164,21 +164,15 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
 
       {/* Centre — the compression counter is the whole screen.
           Scrolls rather than clips: opening the deck below shrinks this region,
-          and the pacing display must survive that (`safe center` keeps the top
-          reachable when the content no longer fits). */}
+          and the pacing display must survive that. `stack-center` keeps it
+          centred while there is room and lets it start at the top — reachable —
+          when there is not. `cpr-pacing` is its height floor, which a landscape
+          phone releases; both live in index.css with the reasoning. */}
       <main
-        className="flex-1 flex flex-col items-center"
+        className="flex-1 flex flex-col items-center stack-center cpr-pacing"
         style={{
           padding: '8px 20px',
-          // A floor under the pacing display. The deck below may shrink this
-          // region, but the ring, its counter and the breath warning are what
-          // the operator is compressing against — below roughly this height they
-          // stop being usable at arm's length, and the region scrolls instead.
-          // Capped at 100% so a landscape phone (~375 tall) doesn't have the
-          // floor push the ring off the bottom of a shell shorter than 300px.
-          minHeight: 'min(300px, 100%)',
           overflowY: 'auto',
-          justifyContent: 'safe center',
         }}
       >
         {/* Eyebrow — red dot + push-hard shout */}
@@ -294,7 +288,7 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           counter or the pulse ring, and it cannot swallow a tap meant for them.
           Its panel is capped shorter than the runner's for the same reason. */}
       <div style={{ background: 'var(--surface-inset)', paddingBottom: 'var(--sab)', flexShrink: 0 }}>
-        <Deck panelMaxHeight="30vh" />
+        <Deck panelMaxHeight="30dvh" />
       </div>
 
       {/* AED Shock dialog */}

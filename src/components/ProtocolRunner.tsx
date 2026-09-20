@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useCallback, useState, useRef } from 'react';
 import {
   ArrowLeft,
   Phone,
@@ -119,10 +119,14 @@ export function ProtocolRunner() {
   // the bottom, followed by a short one, opened already scrolled down — the new
   // step's first line off-screen, with nothing on the screen saying so. Every
   // step starts at its own top.
+  // useLayoutEffect, not useEffect: this runs before the browser paints, so the
+  // new step is never shown for a frame at the old scroll offset. Setting
+  // scrollTop directly rather than scrollTo() — it is the property every engine
+  // has had since forever, needs no feature guard, and jsdom records it, so the
+  // reset is actually asserted in the test rather than spied on.
   const stepPaneRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    // jsdom has no scrollTo on elements; guard rather than throw in tests.
-    stepPaneRef.current?.scrollTo?.({ top: 0 });
+  useLayoutEffect(() => {
+    if (stepPaneRef.current) stepPaneRef.current.scrollTop = 0;
   }, [currentStepIndex, activeProtocol?.id]);
 
   // Dose limit for this step, derived from the event log on every render rather

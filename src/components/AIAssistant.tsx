@@ -392,176 +392,184 @@ export function AIAssistant() {
       </div>
 
       {/* Main content — the bottom-most element in the flow (the Sheet below is
-          an overlay), so it carries the home-indicator padding. */}
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row items-center justify-center p-6 gap-8 overflow-y-auto safe-area-bottom">
-        {/* Left: Activate button */}
-        <div className="flex flex-col items-center space-y-8">
-          {!isActive && !isConnecting && (
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center justify-center p-4 rounded-full" style={{ background: 'var(--ai-tint)' }}>
-                <Mic className="w-10 h-10" style={{ color: 'var(--ai-from)' }} />
+          an overlay), so it carries the home-indicator padding.
+
+          Two elements, not one. The outer is the scroller and centres with
+          stack-center (see index.css); it stays a column at every width,
+          because auto margins in a ROW would pin its child to the bottom edge
+          instead of centring it. The inner owns the column/row layout, and has
+          no height of its own, so it cannot clip anything. */}
+      <div className="flex-1 min-h-0 flex flex-col stack-center p-6 overflow-y-auto safe-area-bottom">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+          {/* Left: Activate button */}
+          <div className="flex flex-col items-center space-y-8">
+            {!isActive && !isConnecting && (
+              <div className="text-center space-y-3">
+                <div className="inline-flex items-center justify-center p-4 rounded-full" style={{ background: 'var(--ai-tint)' }}>
+                  <Mic className="w-10 h-10" style={{ color: 'var(--ai-from)' }} />
+                </div>
+                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Voice Emergency Mode</h2>
+                <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-3)' }}>
+                  Describe the emergency. The AI will diagnose, display protocols, and guide you step-by-step.
+                </p>
               </div>
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Voice Emergency Mode</h2>
-              <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-3)' }}>
-                Describe the emergency. The AI will diagnose, display protocols, and guide you step-by-step.
-              </p>
-            </div>
-          )}
-
-          {error && (
-            <div className="px-4 py-3 rounded-xl w-full max-w-sm text-center text-sm" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 25%, transparent)', color: 'var(--red)' }}>
-              {error}
-            </div>
-          )}
-
-          {/* Animated mic button */}
-          <div className="relative flex items-center justify-center w-56 h-56">
-            {isActive && (
-              <>
-                <motion.div
-                  animate={{ scale: 1 + volume * 1.5, opacity: 0.5 + volume * 0.5 }}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: 'var(--ai-tint)' }}
-                />
-                <motion.div
-                  animate={{ scale: 1 + volume * 0.8, opacity: 0.8 }}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-                  className="absolute inset-4 rounded-full"
-                  style={{ background: 'var(--ai-tint)' }}
-                />
-              </>
             )}
 
-            <button
-              onClick={isActive ? stopSession : startSession}
-              disabled={isConnecting}
-              className={`relative z-10 flex flex-col items-center justify-center w-44 h-44 rounded-full transition-all duration-300 ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
-              style={isActive
-                ? { background: 'var(--surface-1)', border: '4px solid var(--ai-from)' }
-                : { background: 'linear-gradient(140deg, var(--ai-from), var(--ai-to))', boxShadow: 'var(--glow-ai)' }}
-            >
-              {isConnecting ? (
-                <Activity className="w-14 h-14 animate-pulse" style={{ color: 'var(--ai-from)' }} />
-              ) : isActive ? (
+            {error && (
+              <div className="px-4 py-3 rounded-xl w-full max-w-sm text-center text-sm" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 25%, transparent)', color: 'var(--red)' }}>
+                {error}
+              </div>
+            )}
+
+            {/* Animated mic button */}
+            <div className="relative flex items-center justify-center w-56 h-56">
+              {isActive && (
                 <>
-                  <Square className="w-10 h-10 mb-2" style={{ color: 'var(--ai-from)' }} fill="currentColor" />
-                  <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--ai-from)' }}>
-                    Stop
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Mic className="w-14 h-14 mb-2" style={{ color: 'var(--text-on-color)' }} />
-                  <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--text-on-color)' }}>
-                    Activate
-                  </span>
+                  <motion.div
+                    animate={{ scale: 1 + volume * 1.5, opacity: 0.5 + volume * 0.5 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: 'var(--ai-tint)' }}
+                  />
+                  <motion.div
+                    animate={{ scale: 1 + volume * 0.8, opacity: 0.8 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
+                    className="absolute inset-4 rounded-full"
+                    style={{ background: 'var(--ai-tint)' }}
+                  />
                 </>
               )}
-            </button>
+
+              <button
+                onClick={isActive ? stopSession : startSession}
+                disabled={isConnecting}
+                className={`relative z-10 flex flex-col items-center justify-center w-44 h-44 rounded-full transition-all duration-300 ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                style={isActive
+                  ? { background: 'var(--surface-1)', border: '4px solid var(--ai-from)' }
+                  : { background: 'linear-gradient(140deg, var(--ai-from), var(--ai-to))', boxShadow: 'var(--glow-ai)' }}
+              >
+                {isConnecting ? (
+                  <Activity className="w-14 h-14 animate-pulse" style={{ color: 'var(--ai-from)' }} />
+                ) : isActive ? (
+                  <>
+                    <Square className="w-10 h-10 mb-2" style={{ color: 'var(--ai-from)' }} fill="currentColor" />
+                    <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--ai-from)' }}>
+                      Stop
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-14 h-14 mb-2" style={{ color: 'var(--text-on-color)' }} />
+                    <span className="font-bold tracking-widest uppercase text-xs" style={{ color: 'var(--text-on-color)' }}>
+                      Activate
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <p
+              className={`text-sm font-medium uppercase tracking-widest transition-colors duration-300 ${isActive ? 'animate-pulse' : ''}`}
+              style={{ color: isActive ? 'var(--ai-from)' : 'var(--text-3)' }}
+            >
+              {statusText}
+            </p>
           </div>
 
-          <p
-            className={`text-sm font-medium uppercase tracking-widest transition-colors duration-300 ${isActive ? 'animate-pulse' : ''}`}
-            style={{ color: isActive ? 'var(--ai-from)' : 'var(--text-3)' }}
-          >
-            {statusText}
-          </p>
-        </div>
-
-        {/* Right: Protocol display panel */}
-        <AnimatePresence>
-          {protocolDisplay && (
-            <motion.div
-              role="region"
-              aria-live="polite"
-              aria-label={`${protocolDisplay.title} protocol`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="max-w-md w-full cs-card p-5"
-            >
-              <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg" style={{ background: `color-mix(in srgb, ${protocolDisplay.color} 18%, transparent)` }}>
-                    <HeartPulse className="w-5 h-5" style={{ color: protocolDisplay.color }} />
+          {/* Right: Protocol display panel */}
+          <AnimatePresence>
+            {protocolDisplay && (
+              <motion.div
+                role="region"
+                aria-live="polite"
+                aria-label={`${protocolDisplay.title} protocol`}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="max-w-md w-full cs-card p-5"
+              >
+                <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg" style={{ background: `color-mix(in srgb, ${protocolDisplay.color} 18%, transparent)` }}>
+                      <HeartPulse className="w-5 h-5" style={{ color: protocolDisplay.color }} />
+                    </div>
+                    <h2 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>{protocolDisplay.title}</h2>
                   </div>
-                  <h2 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>{protocolDisplay.title}</h2>
-                </div>
-                <button
-                  onClick={() => setActiveProtocol(null)}
-                  aria-label="Dismiss protocol"
-                  className="p-1 rounded active:opacity-70"
-                >
-                  <X className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                {/* Steps */}
-                <div>
-                  <h3 className="cs-eyebrow mb-2 flex items-center gap-2">
-                    <Info className="w-3 h-3" /> Immediate Actions
-                  </h3>
-                  <ul className="space-y-2">
-                    {protocolDisplay.steps.map((step, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
-                        <span className="cs-numeric flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5" style={{ background: 'var(--surface-2)', color: 'var(--text-3)' }}>
-                          {idx + 1}
-                        </span>
-                        <span className="leading-relaxed">{step}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <button
+                    onClick={() => setActiveProtocol(null)}
+                    aria-label="Dismiss protocol"
+                    className="p-1 rounded active:opacity-70"
+                  >
+                    <X className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                  </button>
                 </div>
 
-                {/* Drugs */}
-                {protocolDisplay.drugs && (
-                  <div className="rounded-xl p-3" style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)' }}>
-                    <h3 className="cs-eyebrow mb-2 flex items-center gap-2" style={{ color: 'var(--drug)' }}>
-                      <Pill className="w-3 h-3" /> Emergency Drugs
+                <div className="space-y-5">
+                  {/* Steps */}
+                  <div>
+                    <h3 className="cs-eyebrow mb-2 flex items-center gap-2">
+                      <Info className="w-3 h-3" /> Immediate Actions
                     </h3>
-                    <ul className="space-y-1">
-                      {protocolDisplay.drugs.map((drug, idx) => (
-                        <li key={idx} className="font-medium text-sm" style={{ color: 'var(--drug)' }}>
-                          • {drug}
+                    <ul className="space-y-2">
+                      {protocolDisplay.steps.map((step, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                          <span className="cs-numeric flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5" style={{ background: 'var(--surface-2)', color: 'var(--text-3)' }}>
+                            {idx + 1}
+                          </span>
+                          <span className="leading-relaxed">{step}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )}
 
-                {/* CPR Metronome */}
-                {protocolDisplay.isCPR && (
-                  <div className="p-4 rounded-xl flex flex-col items-center" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)' }}>
-                    <h3 className="cs-eyebrow mb-3" style={{ color: 'var(--red)' }}>
-                      CPR Metronome (110 BPM)
-                    </h3>
-                    <motion.div
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ duration: 60 / 110, repeat: Infinity, ease: 'linear' }}
-                      className="w-14 h-14 rounded-full flex items-center justify-center"
-                      style={{ background: 'var(--red)', boxShadow: 'var(--glow-red)' }}
+                  {/* Drugs */}
+                  {protocolDisplay.drugs && (
+                    <div className="rounded-xl p-3" style={{ background: 'var(--surface-inset)', border: '1px solid var(--border)' }}>
+                      <h3 className="cs-eyebrow mb-2 flex items-center gap-2" style={{ color: 'var(--drug)' }}>
+                        <Pill className="w-3 h-3" /> Emergency Drugs
+                      </h3>
+                      <ul className="space-y-1">
+                        {protocolDisplay.drugs.map((drug, idx) => (
+                          <li key={idx} className="font-medium text-sm" style={{ color: 'var(--drug)' }}>
+                            • {drug}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* CPR Metronome */}
+                  {protocolDisplay.isCPR && (
+                    <div className="p-4 rounded-xl flex flex-col items-center" style={{ background: 'var(--red-tint)', border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)' }}>
+                      <h3 className="cs-eyebrow mb-3" style={{ color: 'var(--red)' }}>
+                        CPR Metronome (110 BPM)
+                      </h3>
+                      <motion.div
+                        animate={{ scale: [1, 1.3, 1] }}
+                        transition={{ duration: 60 / 110, repeat: Infinity, ease: 'linear' }}
+                        className="w-14 h-14 rounded-full flex items-center justify-center"
+                        style={{ background: 'var(--red)', boxShadow: 'var(--glow-red)' }}
+                      >
+                        <HeartPulse className="w-7 h-7" style={{ color: 'var(--text-on-color)' }} />
+                      </motion.div>
+                    </div>
+                  )}
+
+                  {/* Switch to full protocol button */}
+                  {protocolDisplay.id && (
+                    <button
+                      onClick={() => launchFullProtocol(protocolDisplay.id)}
+                      className="w-full font-bold py-3 px-4 rounded-xl text-sm active:opacity-90 transition-opacity"
+                      style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
                     >
-                      <HeartPulse className="w-7 h-7" style={{ color: 'var(--text-on-color)' }} />
-                    </motion.div>
-                  </div>
-                )}
-
-                {/* Switch to full protocol button */}
-                {protocolDisplay.id && (
-                  <button
-                    onClick={() => launchFullProtocol(protocolDisplay.id)}
-                    className="w-full font-bold py-3 px-4 rounded-xl text-sm active:opacity-90 transition-opacity"
-                    style={{ background: 'var(--brand)', color: 'var(--text-on-light)', minHeight: 'var(--touch-min)' }}
-                  >
-                    Open Full Protocol Guide →
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      Open Full Protocol Guide →
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* API Key dialog */}

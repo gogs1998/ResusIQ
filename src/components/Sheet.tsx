@@ -78,7 +78,7 @@ export function Sheet({ open, onClose, title, accent = 'var(--text-1)', icon, ch
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:mx-4"
+        className="w-full sm:max-w-lg max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:mx-4"
         style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', boxShadow: 'var(--elev-modal)' }}
       >
         <div

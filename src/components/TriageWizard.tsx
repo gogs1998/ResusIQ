@@ -179,10 +179,10 @@ export function TriageWizard() {
 
         {/* The result screen has no footer, so this scrolling pane is the
             bottom-most element and owns the home-indicator padding.
-            `safe center` rather than Tailwind's justify-center: plain centring
-            pushes the top of overflowing content above the scroll origin,
-            where it can never be read. */}
-        <main className="flex-1 overflow-y-auto flex flex-col safe-area-bottom" style={{ padding: '16px 18px', minHeight: 0, justifyContent: 'safe center' }}>
+            `stack-center` rather than justify-center: plain centring pushes the
+            top of overflowing content above the scroll origin, where it can
+            never be read. See index.css. */}
+        <main className="flex-1 overflow-y-auto flex flex-col stack-center safe-area-bottom" style={{ padding: '16px 18px', minHeight: 0 }}>
           <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
             <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', flexShrink: 0 }} />
             <span className="font-extrabold" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
@@ -240,8 +240,12 @@ export function TriageWizard() {
       </header>
 
       {/* Question — the hero, with one-tap Yes / No answer cards */}
-      <main className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 18px', minHeight: 0, justifyContent: 'safe center' }}>
-        <h2 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.16, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', margin: 0 }}>
+      {/* stack-center, not justify-center — see index.css. The question <h2> is
+          the first child, so it must NOT set margin-top (not even via the
+          `margin` shorthand): that would beat the utility's auto margin and the
+          question would sit against the top of the pane. */}
+      <main className="flex-1 overflow-y-auto flex flex-col stack-center" style={{ padding: '16px 18px', minHeight: 0 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.16, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', marginBottom: 0 }}>
           {currentQuestion?.text}
         </h2>
 

@@ -97,6 +97,42 @@ input, select, textarea, button {
   padding-right: env(safe-area-inset-right);
 }
 
+/* ── Centring a scroller ──────────────────────────────────────
+   Centre a flex column's content without ever pushing it above the scroll
+   origin. `justify-content: center` clips: once the content is taller than the
+   box, the overflow goes off BOTH ends and the top is unreachable at any scroll
+   position. `justify-content: safe center` fixes that, but needs iOS Safari
+   17.6 — practices running an iPhone 8 or X are on iOS 16, where the whole
+   declaration is dropped and the centring silently disappears.
+
+   Auto margins are the version that works everywhere: they absorb the free
+   space when there is some, and resolve to 0 when there is none, so overflowing
+   content simply starts at the top. Do NOT put justify-content on these
+   containers as well — it would take precedence over the auto margins.
+
+   Direct children must not set their own margin-top / margin-bottom (inline or
+   `mt-*`/`mb-*`): that beats this rule and the end goes uncentred. Wrap in a
+   div if a child needs its own. */
+.stack-center > :first-child { margin-top: auto; }
+.stack-center > :last-child { margin-bottom: auto; }
+
+/* ── CPR pacing floor ─────────────────────────────────────────
+   A floor under the compression pacing display. The Deck below may shrink the
+   region, but the ring, its counter and the breath warning are what the
+   operator is compressing against — below roughly this height they stop being
+   usable at arm's length, and the region scrolls instead.
+
+   On a genuinely short viewport (a phone in landscape is ~375 tall) the floor
+   has to come off entirely: the shell is overflow:hidden, so a 300px floor
+   plus the header pushes the footer and the Deck off the bottom where they
+   cannot be reached at all. A `min(300px, 100%)` cap does NOT do this — the
+   percentage resolves against a definite shell height and always comes out
+   300. Only a media query releases it. */
+.cpr-pacing { min-height: 300px; }
+@media (max-height: 520px) {
+  .cpr-pacing { min-height: 0; }
+}
+
 /* ── Scrollbar (desktop) ─────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 4px;
