@@ -741,7 +741,8 @@ export const useAppStore = create<AppState>()(
             activeEvent: null,
             timerAnchors: {}
           };
-        } catch {
+        } catch (err) {
+          console.error('[appStore] persist merge failed; falling back to in-memory defaults', err);
           return { ...currentState };
         }
       },
