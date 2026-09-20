@@ -146,6 +146,140 @@ describe('layout invariants — centring a scroller', () => {
     expect(hits, `'safe center' needs iOS 17.6:\n${hits.join('\n')}`).toEqual([]);
   });
 
+  // The utility works by putting `margin-top: auto` on the first child and
+  // `margin-bottom: auto` on the last. An explicit margin on either of those
+  // ends — `marginTop` / `marginBottom`, the `margin:` shorthand, or a Tailwind
+  // `mt-*` / `mb-*` / `my-*` / `m-*` class — has equal specificity and wins on
+  // source order, so the auto margin silently stops applying and the content
+  // sticks to that edge. Nothing about that failure is visible in a unit test
+  // or in review; it is a style attribute six lines away from a class name. So
+  // the contract is pinned by reading the source.
+
+  // JSX comments are blanked (not removed) so line numbers and indentation are
+  // preserved: three of the four containers below are introduced by a comment
+  // that itself says "stack-center", and a naive scan finds those first.
+  const blankComments = (text: string) =>
+    text
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => m.replace(/[^\n]/g, ' '))
+      .split('\n')
+      .map((l) => (/^\s*\/\//.test(l) ? '' : l))
+      .join('\n');
+
+  const indentOf = (l: string) => l.length - l.trimStart().length;
+  const opensElement = (l: string) => /^\s*<[A-Za-z]/.test(l);
+  const endsTag = (l: string) => /\/?>\s*$/.test(l);
+
+  interface EndChild {
+    where: string;
+    text: string;
+  }
+
+  /**
+   * For each `stack-center` container in a component file, return the full
+   * opening tag of its first and last DIRECT child.
+   *
+   * Structure is read from indentation rather than by parsing JSX: this
+   * codebase indents consistently, and a real parser here would be more
+   * machinery than the invariant is worth. A child introduced by a conditional
+   * (`{cond && (`) is not counted as an end child — those are the ones whose
+   * margins do not decide the resting layout anyway.
+   */
+  const stackCenterEnds = (file: string): Array<{ first: EndChild; last: EndChild }> => {
+    const lines = blankComments(src(file)).split('\n');
+    const found: Array<{ first: EndChild; last: EndChild }> = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].includes('stack-center')) continue;
+
+      // CPRMode puts className on its own line, so walk back to the `<tag`.
+      let open = i;
+      while (open > 0 && !opensElement(lines[open])) open--;
+      expect(opensElement(lines[open]), `${file}:${i + 1}: no opening tag above stack-center`).toBe(true);
+      const indent = indentOf(lines[open]);
+
+      let tagEnd = open;
+      while (tagEnd < lines.length && !endsTag(lines[tagEnd])) tagEnd++;
+
+      let close = tagEnd + 1;
+      while (close < lines.length && !(indentOf(lines[close]) === indent && /^\s*<\//.test(lines[close]))) close++;
+      expect(close, `${file}:${open + 1}: no closing tag for the stack-center container`).toBeLessThan(lines.length);
+
+      const childStarts: number[] = [];
+      for (let j = tagEnd + 1; j < close; j++) {
+        if (!lines[j].trim()) continue;
+        if (indentOf(lines[j]) !== indent + 2) continue;
+        if (!opensElement(lines[j])) continue;
+        childStarts.push(j);
+      }
+      expect(childStarts.length, `${file}:${open + 1}: no direct children found`).toBeGreaterThan(0);
+
+      // A child's opening tag can span several lines (CPRMode's metronome
+      // button carries its style four lines below `<button`), so take the whole
+      // tag, not just the line that starts it.
+      const tagAt = (j: number) => {
+        let end = j;
+        while (end < close && !endsTag(lines[end])) end++;
+        return { where: `${file}:${j + 1}`, text: lines.slice(j, end + 1).join(' ') };
+      };
+
+      found.push({
+        first: tagAt(childStarts[0]),
+        last: tagAt(childStarts[childStarts.length - 1]),
+      });
+    }
+    return found;
+  };
+
+  const MARGIN_SHORTHAND = /\bmargin\s*:/;
+  const TW_ALL_SIDES = /\bm-\d/;
+  const TW_BLOCK_AXIS = /\bmy-\d/;
+
+  it('finds every stack-center container (the sweep is not vacuous)', () => {
+    const files = COMPONENT_FILES.filter((f) => src(f).includes('stack-center'));
+    expect(files.length, 'no component uses stack-center — the sweep below proves nothing')
+      .toBeGreaterThanOrEqual(3);
+    const total = files.reduce((n, f) => n + stackCenterEnds(f).length, 0);
+    expect(total, 'stack-center containers located').toBeGreaterThanOrEqual(4);
+  });
+
+  it('no first child of a stack-center container sets a top margin', () => {
+    const hits: string[] = [];
+    for (const file of COMPONENT_FILES) {
+      if (!src(file).includes('stack-center')) continue;
+      for (const { first } of stackCenterEnds(file)) {
+        if (
+          /\bmarginTop\s*:/.test(first.text) ||
+          MARGIN_SHORTHAND.test(first.text) ||
+          TW_ALL_SIDES.test(first.text) ||
+          TW_BLOCK_AXIS.test(first.text) ||
+          /\bmt-\d/.test(first.text)
+        ) {
+          hits.push(`${first.where}: ${first.text.trim().slice(0, 140)}`);
+        }
+      }
+    }
+    expect(hits, `first children beating margin-top:auto:\n${hits.join('\n')}`).toEqual([]);
+  });
+
+  it('no last child of a stack-center container sets a bottom margin', () => {
+    const hits: string[] = [];
+    for (const file of COMPONENT_FILES) {
+      if (!src(file).includes('stack-center')) continue;
+      for (const { last } of stackCenterEnds(file)) {
+        if (
+          /\bmarginBottom\s*:/.test(last.text) ||
+          MARGIN_SHORTHAND.test(last.text) ||
+          TW_ALL_SIDES.test(last.text) ||
+          TW_BLOCK_AXIS.test(last.text) ||
+          /\bmb-\d/.test(last.text)
+        ) {
+          hits.push(`${last.where}: ${last.text.trim().slice(0, 140)}`);
+        }
+      }
+    }
+    expect(hits, `last children beating margin-bottom:auto:\n${hits.join('\n')}`).toEqual([]);
+  });
+
   it('no scrolling container centres with Tailwind justify-center', () => {
     // The two that regressed: TriageWizard's <main>s, and AIAssistant's column
     // once it became a real scroller (h-full shell + min-h-0). A scroller is
