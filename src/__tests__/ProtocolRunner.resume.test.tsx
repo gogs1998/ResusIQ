@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ProtocolRunner } from '../components/ProtocolRunner';
 import { TrainingDialGuard } from '../components/TrainingDialGuard';
+import { EventReports } from '../components/EventReports';
 import { useAppStore } from '../store/appStore';
 import { hhmm } from '../lib/emergencyTimers';
 
@@ -155,10 +156,50 @@ describe('a drill that survives a reload keeps its 999 guard', () => {
   });
 });
 
+// The other outcome of the same reload: the emergency could NOT be resumed, so
+// merge closed it into history. What that archived record then says about
+// itself is a medico-legal question, not a cosmetic one — "Completed" would
+// claim the team finished, when in fact the app restarted and the guide could
+// not be picked up.
+describe('the record of a restart that could not resume', () => {
+  it('reads as closed, not completed', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        state: {
+          practiceSetup: null,
+          eventHistory: [],
+          isVoiceEnabled: true,
+          isEmergencyActive: true,
+          // Gone from the data — the one thing that makes a resume impossible
+          // while the record itself is perfectly good.
+          activeProtocolId: 'no_such_protocol',
+          currentStepIndex: 2,
+          activeEvent: anEvent(),
+          timerAnchors: {},
+        },
+        version: VERSION,
+      })
+    );
+
+    await act(async () => {
+      await useAppStore.persist.rehydrate();
+    });
+    expect(useAppStore.getState().eventHistory).toHaveLength(1);
+
+    render(<EventReports />);
+
+    expect(container.textContent).toContain('Record closed');
+    expect(container.textContent).not.toContain('Completed');
+  });
+});
+
 describe('resume banner', () => {
   const bannerText = () => {
+    // Case-insensitive: the drill variant leads with "Training drill —", so the
+    // word is lower-case there.
     const el = [...container.querySelectorAll('[role="status"]')].find((n) =>
-      n.textContent?.includes('Resumed')
+      /resumed/i.test(n.textContent ?? '')
     );
     return el?.textContent ?? null;
   };
@@ -171,7 +212,7 @@ describe('resume banner', () => {
         `${el.tagName}:${el.getAttribute('aria-label') ?? ''}:${el.getAttribute('href') ?? ''}:${el.textContent}`
     );
 
-  it('tells the team they have come back, and when this started', async () => {
+  it('tells the team they have come back, and when the record started', async () => {
     seedResumable();
 
     await act(async () => {
@@ -181,10 +222,26 @@ describe('resume banner', () => {
 
     const text = bannerText();
     expect(text).not.toBeNull();
-    expect(text).toContain('Resumed');
-    expect(text).toContain('started');
-    // The START of the emergency, not the moment of the reload — that is the
-    // number the elapsed clock is counting from.
+    // "record started", not a bare "started". Clinical review 2026-09-20: on
+    // these screens "started" already means something else and something
+    // clinical — stroke onset, the seizure clock, the onset of chest pain —
+    // and a time labelled only "started" is read as that.
+    expect(text).toContain('Resumed — record started');
+    expect(text).toContain(hhmm(EVENT_STARTED_AT));
+  });
+
+  it('says so when the resumed emergency is a drill', async () => {
+    // A drill that survives a reload must not read as a real record. The dial
+    // guard is back (tested above); the screen has to say why.
+    seedResumable({ isTrainingMode: true });
+
+    await act(async () => {
+      await useAppStore.persist.rehydrate();
+    });
+    render(<ProtocolRunner />);
+
+    const text = bannerText();
+    expect(text).toContain('Training drill — resumed, record started');
     expect(text).toContain(hhmm(EVENT_STARTED_AT));
   });
 

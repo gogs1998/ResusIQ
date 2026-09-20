@@ -49,16 +49,30 @@ vi.mock('../hooks/useSpeech', async (importOriginal) => {
   };
 });
 
+// What was actually read aloud. Most cases here run muted (speak() no-ops), so
+// this stays empty for them; the terminal-voice case unmutes and reads it.
+const spoken: string[] = [];
+
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   vi.stubGlobal('speechSynthesis', {
     getVoices: () => [],
     addEventListener: () => {},
     removeEventListener: () => {},
-    speak: () => {},
+    speak: (u: { text: string }) => { spoken.push(u.text); },
     cancel: () => {},
     pause: () => {},
     resume: () => {},
+  });
+  // jsdom has no Web Speech API at all, and useSpeech constructs one of these
+  // before it calls speak().
+  vi.stubGlobal('SpeechSynthesisUtterance', class {
+    rate = 1; pitch = 1; volume = 1;
+    voice: unknown = null;
+    onstart: (() => void) | null = null;
+    onend: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(public text: string) {}
   });
 });
 
@@ -137,10 +151,15 @@ describe('holding steps', () => {
       expect(container.textContent, key).toContain(TERMINAL_LINES.holding);
       // Pinned literally as well: asserting only against the constant is a
       // tautology — rewording it to "Done — next step." would leave this green.
-      expect(container.textContent, key).toContain('check them again regularly');
+      //
+      // Clinical review 2026-09-20: no interval, and "regularly" is gone. An
+      // interval licenses looking away between checks, and on a patient this
+      // unstable the honest instruction is continuous observation.
+      expect(container.textContent, key).toContain('keep watching for any change');
+      expect(container.textContent, key).not.toContain('regularly');
       // And it must not make the terminal steps' claim: there IS a further step.
       expect(container.textContent, key).not.toContain('No further steps');
-      expect(buttonWithText('Check again'), key).toBeDefined();
+      expect(buttonWithText('Check them again'), key).toBeDefined();
       // The lie, and its hard-block twin.
       expect(buttonWithText('Done — next step'), key).toBeUndefined();
       expect(buttonWithText('Next step'), key).toBeUndefined();
@@ -201,7 +220,7 @@ describe('holding steps', () => {
 
       // Check again is navigation, not completion: the instruction is not done,
       // the team just looked again.
-      act(() => buttonWithText('Check again')!.click());
+      act(() => buttonWithText('Check them again')!.click());
       expect(currentStepId(), key).toBe(check.id);
       expect(completedCount(), `${key}: Check again logged a completion`).toBe(before);
 
@@ -235,7 +254,7 @@ describe('holding steps', () => {
     spy.mockClear(); // openStep navigates too.
 
     act(() => {
-      const again = buttonWithText('Check again')!;
+      const again = buttonWithText('Check them again')!;
       again.click();
       again.click();
     });
@@ -272,17 +291,35 @@ describe('holding steps', () => {
     }
   });
 
-  it('voice "done" on a true terminal step does nothing at all', () => {
+  it('voice "done" on a true terminal step re-speaks it instead of advancing', () => {
     // seizure#monitor_seizure has no successor, so advancing fell through to
     // the array-order neighbour: "Seizure stopped — recovery position". The
     // footer stopped offering that; the microphone was still doing it.
+    //
+    // Clinical review 2026-09-20: refusing was right, but refusing SILENTLY is
+    // its own failure. Hands-free, with nobody looking at the screen, a "done"
+    // that produces no sound at all reads as a dead app — and the team's next
+    // move is to stop trusting it. So it re-reads the step: the refusal is
+    // audible, and what it says is the guidance they are still on.
+    const protocol = protocols.find((p) => p.id === 'seizure')!;
+    const step = protocol.steps.find((s) => s.id === 'monitor_seizure')!;
+
+    reset();
+    useAppStore.setState({ isMuted: false });
     openStep('seizure', 'monitor_seizure');
+
     const indexBefore = useAppStore.getState().currentStepIndex;
     const eventsBefore = useAppStore.getState().activeEvent!.events.length;
+    spoken.length = 0;
 
     act(() => voice.say!('done'));
 
+    // Said again — the same words the screen is showing.
+    expect(spoken).toContain(step.say);
+    // ...and still nothing moved, and nothing was recorded as done.
     expect(useAppStore.getState().currentStepIndex).toBe(indexBefore);
     expect(useAppStore.getState().activeEvent!.events.length).toBe(eventsBefore);
+
+    useAppStore.setState({ isMuted: true });
   });
 });

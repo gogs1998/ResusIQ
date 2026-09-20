@@ -313,13 +313,27 @@ For audit and training purposes only.
                   >
                     {event.events.length} events
                   </span>
+                  {/* A record closed by a restart is NOT a completion. The team
+                      never finished this one — the app went away underneath
+                      them — and a green "Completed" on an archive row is a
+                      claim the record cannot support (clinical review
+                      2026-09-20). Amber, and it says what actually happened. */}
                   {event.completed && (
-                    <span
-                      className="px-3 py-1"
-                      style={{ background: 'var(--green-50)', color: 'var(--green-700)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
-                    >
-                      Completed
-                    </span>
+                    event.outcome === 'unresumable' ? (
+                      <span
+                        className="px-3 py-1"
+                        style={{ background: 'var(--warn-tint)', color: 'var(--warn)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                      >
+                        Record closed
+                      </span>
+                    ) : (
+                      <span
+                        className="px-3 py-1"
+                        style={{ background: 'var(--green-50)', color: 'var(--green-700)', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-caption)', fontWeight: 600 }}
+                      >
+                        Completed
+                      </span>
+                    )
                   )}
                 </div>
               </button>

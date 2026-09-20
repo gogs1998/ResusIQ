@@ -32,7 +32,11 @@ export type TerminalGroup = 'awaiting_crew' | 'complete' | 'holding';
 export const TERMINAL_LINES: Record<TerminalGroup, string> = {
   awaiting_crew: 'No further steps — stay with them until the crew take over.',
   complete: 'No further steps — this guide is complete.',
-  holding: 'Stay with them until the crew take over — check them again regularly.',
+  // Clinical review 2026-09-20. No interval, and no "regularly": both license
+  // looking away between checks, and the RCUK ABCDE instruction to re-assess
+  // regularly describes continuous observation of a patient this unstable, not
+  // a schedule of glances. What the team is doing here is watching.
+  holding: 'Stay with them until the crew take over — keep watching for any change.',
 };
 
 export const TERMINAL_STEPS: Readonly<Record<string, TerminalGroup>> = {
@@ -82,8 +86,8 @@ export const HOLDING_STEPS: ReadonlySet<string> = new Set([
 
 /**
  * The end-state group for this step, or null if the guidance continues.
- * 'holding' is not an end — it is the loop; the runner gives it "Check again"
- * where a true end gets no CTA at all.
+ * 'holding' is not an end — it is the loop; the runner gives it "Check them
+ * again" where a true end gets no CTA at all.
  */
 export function terminalGroup(
   protocolId: string | undefined,

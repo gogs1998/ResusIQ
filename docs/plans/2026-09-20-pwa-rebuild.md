@@ -191,6 +191,7 @@ Apply §J + §K; drop the 3–6 m row everywhere; `doseLimits` text. Test: `safe
 
 ### Task 1.6: Anaphylaxis, asthma, adrenal, stroke, syncope, headers (§C, §D, §E, §G, §H, §L)
 Text-only + references. Test: full suite green; `data-integrity` reference arrays non-empty. Commit `content: RCUK 2025 wording + citations — anaphylaxis, asthma, adrenal, stroke, syncope`.
+- Clinical (2026-09-20): anaphylaxis `continue_monitor`/`cardiac_arrest_check` needs a third answer routing to `repeat_adrenaline` for biphasic recurrence short of arrest (RCUK anaphylaxis 2021) — wording to be prescribed by the clinical reviewer before implementation; advisory: chest_pain `monitor_chest` has no route to re-escalation on worsening pain.
 
 ---
 
@@ -239,6 +240,9 @@ Files: new `src/lib/ask.ts` (tokenised search over `drugs` + `protocols`: name, 
 
 ### Task 4.2: Learn
 Move `ProtocolLibrary` + `TrainingMode` entries under `LearnScreen`; keep all content. Test: Learn lists all 10 protocols incl. the four not on the home grid. Commit `feat(learn): library and drills under one tab`.
+
+### Backlog (Phase 3/4)
+- `EmergencyEvent` needs a training flag so drills are distinguishable in history/SBAR.
 
 ---
 

@@ -256,13 +256,25 @@ function closeUnresumableEvent(event: EmergencyEvent): EmergencyEvent {
   return {
     ...event,
     completed: true,
+    // NOT 'completed' as an outcome: the team did not finish this, the app
+    // restarted underneath them. Reports keys its badge off this so the archive
+    // never claims a completion that nobody made (clinical review 2026-09-20).
+    outcome: 'unresumable',
     events: [
       ...event.events,
       {
         id: newId(),
         timestamp: new Date().toISOString(),
         type: 'custom',
-        label: 'Record closed — the emergency could not be resumed after a restart',
+        label: 'Record closed — the app restarted and the guide could not be resumed',
+        // Written for whoever reads this record later — a defence union, a
+        // coroner, the practice's own review — and it has to state the boundary
+        // precisely: what is trustworthy above this line, what was never
+        // captured, and what this entry does NOT claim.
+        details:
+          'Entries above this line are unchanged and their times are as recorded. ' +
+          'Nothing between the last entry and this one was captured. ' +
+          'This does not record how the emergency ended.',
       },
     ],
   };

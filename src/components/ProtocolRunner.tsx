@@ -93,6 +93,7 @@ export function ProtocolRunner() {
     activeEvent,
     practiceSetup,
     resumedAt,
+    isTrainingMode,
   } = useAppStore();
 
   const { speak, isSpeaking } = useSpeech();
@@ -391,6 +392,14 @@ export function ProtocolRunner() {
     });
   }, [runOnce, log999Called, performAdvance]);
 
+  // Read the current step aloud again. Declared ABOVE handleNext because that
+  // is now one of its callers (a terminal "done" re-speaks rather than falling
+  // silent) and a useCallback dependency array is evaluated eagerly — a
+  // reference to a `const` declared further down would throw on first render.
+  const handleRepeat = useCallback(() => {
+    if (currentStep) speak(currentStep.say);
+  }, [currentStep, speak]);
+
   const handleNext = useCallback(() => {
     // An end state has no ordinary "next", and the footer already says so — but
     // this handler is ALSO the hands-free path ("done" / "next" / "continue"),
@@ -401,14 +410,21 @@ export function ProtocolRunner() {
     // array-walked seizure#monitor_seizure into "Seizure stopped — recovery
     // position" — the exact defect the terminal fix removed from the screen.
     //
-    // Holding maps to the same Check again the button gives; a true terminal
-    // does nothing, matching a footer that offers no CTA at all.
+    // Holding maps to the same Check them again the button gives. A true
+    // terminal does not advance — matching a footer that offers no CTA at all —
+    // but it does NOT sit there silently either (clinical review 2026-09-20):
+    // hands-free, with nobody looking at the screen, a "done" that produces no
+    // sound reads as a dead app, and a team that thinks the app has died stops
+    // using it mid-emergency. Re-reading the step makes the refusal audible and
+    // spends the breath on the guidance they are still on.
     //
     // handleNext is also TimerDisplay's onComplete. No holding or terminal step
     // is a timer_block — a data-integrity test holds that — so this cannot
-    // swallow a countdown's expiry and park the team on a dead clock.
+    // swallow a countdown's expiry and park the team on a dead clock. The
+    // re-speak is harmless there for the same reason: it cannot be reached.
     if (endState) {
       if (endState === 'holding') checkAgain();
+      else handleRepeat();
       return;
     }
     // A hard-blocked drug step offers plain onward navigation, not another
@@ -419,7 +435,7 @@ export function ProtocolRunner() {
     } else {
       advance();
     }
-  }, [currentStep, hardBlocked, handleConfirm, advance, endState, checkAgain]);
+  }, [currentStep, hardBlocked, handleConfirm, advance, endState, checkAgain, handleRepeat]);
 
   // The backstop (R4). Once the wall clock is spent the step routes onward to
   // the still-seizing check — including on arrival, so coming back round the
@@ -430,10 +446,6 @@ export function ProtocolRunner() {
   useEffect(() => {
     if (monotonicRemaining === 0) handleNext();
   }, [monotonicRemaining, handleNext]);
-
-  const handleRepeat = useCallback(() => {
-    if (currentStep) speak(currentStep.say);
-  }, [currentStep, speak]);
 
   // Back: previous step, or — from the first step, where the control becomes an
   // X — ask before ending. On step 0 the same corner that means "go back
@@ -605,11 +617,22 @@ export function ProtocolRunner() {
               padding: '6px 10px',
               borderRadius: 'var(--radius-md)',
               background: 'var(--warn-tint)',
+              border: '1.5px solid var(--warn)',
               fontSize: 'var(--fs-body-sm)',
               color: 'var(--text-2)',
             }}
           >
-            Resumed — started {hhmm(activeEvent.timestamp)}
+            {/* "record started", never a bare "started" (clinical review
+                2026-09-20): on these screens "started" already means something
+                clinical and specific — stroke onset, the seizure clock, the
+                onset of chest pain — and a time labelled only "started" is read
+                as one of those. This time is the record's, nothing else.
+                A drill says so: a resumed drill must never read as a real
+                record, and the dial guard alone is not visible enough to say
+                which one this is. */}
+            {isTrainingMode
+              ? `Training drill — resumed, record started ${hhmm(activeEvent.timestamp)}`
+              : `Resumed — record started ${hhmm(activeEvent.timestamp)}`}
           </div>
         )}
 
@@ -874,7 +897,7 @@ export function ProtocolRunner() {
                   style={{ gap: 10, marginBottom: 10, minHeight: 'var(--touch-comfort)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
                 >
                   <ChevronRight className="w-6 h-6" />
-                  <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Check again</span>
+                  <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Check them again</span>
                 </button>
               )}
               <button
