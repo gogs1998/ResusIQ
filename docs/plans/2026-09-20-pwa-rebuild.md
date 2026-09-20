@@ -155,6 +155,14 @@ iOS suspends the shared `AudioContext` when the PWA is backgrounded — realisti
 
 Also add the two old-WebKit probe tests the 0.1 review left as nice-to-have: `resume()` returning `undefined`, and a context with no `resume()` at all — both must not throw and must still let `unlockAudio()` prime speech (they pin the only unpinned guard in `audioUnlock.ts`). **Device check (cannot be automated):** install the PWA on an iPhone → collapse door → first narration audible → CPR → metronome ticks → background 10 s → return → both still work. Record the result in memory; the unit tests prove priming fires, not that iOS accepts it.
 
+### Task 0.6: Persist training mode; resume banner
+
+**Files:** `src/store/appStore.ts` (`partialize` + `migrate`: add `isTrainingMode`), `src/components/ProtocolRunner.tsx` (banner); tests in `appStore.test.ts` and `ProtocolRunner` tests.
+
+Found during Task 0.2: `isTrainingMode` is not persisted, so a reload silently turns training mode OFF and drops the 999 dial guard — a drill could ring a real ambulance. Persist it (version bump + migrate). Separately, a resumed emergency currently drops the team into `ProtocolRunner` mid-protocol with no signal that it is a resume and the elapsed clock jumps: add a one-line, non-blocking banner in the runner header area — `Resumed — started HH:MM` — shown only when the store rehydrated an active emergency (set a transient `resumedAt` in the rehydrate handler; clear it on the next step change). No blocking prompt on the emergency path.
+
+**Steps:** failing tests (training flag survives rehydrate; dial guard still active after rehydrate; banner renders only on resume and disappears on step change) → implement → gate → commit `fix(store,runner): persist training mode; show a resume banner`.
+
 ---
 
 ## Phase 1 — RCUK 2025 clinical set (data, verbatim from the prescriptions file)
