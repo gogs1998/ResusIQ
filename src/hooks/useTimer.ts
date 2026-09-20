@@ -130,7 +130,6 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
   const { bpm = 110, onBeat } = options;
   const [isPlaying, setIsPlaying] = useState(false);
   const [beatCount, setBeatCount] = useState(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
   const onBeatRef = useRef(onBeat);
 
@@ -143,7 +142,6 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
     // callback) left it suspended forever on iOS — the metronome was silent.
     const ctx = getAudioContext();
     if (!ctx) return;
-    audioContextRef.current = ctx;
 
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -206,10 +204,10 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      // Do NOT close() the context: it is the shared, gesture-unlocked one
-      // owned by lib/audioUnlock. Closing it here would silence the whole app
-      // for the rest of the session once CPR mode unmounts.
-      audioContextRef.current = null;
+      // Deliberately NOT closing an AudioContext here. The metronome no longer
+      // owns one — it borrows the shared, gesture-unlocked context from
+      // lib/audioUnlock. Closing that on unmount would silence the whole app
+      // for the rest of the session the first time CPR mode goes away.
     };
   }, []);
 
