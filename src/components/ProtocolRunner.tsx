@@ -287,6 +287,27 @@ export function ProtocolRunner() {
 
   const advance = useCallback(() => runOnce(performAdvance), [runOnce, performAdvance]);
 
+  // "Check again" on a holding step. Navigation only — NOT an advance.
+  //
+  // The team has not completed anything by looking at the patient again; they
+  // are going back round the same loop. The event that matters is the answer
+  // they give to the deterioration decision this leads to, and chooseAnswer
+  // already logs that. Calling performAdvance here instead would log
+  // 'step_completed' for the instruction as well, so one lap of a loop a team
+  // may sit in for twenty minutes would read as two completions each time.
+  //
+  // It also skips runStepActions deliberately: none of the three holding steps
+  // declares actions (a data-integrity test holds that, and fails loudly if one
+  // ever gains some), and an action re-fired once per lap would repeat a
+  // side-effect the operator performed once.
+  const checkAgain = useCallback(() => {
+    runOnce(() => {
+      if (!currentStep?.next || !activeProtocol) return;
+      const byId = activeProtocol.steps.findIndex(s => s.id === currentStep.next);
+      if (byId >= 0) goToStep(byId);
+    });
+  }, [runOnce, currentStep, activeProtocol, goToStep]);
+
   // Decision steps resolve in ONE tap: choosing an answer logs the choice, runs
   // any step actions, and jumps straight to that branch's target step. Navigation
   // is goToStep-only for the same single-log reason as advance().
@@ -751,7 +772,15 @@ export function ProtocolRunner() {
               tapped a button. The line states where they are; ending is a quiet
               secondary through the existing confirm. Group A gets no extra
               friction: a screen held for twenty minutes must not train the team
-              to tap through a guard. */}
+              to tap through a guard.
+
+              The 'holding' group is the same footer with a real CTA back in it,
+              because those three screens DO have somewhere to go — round the
+              re-check loop. What they must not say is "Done — next step": the
+              next step is the same patient, checked again, not progress. So the
+              primary is labelled for what it does, and the end affordance is
+              here for the same reason it is on Group A — this is the screen the
+              team is actually holding on. */}
           {!isDecision && endState && (
             <>
               <p
@@ -760,6 +789,16 @@ export function ProtocolRunner() {
               >
                 {TERMINAL_LINES[endState]}
               </p>
+              {endState === 'holding' && (
+                <button
+                  onClick={checkAgain}
+                  className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"
+                  style={{ gap: 10, marginBottom: 10, minHeight: 'var(--touch-hero)', borderRadius: 'var(--radius-xl)', background: 'var(--brand)', color: '#fff', border: 'none', boxShadow: 'var(--shadow-btn)' }}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                  <span className="font-extrabold" style={{ fontSize: 'var(--fs-subtitle)' }}>Check again</span>
+                </button>
+              )}
               <button
                 onClick={() => setConfirmingEndAt(positionKey)}
                 className="w-full flex items-center justify-center active:scale-[0.98] transition-transform"

@@ -7,7 +7,12 @@ import { DETERIORATION_LANDING } from '../store/appStore';
 import { DOSE_LIMIT_NOTICES, doseLimitClass } from '../lib/doseLimits';
 import { CALL_999_CONFIRM_STEPS } from '../lib/call999';
 import { MONOTONIC_TIMER_STEPS, SPENT_CLOCK_SUPPRESSIONS } from '../lib/monotonicTimers';
-import { TERMINAL_STEPS, TERMINAL_LINES, stepsWithoutOnwardRoute } from '../lib/terminalSteps';
+import {
+  TERMINAL_STEPS,
+  TERMINAL_LINES,
+  HOLDING_STEPS,
+  stepsWithoutOnwardRoute,
+} from '../lib/terminalSteps';
 
 // Structural integrity of the protocol/drug data. A broken `next` pointer or a
 // dangling drug_id would strand a user mid-emergency, so these are guarded.
@@ -281,10 +286,64 @@ describe('terminal step integrity', () => {
     const groups = Object.values(TERMINAL_STEPS);
     expect(groups.filter((g) => g === 'awaiting_crew')).toHaveLength(7);
     expect(groups.filter((g) => g === 'complete')).toHaveLength(7);
-    for (const line of Object.values(TERMINAL_LINES)) {
-      expect(line.startsWith('No further steps —')).toBe(true);
+    // Only the two successor-less groups make the "no further steps" claim. A
+    // holding step DOES have a further step — the re-check — so its line says
+    // something else, and asserting the prefix across every line would forbid
+    // the honest wording rather than protect it.
+    for (const group of ['awaiting_crew', 'complete'] as const) {
+      expect(TERMINAL_LINES[group].startsWith('No further steps —')).toBe(true);
     }
   });
+});
+
+describe('holding step integrity', () => {
+  // A holding step is not an end: it is an instruction whose `next` is a
+  // deterioration decision that routes back to it, so the team circles on it
+  // while they wait. It keeps its onward route — the re-check is clinically
+  // wanted — which is exactly why it cannot live in TERMINAL_STEPS. What it
+  // needs from the runner is an honest footer and a way to end the record from
+  // the screen the team actually sits on. These assertions pin the shape of the
+  // loop so a data change cannot leave the runner promising a re-check that the
+  // graph no longer offers.
+  for (const key of HOLDING_STEPS) {
+    const [protocolId, stepId] = key.split('#');
+
+    it(`${key}: is a real step that loops through a deterioration decision`, () => {
+      const protocol = protocols.find((p) => p.id === protocolId);
+      expect(protocol, `HOLDING_STEPS key "${protocolId}" is not a protocol`).toBeDefined();
+      const step = protocol!.steps.find((s) => s.id === stepId);
+      expect(step, `${protocolId} has no step "${stepId}"`).toBeDefined();
+
+      // Not an end state, and not successor-less — the two sets are disjoint.
+      expect(TERMINAL_STEPS).not.toHaveProperty(key);
+      const successorLess = stepsWithoutOnwardRoute(protocol!).map((s) => s.id);
+      expect(successorLess, `${key} has no onward route`).not.toContain(stepId);
+
+      // The onward route is the re-check the "Check again" button promises.
+      const check = protocol!.steps.find((s) => s.id === step!.next);
+      expect(check, `${key}.next "${step!.next}" resolves to nothing`).toBeDefined();
+      expect(check!.type, `${key}.next is not a decision`).toBe('decision');
+
+      // It is a LOOP: one answer comes back here, and at least one other is the
+      // escape. A decision with only the loop would trap the team.
+      const answers = check!.answers ?? [];
+      expect(
+        answers.some((a) => a.next === stepId),
+        `${check!.id} never routes back to ${stepId}`
+      ).toBe(true);
+      expect(
+        answers.filter((a) => a.next !== stepId).length,
+        `${check!.id} offers no escape from the loop`
+      ).toBeGreaterThan(0);
+
+      // "Check again" deliberately does NOT run step actions: the holding step
+      // is not completed, so firing its actions on every pass would repeat them.
+      // None of these steps declares any today. If one ever does, this fails and
+      // forces the decision rather than silently skipping it.
+      expect(step!.actions ?? [], `${key} declares actions that Check again would skip`)
+        .toHaveLength(0);
+    });
+  }
 });
 
 describe('monotonic timer step integrity', () => {

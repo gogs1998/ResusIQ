@@ -25,11 +25,14 @@ import type { Protocol, ProtocolStep } from '../types';
 //
 // "Ambulance handover" was rejected as a label: the app cannot witness a
 // handover, and on Group B nobody is handing over anything.
-export type TerminalGroup = 'awaiting_crew' | 'complete';
+//
+//   GROUP C (holding) — the loop. Not an end at all: see HOLDING_STEPS below.
+export type TerminalGroup = 'awaiting_crew' | 'complete' | 'holding';
 
 export const TERMINAL_LINES: Record<TerminalGroup, string> = {
   awaiting_crew: 'No further steps — stay with them until the crew take over.',
   complete: 'No further steps — this guide is complete.',
+  holding: 'Stay with them until the crew take over — check them again regularly.',
 };
 
 export const TERMINAL_STEPS: Readonly<Record<string, TerminalGroup>> = {
@@ -51,13 +54,45 @@ export const TERMINAL_STEPS: Readonly<Record<string, TerminalGroup>> = {
   'adrenal_crisis#consider_other': 'complete',
 };
 
-/** The end-state group for this step, or null if the guidance continues. */
+/**
+ * Holding steps — the three protocols that do not end, they CIRCLE.
+ *
+ * Each is an `instruction` ("stay with them") whose `next` is a deterioration
+ * `decision`, and one of that decision's answers routes straight back here. The
+ * team laps this pair until the crew arrive or the patient deteriorates.
+ *
+ * A holding step KEEPS its onward route — the re-check loop is clinically
+ * wanted, not a defect — so it is NOT in TERMINAL_STEPS and NOT successor-less,
+ * and `stepsWithoutOnwardRoute` rightly never sees it. This set exists for two
+ * things the graph cannot say on its own:
+ *
+ *   1. The footer must stop promising progress. "Done — next step" is a lie
+ *      here: the next step is a re-check of the same patient, not a step
+ *      forward, and a team that taps it twenty times reads twenty completions.
+ *   2. Ending must be possible from here. These are the longest-dwell screens
+ *      in the product — the ones a team holds for twenty minutes — and they
+ *      were the only ones with no end affordance at all, because
+ *      `canEndFromHere` keys off `terminalGroup`.
+ */
+export const HOLDING_STEPS: ReadonlySet<string> = new Set([
+  'chest_pain#monitor_chest',
+  'anaphylaxis#continue_monitor',
+  'stroke#monitor_stroke',
+]);
+
+/**
+ * The end-state group for this step, or null if the guidance continues.
+ * 'holding' is not an end — it is the loop; the runner gives it "Check again"
+ * where a true end gets no CTA at all.
+ */
 export function terminalGroup(
   protocolId: string | undefined,
   stepId: string | undefined
 ): TerminalGroup | null {
   if (!protocolId || !stepId) return null;
-  return TERMINAL_STEPS[`${protocolId}#${stepId}`] ?? null;
+  const key = `${protocolId}#${stepId}`;
+  if (HOLDING_STEPS.has(key)) return 'holding';
+  return TERMINAL_STEPS[key] ?? null;
 }
 
 /**
