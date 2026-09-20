@@ -165,6 +165,63 @@ const _eventTypesAreExhaustive: _ExhaustiveEventTypes = true;
 void _eventTypesAreExhaustive;
 const EVENT_TYPES: ReadonlySet<EventType> = new Set(EVENT_TYPE_LIST);
 
+// ── Persistence ──────────────────────────────────────────────────────────────
+//
+// What survives a reload. Task 0.2: the emergency itself is in here now.
+//
+// A mid-emergency reload is a realistic event, not a corner case — iOS evicts a
+// backgrounded PWA while someone answers the phone, and a pull-to-refresh does
+// the same thing by hand. This used to persist practiceSetup / eventHistory /
+// isVoiceEnabled only, so a reload destroyed the protocol position, the elapsed
+// clock, every logged dose and the 999 timestamp, and nothing reached
+// eventHistory (only endEmergency / endEvent move activeEvent there). A total,
+// medico-legal loss.
+//
+// NOTE the protocol is stored as an ID, never as the object: see `merge`.
+interface PersistedAppState {
+  practiceSetup: PracticeSetup | null;
+  eventHistory: EmergencyEvent[];
+  isVoiceEnabled: boolean;
+  isEmergencyActive: boolean;
+  activeProtocolId: string | null;
+  currentStepIndex: number;
+  activeEvent: EmergencyEvent | null;
+  // Wall-clock ISO strings (see anchorTimer), NOT performance.now() readings —
+  // which is the only reason they mean anything after a reload.
+  timerAnchors: Record<string, string>;
+}
+
+// A persisted timerAnchors blob is only usable if every value is a string; a
+// half-written or hand-edited map must not reach the timer components.
+function isAnchorMap(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === 'string')
+  );
+}
+
+// Close out an event whose emergency cannot be resumed. The flow is gone, but
+// the record must not be: everything already logged (doses, the 999 call) stays,
+// and a timestamped closing entry says when and why it stopped, so the gap in
+// the record is explained rather than silent.
+function closeUnresumableEvent(event: EmergencyEvent): EmergencyEvent {
+  return {
+    ...event,
+    completed: true,
+    events: [
+      ...event.events,
+      {
+        id: newId(),
+        timestamp: new Date().toISOString(),
+        type: 'custom',
+        label: 'Record closed — the emergency could not be resumed after a restart',
+      },
+    ],
+  };
+}
+
 // Human-readable labels for the typed log verbs that appear in protocols.ts
 // actions. Falls back to the raw label for any typed event without an entry.
 const LOG_LABELS: Record<string, string> = {
@@ -461,8 +518,10 @@ export const useAppStore = create<AppState>()(
       // the seizure started.
       //
       // Tied to the active event: cleared when one starts and when one ends, so
-      // a later emergency never inherits a spent clock. Not persisted, for the
-      // same reason activeEvent is not.
+      // a later emergency never inherits a spent clock. Persisted alongside
+      // activeEvent (Task 0.2) — these are WALL-CLOCK ISO timestamps, so they
+      // still mean the same thing after a reload; a performance.now() reading
+      // would not, and must never be stored here.
       anchorTimer: (key) => {
         const { activeEvent, timerAnchors } = get();
         // No live event means no emergency to time. Refusing here keeps a stray
@@ -518,28 +577,114 @@ export const useAppStore = create<AppState>()(
       // Demo mode persists nothing beyond the tab: throwaway key, sessionStorage —
       // public visitors must not inherit each other's (or a real practice's) state.
       name: isDemoMode ? 'resusiq-demo' : 'resusiq-storage',
-      storage: isDemoMode ? createJSONStorage(() => sessionStorage) : undefined,
+      // ALWAYS a defined storage. Passing `storage: undefined` for the real
+      // build did not fall back to zustand's default — an explicit undefined
+      // still wins the options spread, and persist then short-circuits into its
+      // "storage unavailable" mode: no api.persist, no writes, nothing saved at
+      // all. Name the storage for both branches instead.
+      storage: createJSONStorage(() => (isDemoMode ? sessionStorage : localStorage)),
       // Bump `version` whenever the persisted shape below changes, and handle
       // the upgrade in `migrate`. Without this, a schema change silently
       // corrupts rehydrated eventHistory / practiceSetup from older installs.
-      version: 1,
-      partialize: (state) => ({
+      version: 2,
+      partialize: (state): PersistedAppState => ({
         practiceSetup: state.practiceSetup,
         eventHistory: state.eventHistory,
-        isVoiceEnabled: state.isVoiceEnabled
+        isVoiceEnabled: state.isVoiceEnabled,
+        isEmergencyActive: state.isEmergencyActive,
+        // The ID, NEVER the Protocol object. A stored Protocol is a snapshot of
+        // every step's clinical text; resuming from it after an app update
+        // would put OLD doses and OLD wording back in front of the team. The
+        // live object is re-resolved from data/protocols on every rehydrate.
+        activeProtocolId: state.activeProtocol?.id ?? null,
+        currentStepIndex: state.currentStepIndex,
+        activeEvent: state.activeEvent,
+        timerAnchors: state.timerAnchors
       }),
-      migrate: (persistedState) => {
-        // v0 (unversioned) -> v1: shapes are compatible; guard against a
-        // partially-written or corrupt blob so the app still boots cleanly.
-        const state = (persistedState ?? {}) as Partial<{
-          practiceSetup: PracticeSetup | null;
-          eventHistory: EmergencyEvent[];
-          isVoiceEnabled: boolean;
-        }>;
-        if (!Array.isArray(state.eventHistory)) {
-          state.eventHistory = [];
+      migrate: (persistedState): PersistedAppState => {
+        // v0 (unversioned) / v1 -> v2: the older shapes carried no emergency at
+        // all, so the new keys take their defaults and the app boots idle. Also
+        // guards a partially-written or corrupt blob.
+        const state = (persistedState ?? {}) as Partial<PersistedAppState>;
+        return {
+          practiceSetup: state.practiceSetup ?? null,
+          eventHistory: Array.isArray(state.eventHistory) ? state.eventHistory : [],
+          isVoiceEnabled: typeof state.isVoiceEnabled === 'boolean' ? state.isVoiceEnabled : true,
+          isEmergencyActive: false,
+          activeProtocolId: null,
+          currentStepIndex: 0,
+          activeEvent: null,
+          timerAnchors: {}
+        };
+      },
+      // Rehydration decides whether the saved emergency can actually be
+      // RESUMED, and does it here rather than after the fact so the store is
+      // never momentarily in the "active but protocolless" shape App.tsx routes
+      // on.
+      merge: (persistedState, currentState): AppState => {
+        const p = (persistedState ?? {}) as Partial<PersistedAppState>;
+        const base: AppState = {
+          ...currentState,
+          practiceSetup:
+            p.practiceSetup !== undefined ? p.practiceSetup : currentState.practiceSetup,
+          eventHistory: Array.isArray(p.eventHistory) ? p.eventHistory : currentState.eventHistory,
+          isVoiceEnabled:
+            typeof p.isVoiceEnabled === 'boolean' ? p.isVoiceEnabled : currentState.isVoiceEnabled
+        };
+
+        // Re-resolve the protocol from the LIVE data by id — see partialize.
+        const protocol = p.activeProtocolId
+          ? protocols.find((candidate) => candidate.id === p.activeProtocolId) ?? null
+          : null;
+        const stepIndex = Number.isInteger(p.currentStepIndex) ? (p.currentStepIndex as number) : 0;
+        const savedEvent = p.activeEvent ?? null;
+
+        if (
+          p.isEmergencyActive === true &&
+          protocol &&
+          stepIndex >= 0 &&
+          stepIndex < protocol.steps.length
+        ) {
+          return {
+            ...base,
+            isEmergencyActive: true,
+            activeProtocol: protocol,
+            currentStepIndex: stepIndex,
+            currentScreen: 'protocol',
+            activeEvent: savedEvent,
+            timerAnchors: isAnchorMap(p.timerAnchors) ? p.timerAnchors : {}
+          };
         }
-        return state;
+
+        // Not resumable: the protocol id is gone from the data, or an update
+        // shortened the protocol out from under the saved index. Close the flow
+        // — but move the orphaned event into history first. Losing the record
+        // as well would compound the failure.
+        return {
+          ...base,
+          eventHistory: savedEvent
+            ? [...base.eventHistory, closeUnresumableEvent(savedEvent)]
+            : base.eventHistory,
+          isEmergencyActive: false,
+          activeProtocol: null,
+          currentStepIndex: 0,
+          activeEvent: null,
+          timerAnchors: {}
+        };
+      },
+      onRehydrateStorage: () => (state) => {
+        // A reload loses the side-effects startEmergency fired. Re-arm them for
+        // a resumed emergency; `merge` has already guaranteed anything active
+        // here really is resumable. No pagehide/visibilitychange flush is
+        // needed to go with this: persist writes synchronously on every `set`,
+        // so the record is already durable, and flushing activeEvent into
+        // eventHistory would double-record it when the resumed emergency is
+        // later ended normally.
+        if (!state || typeof window === 'undefined') return;
+        if (state.isEmergencyActive && state.activeProtocol) {
+          enableWakeLock();
+          enterEmergencyChrome();
+        }
       }
     }
   )

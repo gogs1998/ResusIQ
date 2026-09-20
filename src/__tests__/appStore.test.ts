@@ -538,3 +538,192 @@ describe('emergency OS chrome', () => {
     expect(document.querySelectorAll('#riq-theme-color-emergency')).toHaveLength(1);
   });
 });
+
+// Task 0.2: a reload mid-emergency must NOT destroy the emergency.
+//
+// iOS evicts a backgrounded PWA while someone answers the phone; a pull-to-
+// refresh does the same thing by hand. Before this, partialize dropped the
+// whole emergency — protocol position, elapsed clock, every logged dose and the
+// 999 timestamp — and nothing reached eventHistory, because only endEmergency /
+// endEvent move activeEvent there. These exercise REAL rehydration through the
+// persist middleware (useAppStore.persist.rehydrate), not a hand-rolled fake.
+describe('appStore persistence (an emergency survives a reload)', () => {
+  // Read the key and version off the live persist config — never guess them.
+  const STORAGE_KEY = useAppStore.persist.getOptions().name!;
+  const VERSION = useAppStore.persist.getOptions().version!;
+  // The shape shipped before this change: practiceSetup / eventHistory /
+  // isVoiceEnabled only.
+  const PREVIOUS_VERSION = 1;
+
+  const seed = (version: number, state: Record<string, unknown>) =>
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, version }));
+
+  const readPersisted = () => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    expect(raw).not.toBeNull();
+    return JSON.parse(raw!) as { state: Record<string, unknown>; version: number };
+  };
+
+  const anEvent = (id: string) => ({
+    id,
+    timestamp: '2026-09-20T09:00:00.000Z',
+    protocol_id: 'anaphylaxis',
+    protocol_version: '2026.1',
+    practice_id: 'p1',
+    events: [
+      {
+        id: 'log-1',
+        timestamp: '2026-09-20T09:00:01.000Z',
+        type: 'drug_given',
+        label: 'Drug: adrenaline_im_adult',
+        drug_id: 'adrenaline_im_adult',
+      },
+    ],
+    completed: false,
+  });
+
+  beforeEach(() => {
+    reset();
+    useAppStore.setState({ practiceSetup: null, isVoiceEnabled: true });
+    // AFTER the resets — setState itself writes through the persist middleware.
+    localStorage.clear();
+  });
+
+  it('persists the active emergency', () => {
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    useAppStore.getState().goToStep(3);
+    useAppStore
+      .getState()
+      .addEventLog('drug_given', 'Drug: adrenaline_im_adult', undefined, 'adrenaline_im_adult');
+    useAppStore.getState().anchorTimer('anaphylaxis#adrenaline');
+
+    const persisted = readPersisted();
+    expect(persisted.state.isEmergencyActive).toBe(true);
+    expect(persisted.state.currentStepIndex).toBe(3);
+    // The ID, never the object: a full Protocol snapshot would resume OLD
+    // clinical text after an app update.
+    expect(persisted.state.activeProtocolId).toBe('anaphylaxis');
+    expect(persisted.state).not.toHaveProperty('activeProtocol');
+
+    const activeEvent = persisted.state.activeEvent as { events: { drug_id?: string }[] };
+    expect(activeEvent).toBeTruthy();
+    expect(activeEvent.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+
+    // Wall-clock (ISO) anchors, so the elapsed clock survives the reload.
+    const anchors = persisted.state.timerAnchors as Record<string, string>;
+    expect(anchors['anaphylaxis#adrenaline']).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('rehydrates a persisted emergency and resolves the protocol object', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: { 'anaphylaxis#adrenaline': '2026-09-20T09:00:00.000Z' },
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.currentStepIndex).toBe(2);
+    expect(s.activeProtocol?.id).toBe('anaphylaxis');
+    // Referentially the LIVE protocol from data/protocols — not a deserialized
+    // snapshot of whatever the clinical text said when the tab was last open.
+    expect(s.activeProtocol).toBe(protocols.find((p) => p.id === 'anaphylaxis'));
+    expect(s.activeEvent?.id).toBe('evt-live');
+    expect(s.activeEvent?.events).toHaveLength(1);
+    expect(s.timerAnchors['anaphylaxis#adrenaline']).toBe('2026-09-20T09:00:00.000Z');
+    // Nothing was archived — the emergency is still running.
+    expect(s.eventHistory).toHaveLength(0);
+  });
+
+  it('discards an unresumable emergency safely, keeping its record', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-orphan'),
+      timerAnchors: { 'x#y': '2026-09-20T09:00:00.000Z' },
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeEvent).toBeNull();
+    expect(s.timerAnchors).toEqual({});
+    // The flow could not resume, but the medico-legal record must not vanish.
+    expect(s.eventHistory).toHaveLength(1);
+    expect(s.eventHistory[0].id).toBe('evt-orphan');
+    expect(s.eventHistory[0].completed).toBe(true);
+    // The logged dose is still there, and the close is timestamped.
+    expect(s.eventHistory[0].events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+    expect(s.eventHistory[0].events.length).toBeGreaterThan(1);
+  });
+
+  it('discards an emergency whose step index no longer exists in the protocol', async () => {
+    // Same safety net for the other way a resume can be impossible: the
+    // protocol resolved, but an app update shortened it under the saved index.
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 9999,
+      activeEvent: anEvent('evt-oob'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-oob']);
+  });
+
+  it('old persisted shape (previous version) still loads', async () => {
+    const archived = { ...anEvent('evt-archived'), completed: true };
+    seed(PREVIOUS_VERSION, {
+      practiceSetup: {
+        id: 'p1',
+        name: 'Old Practice',
+        address: '1 Old Street',
+        postcode: 'G1 1AA',
+        phone: '0141 000 0000',
+        aed_present: true,
+        oxygen_present: true,
+        staff_roles: [],
+        equipment: [],
+      },
+      eventHistory: [archived],
+      isVoiceEnabled: false,
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeEvent).toBeNull();
+    expect(s.timerAnchors).toEqual({});
+    // The pre-existing record is untouched, and the old preferences survive.
+    expect(s.eventHistory).toHaveLength(1);
+    expect(s.eventHistory[0].id).toBe('evt-archived');
+    expect(s.practiceSetup?.name).toBe('Old Practice');
+    expect(s.isVoiceEnabled).toBe(false);
+  });
+});
