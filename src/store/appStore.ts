@@ -202,6 +202,20 @@ function isAnchorMap(value: unknown): value is Record<string, string> {
   );
 }
 
+// The persisted blob is data from disk, not a typed value: it can be truncated
+// by an eviction mid-write, or hand-edited. Anything read out of it that the
+// rehydrate path will dereference has to be checked first — `closeUnresumableEvent`
+// spreads `event.events`, so an activeEvent missing that array used to throw
+// straight out of `merge` (see the comment there for what that costs).
+//
+// Structural, not exhaustive: the fields the emergency/record paths actually
+// touch. `id` and `timestamp` identify the record; `events` is the log itself.
+function isEmergencyEventish(value: unknown): value is EmergencyEvent {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Partial<EmergencyEvent>;
+  return typeof v.id === 'string' && typeof v.timestamp === 'string' && Array.isArray(v.events);
+}
+
 // Close out an event whose emergency cannot be resumed. The flow is gone, but
 // the record must not be: everything already logged (doses, the 999 call) stays,
 // and a timestamped closing entry says when and why it stopped, so the gap in
@@ -534,6 +548,10 @@ export const useAppStore = create<AppState>()(
         return anchor;
       },
 
+      // Currently unwired (endEmergency is the live path). Note before anything
+      // calls it: it archives the event but leaves `isEmergencyActive` set, so
+      // it must also clear the emergency flags — otherwise it persists exactly
+      // the eventless-active blob that `merge` now refuses to resume.
       endEvent: (outcome, notes) => {
         const { activeEvent, eventHistory } = get();
         if (activeEvent) {
@@ -605,10 +623,20 @@ export const useAppStore = create<AppState>()(
         // v0 (unversioned) / v1 -> v2: the older shapes carried no emergency at
         // all, so the new keys take their defaults and the app boots idle. Also
         // guards a partially-written or corrupt blob.
+        //
+        // M4: this deliberately ignores `version` — every shape it can be
+        // handed (v0, v1) predates the emergency keys, so "drop the emergency,
+        // keep the archive" is correct for all of them. A future v2 -> v3
+        // migration must NOT inherit that: by then a blob can hold an emergency
+        // that is still in flight, and blanking it would throw away a live
+        // medico-legal record. Branch on `version` when that day comes.
         const state = (persistedState ?? {}) as Partial<PersistedAppState>;
         return {
           practiceSetup: state.practiceSetup ?? null,
-          eventHistory: Array.isArray(state.eventHistory) ? state.eventHistory : [],
+          // Element-wise: one malformed record must not cost the whole archive.
+          eventHistory: Array.isArray(state.eventHistory)
+            ? state.eventHistory.filter(isEmergencyEventish)
+            : [],
           isVoiceEnabled: typeof state.isVoiceEnabled === 'boolean' ? state.isVoiceEnabled : true,
           isEmergencyActive: false,
           activeProtocolId: null,
@@ -621,56 +649,101 @@ export const useAppStore = create<AppState>()(
       // RESUMED, and does it here rather than after the fact so the store is
       // never momentarily in the "active but protocolless" shape App.tsx routes
       // on.
+      //
+      // The input is `unknown` on purpose. It is a JSON blob off disk, and the
+      // previous `as Partial<PersistedAppState>` cast made TypeScript assert a
+      // shape nothing had verified. `PersistedAppState` remains the WRITE
+      // contract (partialize/migrate); reads narrow.
+      //
+      // M1: when the stored `version` matches, zustand does not write the merged
+      // result back — so an unresumable close (the orphaned event moved into
+      // eventHistory) lives in memory until the next ordinary store write
+      // flushes it. Benign: the close is idempotent, so booting twice off the
+      // same blob lands in the same place, with no duplicate archive entry.
       merge: (persistedState, currentState): AppState => {
-        const p = (persistedState ?? {}) as Partial<PersistedAppState>;
-        const base: AppState = {
-          ...currentState,
-          practiceSetup:
-            p.practiceSetup !== undefined ? p.practiceSetup : currentState.practiceSetup,
-          eventHistory: Array.isArray(p.eventHistory) ? p.eventHistory : currentState.eventHistory,
-          isVoiceEnabled:
-            typeof p.isVoiceEnabled === 'boolean' ? p.isVoiceEnabled : currentState.isVoiceEnabled
-        };
+        // A corrupt blob must NEVER throw out of here. zustand swallows the
+        // throw inside hydrate().catch, so `set(stateFromStorage, true)` never
+        // runs, the store keeps its factory defaults, and the next ordinary
+        // write then serialises those empty defaults straight over the blob —
+        // practiceSetup and every archived emergency gone from disk. Falling
+        // back to the in-memory defaults loses one reload; throwing loses the
+        // medico-legal record.
+        try {
+          const p: Record<string, unknown> =
+            typeof persistedState === 'object' &&
+            persistedState !== null &&
+            !Array.isArray(persistedState)
+              ? (persistedState as Record<string, unknown>)
+              : {};
 
-        // Re-resolve the protocol from the LIVE data by id — see partialize.
-        const protocol = p.activeProtocolId
-          ? protocols.find((candidate) => candidate.id === p.activeProtocolId) ?? null
-          : null;
-        const stepIndex = Number.isInteger(p.currentStepIndex) ? (p.currentStepIndex as number) : 0;
-        const savedEvent = p.activeEvent ?? null;
+          const base: AppState = {
+            ...currentState,
+            practiceSetup:
+              p.practiceSetup !== undefined
+                ? (p.practiceSetup as PracticeSetup | null)
+                : currentState.practiceSetup,
+            // Salvaged element-wise: ONE malformed record must not discard the
+            // whole archive.
+            eventHistory: Array.isArray(p.eventHistory)
+              ? p.eventHistory.filter(isEmergencyEventish)
+              : currentState.eventHistory,
+            isVoiceEnabled:
+              typeof p.isVoiceEnabled === 'boolean' ? p.isVoiceEnabled : currentState.isVoiceEnabled
+          };
 
-        if (
-          p.isEmergencyActive === true &&
-          protocol &&
-          stepIndex >= 0 &&
-          stepIndex < protocol.steps.length
-        ) {
+          // Re-resolve the protocol from the LIVE data by id — see partialize.
+          const protocolId = typeof p.activeProtocolId === 'string' ? p.activeProtocolId : null;
+          const protocol = protocolId
+            ? protocols.find((candidate) => candidate.id === protocolId) ?? null
+            : null;
+          const stepIndex = Number.isInteger(p.currentStepIndex)
+            ? (p.currentStepIndex as number)
+            : 0;
+          const savedEvent = isEmergencyEventish(p.activeEvent) ? p.activeEvent : null;
+
+          // `savedEvent` is part of the resumability test, not just cargo. An
+          // emergency with no event is not an emergency: addEventLog,
+          // log999Called and anchorTimer all no-op without one, so the runner
+          // would come back on screen with the seizure clock unable to anchor
+          // and endEmergency archiving nothing. Failing this falls through to
+          // the inactive path below, which is safe — there is no event to close,
+          // so the archive is untouched.
+          if (
+            p.isEmergencyActive === true &&
+            protocol &&
+            savedEvent &&
+            stepIndex >= 0 &&
+            stepIndex < protocol.steps.length
+          ) {
+            return {
+              ...base,
+              isEmergencyActive: true,
+              activeProtocol: protocol,
+              currentStepIndex: stepIndex,
+              currentScreen: 'protocol',
+              activeEvent: savedEvent,
+              timerAnchors: isAnchorMap(p.timerAnchors) ? p.timerAnchors : {}
+            };
+          }
+
+          // Not resumable: the protocol id is gone from the data, or an update
+          // shortened the protocol out from under the saved index. Close the
+          // flow — but move the orphaned event into history first. Losing the
+          // record as well would compound the failure.
           return {
             ...base,
-            isEmergencyActive: true,
-            activeProtocol: protocol,
-            currentStepIndex: stepIndex,
-            currentScreen: 'protocol',
-            activeEvent: savedEvent,
-            timerAnchors: isAnchorMap(p.timerAnchors) ? p.timerAnchors : {}
+            eventHistory: savedEvent
+              ? [...base.eventHistory, closeUnresumableEvent(savedEvent)]
+              : base.eventHistory,
+            isEmergencyActive: false,
+            activeProtocol: null,
+            currentStepIndex: 0,
+            activeEvent: null,
+            timerAnchors: {}
           };
+        } catch {
+          return { ...currentState };
         }
-
-        // Not resumable: the protocol id is gone from the data, or an update
-        // shortened the protocol out from under the saved index. Close the flow
-        // — but move the orphaned event into history first. Losing the record
-        // as well would compound the failure.
-        return {
-          ...base,
-          eventHistory: savedEvent
-            ? [...base.eventHistory, closeUnresumableEvent(savedEvent)]
-            : base.eventHistory,
-          isEmergencyActive: false,
-          activeProtocol: null,
-          currentStepIndex: 0,
-          activeEvent: null,
-          timerAnchors: {}
-        };
       },
       onRehydrateStorage: () => (state) => {
         // A reload loses the side-effects startEmergency fired. Re-arm them for

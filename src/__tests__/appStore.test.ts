@@ -585,6 +585,7 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   beforeEach(() => {
     reset();
     useAppStore.setState({ practiceSetup: null, isVoiceEnabled: true });
+    document.getElementById('riq-theme-color-emergency')?.remove();
     // AFTER the resets — setState itself writes through the persist middleware.
     localStorage.clear();
   });
@@ -635,6 +636,8 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     // Referentially the LIVE protocol from data/protocols — not a deserialized
     // snapshot of whatever the clinical text said when the tab was last open.
     expect(s.activeProtocol).toBe(protocols.find((p) => p.id === 'anaphylaxis'));
+    // The runner is on screen, not the home tiles.
+    expect(s.currentScreen).toBe('protocol');
     expect(s.activeEvent?.id).toBe('evt-live');
     expect(s.activeEvent?.events).toHaveLength(1);
     expect(s.timerAnchors['anaphylaxis#adrenaline']).toBe('2026-09-20T09:00:00.000Z');
@@ -725,5 +728,185 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     expect(s.eventHistory[0].id).toBe('evt-archived');
     expect(s.practiceSetup?.name).toBe('Old Practice');
     expect(s.isVoiceEnabled).toBe(false);
+  });
+  // ---------------------------------------------------------------------
+  // Hardening: a corrupt or hand-edited blob must never cost the archive.
+  //
+  // The failure mode is indirect and total. `merge` throwing is swallowed by
+  // zustand's hydrate().catch, so `set(stateFromStorage, true)` never runs and
+  // the store keeps its factory defaults — then the NEXT ordinary write
+  // serialises those empty defaults straight over the blob. practiceSetup and
+  // every archived emergency are gone from disk, from a single malformed field.
+  // ---------------------------------------------------------------------
+
+  const aPractice = {
+    id: 'p1',
+    name: 'Corrupt Blob Practice',
+    address: '1 Old Street',
+    postcode: 'G1 1AA',
+    phone: '0141 000 0000',
+    aed_present: true,
+    oxygen_present: true,
+    staff_roles: [],
+    equipment: [],
+  };
+
+  it('the real (non-demo) build has a storage — regression: storage:undefined silently disabled persist', () => {
+    expect(useAppStore.persist).toBeDefined();
+    useAppStore.getState().setScreen('reports'); // any write
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+  });
+
+  it('a malformed activeEvent cannot destroy practiceSetup or the archive', async () => {
+    const archived = { ...anEvent('evt-archived'), completed: true };
+    seed(VERSION, {
+      practiceSetup: aPractice,
+      eventHistory: [archived],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      // No `events` array: closeUnresumableEvent used to spread it and throw.
+      activeEvent: { id: 'broken' },
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.activeEvent).toBeNull();
+    expect(s.practiceSetup?.name).toBe('Corrupt Blob Practice');
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-archived']);
+
+    // And the blob itself survives the next ordinary write.
+    useAppStore.getState().setScreen('reports');
+    const persisted = readPersisted();
+    expect((persisted.state.eventHistory as { id: string }[]).map((e) => e.id)).toEqual([
+      'evt-archived',
+    ]);
+    expect((persisted.state.practiceSetup as { name: string }).name).toBe(
+      'Corrupt Blob Practice'
+    );
+  });
+
+  it('does not resume on a malformed activeEvent even when the protocol resolves', async () => {
+    const archived = { ...anEvent('evt-archived'), completed: true };
+    seed(VERSION, {
+      practiceSetup: aPractice,
+      eventHistory: [archived],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: { id: 'broken' },
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.activeEvent).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    // Nothing was archived from the broken blob, and nothing was lost.
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-archived']);
+  });
+
+  it('salvages eventHistory element-wise — one bad record does not bin the archive', async () => {
+    const good = { ...anEvent('evt-good'), completed: true };
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [good, { id: 'evt-garbage' }],
+      isVoiceEnabled: true,
+      isEmergencyActive: false,
+      activeProtocolId: null,
+      currentStepIndex: 0,
+      activeEvent: null,
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    expect(useAppStore.getState().eventHistory.map((e) => e.id)).toEqual(['evt-good']);
+  });
+
+  // I1: an emergency with no event is not an emergency. Resuming one puts the
+  // runner on screen while addEventLog, log999Called and anchorTimer all no-op —
+  // the seizure clock never anchors and endEmergency archives nothing.
+  it('refuses to resume an emergency with no activeEvent', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: null,
+      timerAnchors: { 'anaphylaxis#adrenaline': '2026-09-20T09:00:00.000Z' },
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.timerAnchors).toEqual({});
+    // There was no event to close, so history stays untouched.
+    expect(s.eventHistory).toHaveLength(0);
+  });
+
+  it('a resume re-arms the OS chrome; an unresumable one does not', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(document.getElementById('riq-theme-color-emergency')).not.toBeNull();
+
+    document.getElementById('riq-theme-color-emergency')?.remove();
+    localStorage.clear();
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'no_such_protocol',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-orphan'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+    expect(document.getElementById('riq-theme-color-emergency')).toBeNull();
+  });
+
+  it('a resume logs nothing — the record picks up exactly where it stopped', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      activeEvent: anEvent('evt-live'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.activeEvent?.events).toHaveLength(1);
+    expect(s.activeEvent?.events.some((e) => e.type === 'step_completed')).toBe(false);
   });
 });
