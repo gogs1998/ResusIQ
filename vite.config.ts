@@ -24,8 +24,11 @@ export default defineConfig({
         name: 'ResusIQ - Dental Emergency Guide',
         short_name: 'ResusIQ',
         description: 'Voice-guided medical emergency protocols for UK dental practices',
-        theme_color: '#08090B',
-        background_color: '#08090B',
+        // Must equal --bg in src/design-system/tokens/colors.css and the
+        // theme-color meta in index.html — drift shows as a seam behind the
+        // status bar on an installed PWA. Pinned by layoutInvariants.test.ts.
+        theme_color: '#0C1118',
+        background_color: '#0C1118',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '.',

@@ -167,7 +167,7 @@ export function TriageWizard() {
     const recommendedProtocol = getRecommendedProtocol();
 
     return (
-      <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
+      <div className="theatre flex flex-col safe-area-top" style={{ height: '100%', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
         <header className="flex items-center" style={{ gap: 10, padding: '14px 16px 0', flexShrink: 0 }}>
           <button onClick={handleBack} aria-label="Back" style={backBtn}>
             <ArrowLeft className="w-6 h-6" style={{ color: 'var(--text-3)' }} />
@@ -177,7 +177,12 @@ export function TriageWizard() {
           </h1>
         </header>
 
-        <main className="flex-1 overflow-y-auto flex flex-col justify-center" style={{ padding: '16px 18px', minHeight: 0 }}>
+        {/* The result screen has no footer, so this scrolling pane is the
+            bottom-most element and owns the home-indicator padding.
+            `safe center` rather than Tailwind's justify-center: plain centring
+            pushes the top of overflowing content above the scroll origin,
+            where it can never be read. */}
+        <main className="flex-1 overflow-y-auto flex flex-col safe-area-bottom" style={{ padding: '16px 18px', minHeight: 0, justifyContent: 'safe center' }}>
           <div className="flex items-center" style={{ gap: 8, marginBottom: 12 }}>
             <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', flexShrink: 0 }} />
             <span className="font-extrabold" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
@@ -212,7 +217,7 @@ export function TriageWizard() {
   }
 
   return (
-    <div className="theatre flex flex-col safe-area-top" style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
+    <div className="theatre flex flex-col safe-area-top" style={{ height: '100%', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}>
       {/* Header — back · title · progress */}
       <header style={{ padding: '14px 16px 0', flexShrink: 0 }}>
         <div className="flex items-center" style={{ gap: 10 }}>
@@ -235,7 +240,7 @@ export function TriageWizard() {
       </header>
 
       {/* Question — the hero, with one-tap Yes / No answer cards */}
-      <main className="flex-1 overflow-y-auto flex flex-col justify-center" style={{ padding: '16px 18px', minHeight: 0 }}>
+      <main className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 18px', minHeight: 0, justifyContent: 'safe center' }}>
         <h2 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.16, letterSpacing: '-0.02em', color: 'var(--text-1)', textWrap: 'balance', margin: 0 }}>
           {currentQuestion?.text}
         </h2>

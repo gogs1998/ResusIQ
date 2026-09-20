@@ -73,7 +73,7 @@ interface DeckProps {
   panelMaxHeight?: string;
 }
 
-export function Deck({ panelMaxHeight = '40vh' }: DeckProps = {}) {
+export function Deck({ panelMaxHeight = '40dvh' }: DeckProps = {}) {
   const activeEvent = useAppStore((s) => s.activeEvent);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<DeckTab>('script');

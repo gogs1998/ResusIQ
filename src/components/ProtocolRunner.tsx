@@ -115,6 +115,16 @@ export function ProtocolRunner() {
 
   const currentStep = activeProtocol?.steps[currentStepIndex];
 
+  // The step pane scrolls; the step itself does not. A long instruction read to
+  // the bottom, followed by a short one, opened already scrolled down — the new
+  // step's first line off-screen, with nothing on the screen saying so. Every
+  // step starts at its own top.
+  const stepPaneRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // jsdom has no scrollTo on elements; guard rather than throw in tests.
+    stepPaneRef.current?.scrollTo?.({ top: 0 });
+  }, [currentStepIndex, activeProtocol?.id]);
+
   // Dose limit for this step, derived from the event log on every render rather
   // than held in component state — so returning to a spent drug step by Back
   // shows the same verdict the store would give, instead of a fresh-looking
@@ -531,7 +541,7 @@ export function ProtocolRunner() {
   return (
     <div
       className="theatre flex flex-col safe-area-top"
-      style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
+      style={{ height: '100%', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
       // Reaching for anything else answers the question — same rule as CPR.
       onClickCapture={(e) => {
         if (!showEndConfirm) return;
@@ -584,7 +594,7 @@ export function ProtocolRunner() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto" style={{ padding: '16px 18px 8px', minHeight: 0 }}>
+      <main ref={stepPaneRef} className="flex-1 overflow-y-auto" style={{ padding: '16px 18px 8px', minHeight: 0 }}>
         {/* SR announcement — role="alert" is implicitly assertive (no role/aria-live
             contradiction); reads what sighted users see for this step. */}
         <div role="alert" className="sr-only">

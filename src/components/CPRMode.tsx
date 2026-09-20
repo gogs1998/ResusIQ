@@ -111,7 +111,7 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
   return (
     <div
       className="theatre flex flex-col safe-area-top"
-      style={{ height: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
+      style={{ height: '100%', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text-1)' }}
       // Reaching for anything else answers the question: the operator has moved
       // on, and a confirmation left hanging over the header is one more thing to
       // read during compressions.
@@ -174,7 +174,9 @@ export function CPRMode({ step, onNext, onEnd }: CPRModeProps) {
           // region, but the ring, its counter and the breath warning are what
           // the operator is compressing against — below roughly this height they
           // stop being usable at arm's length, and the region scrolls instead.
-          minHeight: 300,
+          // Capped at 100% so a landscape phone (~375 tall) doesn't have the
+          // floor push the ring off the bottom of a shell shorter than 300px.
+          minHeight: 'min(300px, 100%)',
           overflowY: 'auto',
           justifyContent: 'safe center',
         }}

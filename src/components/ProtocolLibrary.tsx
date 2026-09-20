@@ -103,7 +103,9 @@ export function ProtocolLibrary() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto" style={{ padding: 24 }}>
+        {/* No footer on the detail views — this pane is the bottom-most element,
+            so it pads for the home indicator itself. */}
+        <main className="flex-1 overflow-y-auto safe-area-bottom" style={{ padding: 24 }}>
           {/* Quick Start */}
           <button
             onClick={() => startEmergency(selectedProtocol.id)}
@@ -193,7 +195,7 @@ export function ProtocolLibrary() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto space-y-4" style={{ padding: 24 }}>
+        <main className="flex-1 overflow-y-auto space-y-4 safe-area-bottom" style={{ padding: 24 }}>
           {/* Adult Dose */}
           <div style={{ borderRadius: 'var(--radius-lg)', padding: 20, background: 'var(--green-tint)', border: '1px solid color-mix(in srgb, var(--green) 40%, transparent)' }}>
             <p style={{ ...eyebrow, color: 'var(--green-strong)', marginBottom: 6 }}>Adult dose</p>

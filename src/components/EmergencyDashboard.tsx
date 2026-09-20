@@ -75,7 +75,7 @@ export function EmergencyDashboard() {
   return (
     <div
       className="riq-ward-focus flex flex-col overflow-hidden safe-area-top"
-      style={{ height: '100dvh', background: 'var(--bg)', color: 'var(--text-1)' }}
+      style={{ height: '100%', background: 'var(--bg)', color: 'var(--text-1)' }}
     >
       {/* Header */}
       <header className="flex-none flex items-start justify-between" style={{ padding: '14px 20px 4px' }}>

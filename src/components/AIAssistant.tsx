@@ -352,7 +352,7 @@ export function AIAssistant() {
   const protocolDisplay = activeProtocol ? getProtocolDisplay(activeProtocol) : null;
 
   return (
-    <div className="min-h-screen flex flex-col safe-area-top" style={{ background: 'radial-gradient(120% 60% at 50% 35%, rgba(139,92,246,0.18), var(--bg))', color: 'var(--text-1)' }}>
+    <div className="h-full flex flex-col safe-area-top" style={{ background: 'radial-gradient(120% 60% at 50% 35%, rgba(139,92,246,0.18), var(--bg))', color: 'var(--text-1)' }}>
       {/* Header */}
       <header className="flex items-center justify-between px-4" style={{ height: 'var(--appbar-h)' }}>
         <div className="flex items-center gap-3">
@@ -391,8 +391,9 @@ export function AIAssistant() {
         </a>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-6 gap-8 overflow-y-auto">
+      {/* Main content — the bottom-most element in the flow (the Sheet below is
+          an overlay), so it carries the home-indicator padding. */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row items-center justify-center p-6 gap-8 overflow-y-auto safe-area-bottom">
         {/* Left: Activate button */}
         <div className="flex flex-col items-center space-y-8">
           {!isActive && !isConnecting && (
