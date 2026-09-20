@@ -153,7 +153,7 @@ iOS suspends the shared `AudioContext` when the PWA is backgrounded — realisti
 
 **Step 1: Failing tests** — (i) with a stubbed context whose `resume` resolves, dispatching `visibilitychange` with `document.visibilityState === "visible"` calls `resume` once; (ii) with `resume` rejecting, the next `pointerdown` calls `speechSynthesis.speak` again (the one-shot listeners were re-armed and `unlocked` reset). **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS + full gate. **Step 5:** commit `fix(audio): re-arm the shared context and gesture unlock after backgrounding`.
 
-**Device check (cannot be automated):** install the PWA on an iPhone → collapse door → first narration audible → CPR → metronome ticks → background 10 s → return → both still work. Record the result in memory; the unit tests prove priming fires, not that iOS accepts it.
+Also add the two old-WebKit probe tests the 0.1 review left as nice-to-have: `resume()` returning `undefined`, and a context with no `resume()` at all — both must not throw and must still let `unlockAudio()` prime speech (they pin the only unpinned guard in `audioUnlock.ts`). **Device check (cannot be automated):** install the PWA on an iPhone → collapse door → first narration audible → CPR → metronome ticks → background 10 s → return → both still work. Record the result in memory; the unit tests prove priming fires, not that iOS accepts it.
 
 ---
 
