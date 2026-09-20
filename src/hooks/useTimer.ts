@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getAudioContext } from '../lib/audioUnlock';
 
 interface UseTimerOptions {
   initialSeconds?: number;
@@ -138,11 +139,12 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
   }, [onBeat]);
 
   const playClick = useCallback((isAccent = false) => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
-    
-    const ctx = audioContextRef.current;
+    // Shared, gesture-unlocked context. Building one here (inside a timer
+    // callback) left it suspended forever on iOS — the metronome was silent.
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    audioContextRef.current = ctx;
+
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
     
@@ -204,9 +206,10 @@ export function useMetronome(options: UseMetronomeOptions = {}) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
+      // Do NOT close() the context: it is the shared, gesture-unlocked one
+      // owned by lib/audioUnlock. Closing it here would silence the whole app
+      // for the rest of the session once CPR mode unmounts.
+      audioContextRef.current = null;
     };
   }, []);
 
