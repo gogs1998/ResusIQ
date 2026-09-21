@@ -10,7 +10,7 @@ import { pickVoice } from '../lib/voiceChoice';
  * the line is spoken anyway, voiceless: a late line is a bug, a dropped one is
  * a safety failure.
  */
-const VOICE_LIST_WAIT_MS = 1000;
+export const VOICE_LIST_WAIT_MS = 1000;
 
 // Web Speech API types for browsers
 interface SpeechRecognitionEvent extends Event {
@@ -49,15 +49,34 @@ interface UseSpeechOptions {
   volume?: number;
 }
 
+/** The identity of a voice, as opposed to the (replaceable) object holding it. */
+type VoiceKey = { name: string; lang: string };
+
+const toVoiceKey = (voice: SpeechSynthesisVoice | null): VoiceKey | null =>
+  voice ? { name: voice.name, lang: voice.lang } : null;
+
 export function useSpeech(options: UseSpeechOptions = {}) {
   const { rate = 0.9, pitch = 1, volume = 1 } = options;
   const { isVoiceEnabled, isMuted } = useAppStore();
   const [isSpeaking, setIsSpeaking] = useState(false);
+  // Kept in state, and kept in the return, although nothing currently reads it:
+  // it is part of the hook's published surface. Note the cost if that changes —
+  // `voiceschanged` fires repeatedly on iOS, and each one re-renders every
+  // consumer of this hook (ProtocolRunner, CPRMode) whether or not they care.
+  // The voice DECISION deliberately does not go through it; see below.
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  // The narrator, chosen once and held. Re-picking per utterance is what made
-  // the voice change between lines on a real iPhone.
-  const chosenVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  // The narrator, chosen once and held — as a NAME + LANG, never as the voice
+  // object itself.
+  //
+  // Two different things have to be true at once. WHICH voice is decided once
+  // and held: re-picking per utterance is what made the narrator change between
+  // lines on a real iPhone. But the OBJECT that carries it is not stable —
+  // iOS republishes `getVoices()` with fresh instances, and an utterance
+  // assigned a voice from a superseded list is one the platform may decline to
+  // honour, which is silence in the middle of an emergency. So the key is held
+  // and the live object is looked up from the CURRENT list at every emit.
+  const chosenVoiceKeyRef = useRef<{ name: string; lang: string } | null>(null);
   // Bumped by every interrupting speak(). A line still waiting for the voice
   // list when this moves has been superseded and must not be spoken.
   const interruptSeqRef = useRef(0);
@@ -77,7 +96,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
       setVoices(list);
       if (list.length === 0) return;
 
-      const held = chosenVoiceRef.current;
+      const held = chosenVoiceKeyRef.current;
       // Hold the first valid choice for the life of the hook. `voiceschanged`
       // fires repeatedly on iOS (and re-orders the list each time); re-picking
       // on every one of those is exactly the drift being fixed. Only a voice
@@ -86,7 +105,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
       const stillInstalled =
         held !== null && list.some((v) => v.name === held.name && v.lang === held.lang);
       if (!stillInstalled) {
-        chosenVoiceRef.current = pickVoice(list);
+        chosenVoiceKeyRef.current = toVoiceKey(pickVoice(list));
       }
     };
 
@@ -102,6 +121,33 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   useEffect(() => () => {
     pendingWaitsRef.current.forEach((abort) => abort());
     pendingWaitsRef.current = [];
+  }, []);
+
+  // The live voice object for the held choice, resolved against the list as it
+  // stands RIGHT NOW.
+  //
+  // `voiceschanged` is the only signal the subscription above gets, and iOS does
+  // not promise to fire it — `getVoices()` can simply start returning a list.
+  // Deciding only in that handler therefore leaves devices where the choice is
+  // null forever and every line of the emergency is read by the system default.
+  // So this also picks lazily the first time it sees a non-empty list.
+  const resolveVoice = useCallback((): SpeechSynthesisVoice | null => {
+    const list = speechSynthesis.getVoices();
+    // Nothing to resolve against, and NOT a reason to discard the held choice:
+    // the list can be momentarily empty while iOS reloads it.
+    if (list.length === 0) return null;
+
+    const held = chosenVoiceKeyRef.current;
+    if (held) {
+      const live = list.find((v) => v.name === held.name && v.lang === held.lang);
+      if (live) return live;
+      // Held but no longer installed — the same "it has actually gone" case the
+      // subscription handles, reached here when no event announced it.
+    }
+
+    const picked = pickVoice(list);
+    chosenVoiceKeyRef.current = toVoiceKey(picked);
+    return picked;
   }, []);
 
   const speak = useCallback((text: string, interrupt = true) => {
@@ -123,7 +169,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
       // only steer iOS gets, and it keeps the fallback consistent.
       utterance.lang = 'en-GB';
 
-      const voice = chosenVoiceRef.current;
+      const voice = resolveVoice();
       if (voice) {
         utterance.voice = voice;
       }
@@ -139,7 +185,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     // The first line of an emergency arrives before iOS has published its
     // voices, so it used to be read by the system default while every later
     // line used the chosen voice. Hold it — briefly — for the list.
-    if (!chosenVoiceRef.current && speechSynthesis.getVoices().length === 0) {
+    if (!chosenVoiceKeyRef.current && speechSynthesis.getVoices().length === 0) {
       let settled = false;
 
       const release = () => {
@@ -155,10 +201,15 @@ export function useSpeech(options: UseSpeechOptions = {}) {
         if (!release()) return;
         // A newer interrupting speak() has already cancelled this one.
         if (interruptSeqRef.current !== seq) return;
-        if (!chosenVoiceRef.current) {
-          const list = speechSynthesis.getVoices();
-          if (list.length > 0) chosenVoiceRef.current = pickVoice(list);
-        }
+        // Mute is checked when speak() is CALLED, and the hold puts up to a
+        // second between that and the speaking. A mute or a voice-off that
+        // lands inside that window is the team saying "stop talking" — and it
+        // used to be ignored, so the line came out anyway. Read the current
+        // value, from the store rather than the closure, so this does not have
+        // to become a dependency of speak() (which would rebuild the callback
+        // on every mute toggle, for nothing).
+        const { isVoiceEnabled: enabled, isMuted: muted } = useAppStore.getState();
+        if (!enabled || muted) return;
         emit();
       };
 
@@ -170,10 +221,16 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     }
 
     emit();
-  }, [isVoiceEnabled, isMuted, rate, pitch, volume]);
+  }, [isVoiceEnabled, isMuted, rate, pitch, volume, resolveVoice]);
 
   const stop = useCallback(() => {
     speechSynthesis.cancel();
+    // cancel() only reaches what is already speaking. A line still WAITING for
+    // the voice list has not been handed to the platform yet, so it would
+    // survive the stop and speak up to a second later — over whatever the team
+    // moved on to. Stop means stop.
+    pendingWaitsRef.current.forEach((abort) => abort());
+    pendingWaitsRef.current = [];
     setIsSpeaking(false);
   }, []);
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { act, createElement } from 'react';
+import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { pickVoice } from '../lib/voiceChoice';
-import { useSpeech } from '../hooks/useSpeech';
+import { useSpeech, VOICE_LIST_WAIT_MS } from '../hooks/useSpeech';
 import { useAppStore } from '../store/appStore';
 
 // On a real iPhone the narration changed voice between lines and between
@@ -21,7 +21,6 @@ import { useAppStore } from '../store/appStore';
 // old code did for EVERY first line.
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
@@ -149,7 +148,15 @@ let root: Root | null = null;
 let api: ReturnType<typeof useSpeech> | null = null;
 
 function Harness() {
-  api = useSpeech();
+  const speech = useSpeech();
+  // In an effect, not in the render body: publishing the hook's return value to
+  // a module-level handle IS a side effect, and doing it during render is the
+  // thing react-hooks/globals is there to stop. No dependency array — every
+  // commit republishes, so `api.speak` is never a closure over stale store state
+  // (which is exactly what the mute-during-hold case turns on).
+  useEffect(() => {
+    api = speech;
+  });
   return null;
 }
 
@@ -261,6 +268,115 @@ describe('useSpeech holds the first line for the voice list', () => {
     voiceList = [v('Daniel', 'en-GB')];
     mount();
     say('Nothing');
+    expect(spoken).toHaveLength(0);
+  });
+
+  // The hold puts up to a second between the decision to speak and the speaking.
+  // Mute is checked at the START of speak(), so a mute that lands inside that
+  // window used to be ignored and the line came out anyway — the one thing a
+  // mute button has to be able to stop. Re-read at emit time.
+  it('(l) honours a mute that arrives while the line is still held', () => {
+    vi.useFakeTimers();
+    mount();
+
+    say('Give adrenaline 500 micrograms');
+    expect(spoken).toHaveLength(0);
+
+    act(() => { useAppStore.getState().toggleMute(); });
+    act(() => { vi.advanceTimersByTime(VOICE_LIST_WAIT_MS); });
+
+    expect(spoken).toHaveLength(0);
+  });
+
+  it('honours voice being switched off while the line is held', () => {
+    vi.useFakeTimers();
+    mount();
+
+    say('Check for danger');
+    act(() => { useAppStore.getState().toggleVoice(); });
+    act(() => { vi.advanceTimersByTime(VOICE_LIST_WAIT_MS); });
+
+    expect(spoken).toHaveLength(0);
+  });
+
+  // `voiceschanged` is the only signal the hook subscribes to, and iOS does not
+  // promise to fire it: getVoices() can simply start returning a list. A choice
+  // made once at subscribe time therefore stays null forever on those devices,
+  // and every line of the emergency is read by the system default. Resolving at
+  // emit time is what closes that.
+  it('(m) picks a voice at emit time when the list appears with no voiceschanged event', () => {
+    vi.useFakeTimers();
+    mount();
+
+    say('First line');
+    act(() => { vi.advanceTimersByTime(VOICE_LIST_WAIT_MS); });
+    // The list really was empty for the whole hold, so this one is voiceless —
+    // spoken, not dropped.
+    expect(spoken).toHaveLength(1);
+    expect(spoken[0].voice).toBeNull();
+
+    // iOS populates the list without announcing it.
+    voiceList = [v('Samantha', 'en-US'), v('Daniel', 'en-GB'), v('Kate', 'en-GB')];
+
+    say('Second line');
+    expect(spoken).toHaveLength(2);
+    expect(spoken[1].voice?.name).toBe('Daniel');
+  });
+
+  it('(n) speaks a held line with the chosen voice when the list fills silently during the hold', () => {
+    vi.useFakeTimers();
+    mount();
+
+    say('Held line');
+    voiceList = [v('Samantha', 'en-US'), v('Daniel', 'en-GB')];
+    act(() => { vi.advanceTimersByTime(VOICE_LIST_WAIT_MS); });
+
+    expect(spoken).toHaveLength(1);
+    expect(spoken[0].voice?.name).toBe('Daniel');
+  });
+
+  // The held-voice contract, stated as one test: WHICH voice is decided once,
+  // and the OBJECT carrying it is looked up fresh every line.
+  it('(o) keeps the first voice when a better one appears, but speaks through the live object', () => {
+    const kateAtLaunch = v('Kate', 'en-GB');
+    voiceList = [kateAtLaunch];
+    mount();
+
+    say('One');
+    expect(spoken[0].voice).toBe(kateAtLaunch);
+
+    // iOS finishes loading and republishes — same Kate, a NEW object, plus a
+    // Daniel that pickVoice would prefer if it were asked again.
+    const kateReloaded = v('Kate', 'en-GB');
+    publishVoices([kateReloaded, v('Daniel', 'en-GB')]);
+
+    say('Two');
+    // Still Kate: re-picking here is exactly the mid-emergency narrator change
+    // this whole module exists to prevent.
+    expect(spoken[1].voice?.name).toBe('Kate');
+    // ...and the LIVE Kate. A retained object from a superseded list is one iOS
+    // may no longer honour, which is silence dressed up as a spoken line.
+    expect(spoken[1].voice).toBe(kateReloaded);
+
+    // Kate gone (a language change uninstalls voices) — now re-pick.
+    publishVoices([v('Daniel', 'en-GB')]);
+    say('Three');
+    expect(spoken[2].voice?.name).toBe('Daniel');
+  });
+
+  it('(p) stop() abandons a line that is still waiting for the voice list', () => {
+    vi.useFakeTimers();
+    mount();
+
+    say('Give adrenaline 500 micrograms');
+    expect(spoken).toHaveLength(0);
+
+    act(() => { api!.stop(); });
+
+    // Neither route out of the hold may resurrect it.
+    publishVoices([v('Daniel', 'en-GB')]);
+    act(() => { vi.advanceTimersByTime(VOICE_LIST_WAIT_MS); });
+
     expect(spoken).toHaveLength(0);
   });
 });

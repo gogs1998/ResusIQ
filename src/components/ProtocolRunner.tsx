@@ -204,10 +204,16 @@ export function ProtocolRunner() {
       ? activeProtocol?.steps.findIndex((s) => s.id === currentStep.next) ?? -1
       : -1;
 
-  // Speak each step once when it becomes current. Guard on the step id so a
-  // change in `speak` identity alone — it is recreated on the `voiceschanged`
-  // event as voices load — can't re-speak the same step (the first-step
-  // double-speak). Muting resets the guard so a later unmute re-reads the step.
+  // Speak each step once when it becomes current, guarded on the step id rather
+  // than on the effect firing.
+  //
+  // `speak` no longer changes identity when voices load — the voice list lives
+  // in a ref inside useSpeech, not in its dependencies — so that particular
+  // re-speak is gone. The guard stays because the effect still re-runs for
+  // reasons that are not a step change: mute toggles rebuild `speak`, and any
+  // parent re-render can re-run it. Without the id check those re-read the line
+  // the team is already looking at. Muting resets the guard deliberately, so a
+  // later unmute DOES re-read the current step.
   const lastSpokenStepId = useRef<string | null>(null);
   useEffect(() => {
     if (isMuted) {

@@ -67,8 +67,11 @@ const byQualityThenName = (a: SpeechSynthesisVoice, b: SpeechSynthesisVoice): nu
  * voices, regardless of the order the platform hands them over in.
  *
  * Order: a named en-GB voice (best quality variant of that name) → any other
- * en-GB voice, alphabetically → any English voice, alphabetically → null.
- * Never a non-English voice, and never en-US while an en-GB exists.
+ * en-GB voice → any English voice → null. The two fallback tiers sort by
+ * QUALITY THEN NAME, not alphabetically: an Enhanced/Premium download beats a
+ * compact voice of a different name, and the name is only the tie-break that
+ * keeps the result order-independent. Never a non-English voice, and never
+ * en-US while an en-GB exists.
  */
 export function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   if (!voices || voices.length === 0) return null;
