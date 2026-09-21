@@ -572,11 +572,16 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   // migration test below is that a v2 blob is a real historical shape, not
   // "whatever came before the current one".
   const V2 = 2;
+  // The shape that shipped before step ids were persisted: the emergency keys
+  // and isTrainingMode, but `currentStepIndex` alone to say WHERE the team was.
+  // Named literally for the same reason as V2 — the v3 branch exists because of
+  // one specific historical shape, not "the version before this one".
+  const V3 = 3;
   // A version from the FUTURE. Not hypothetical: a PWA rollback (or a phone
   // that updated, ran once and then reinstalled the cached older build) hands
   // exactly this to an older client, and zustand runs `migrate` for any
   // numeric version that is not the current one — forwards or backwards.
-  const NEWER_VERSION = 4;
+  const NEWER_VERSION = 5;
 
   const seed = (version: number, state: Record<string, unknown>) =>
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, version }));
@@ -1134,6 +1139,141 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     // the gap to whoever reads this record later.
     expect(s.eventHistory[0].events.length).toBeGreaterThan(1);
     expect(s.eventHistory[0].events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------
+  // Resume by step ID, not by array position.
+  //
+  // A persisted index is only meaningful against the exact step array it was
+  // written from. The 2026-09-21 anaphylaxis reorder (14 steps -> 12, adrenaline
+  // moved to the front) changed what every v3 index NAMES: index 6 was the
+  // adrenaline dose and is now `monitor_response`, so a v3 resume would put the
+  // team one screen PAST the dose, with the drug never given and never logged.
+  // ---------------------------------------------------------------------
+
+  it('never resumes a v3 emergency — its index no longer names the step it was written for', async () => {
+    const archived = { ...anEvent('evt-archived'), completed: true };
+    seed(V3, {
+      practiceSetup: aPractice,
+      eventHistory: [archived],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      // The old adrenaline dose index. In the current array this is
+      // `monitor_response`: resuming here skips the dose entirely.
+      currentStepIndex: 6,
+      activeEvent: anEvent('evt-v3-live'),
+      timerAnchors: { 'anaphylaxis#adrenaline': '2026-09-20T09:00:00.000Z' },
+      isTrainingMode: false,
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    // Not resumed onto a shifted index.
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.currentStepIndex).toBe(0);
+    expect(s.activeEvent).toBeNull();
+    expect(s.timerAnchors).toEqual({});
+    // ...but the record is CLOSED, not lost: archived with the closing entry
+    // that explains the gap to whoever reads it later.
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-archived', 'evt-v3-live']);
+    const closed = s.eventHistory[1];
+    expect(closed.completed).toBe(true);
+    expect(closed.outcome).toBe(OUTCOME_UNRESUMABLE);
+    expect(closed.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+    expect(closed.events.some((e) => e.label.startsWith('Record closed'))).toBe(true);
+    // Everything that was not the in-flight emergency is untouched.
+    expect(s.practiceSetup?.name).toBe('Corrupt Blob Practice');
+  });
+
+  it('resumes on the step the saved ID names, not the saved index', async () => {
+    const positionIndex = protocols
+      .find((p) => p.id === 'anaphylaxis')!
+      .steps.findIndex((step) => step.id === 'position');
+    expect(positionIndex).toBeGreaterThanOrEqual(0);
+
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      // Deliberately disagrees with the id — this is exactly what a reorder
+      // does to a blob, and the id is the one that must win.
+      currentStepIndex: 3,
+      currentStepId: 'position',
+      activeEvent: anEvent('evt-by-id'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.currentStepIndex).toBe(positionIndex);
+    expect(s.activeProtocol!.steps[s.currentStepIndex].id).toBe('position');
+  });
+
+  it('archives rather than guesses when the saved step ID is gone from the protocol', async () => {
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      // A perfectly valid index — and it must NOT be used. The id was persisted
+      // and no longer resolves, which means the step the team was on has been
+      // deleted; landing them on whatever now sits at index 2 is a guess.
+      currentStepIndex: 2,
+      currentStepId: 'no_such_step',
+      activeEvent: anEvent('evt-dead-id'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-dead-id']);
+    expect(s.eventHistory[0].outcome).toBe(OUTCOME_UNRESUMABLE);
+  });
+
+  it('falls back to the index when no step ID was persisted', async () => {
+    // A blob written by this version before the team ever entered an emergency,
+    // or one hand-built without the key: `null` means "no id was recorded", not
+    // "the id is gone", so the index is all there is and it is still honoured.
+    seed(VERSION, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 2,
+      currentStepId: null,
+      activeEvent: anEvent('evt-no-id'),
+      timerAnchors: {},
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(true);
+    expect(s.currentStepIndex).toBe(2);
+  });
+
+  it('persists the step ID alongside the index, and null when nothing is running', () => {
+    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
+    useAppStore.getState().goToStep(2);
+
+    const live = readPersisted();
+    const expectedId = useAppStore.getState().activeProtocol!.steps[2].id;
+    expect(live.state.currentStepId).toBe(expectedId);
+    expect(live.state.currentStepIndex).toBe(2);
+
+    useAppStore.getState().endEmergency();
+    expect(readPersisted().state.currentStepId).toBeNull();
   });
 
   it('refuses a non-boolean isTrainingMode', async () => {

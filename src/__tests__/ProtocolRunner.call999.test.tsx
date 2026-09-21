@@ -222,6 +222,13 @@ describe('ProtocolRunner anaphylaxis tile entry', () => {
 
     expect(container.textContent).toContain('Give adrenaline into the outer thigh now');
 
+    // The card is the whole point of landing here: the instruction without the
+    // dose beside it is a prompt to guess. Verbatim from drugs.ts — the adult
+    // dose, and the paediatric band the team is most likely to need next.
+    expect(container.textContent).toContain('500 micrograms (0.5 ml)');
+    expect(container.textContent).toContain('6–12 years');
+    expect(container.textContent).toContain('300 micrograms');
+
     const confirm = buttonWithText('Confirm given');
     expect(confirm, 'the dose step must offer Confirm given').toBeDefined();
     // The dose step is NOT a 999 confirm step: that footer would take the place

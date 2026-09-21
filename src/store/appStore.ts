@@ -198,6 +198,14 @@ interface PersistedAppState {
   isEmergencyActive: boolean;
   activeProtocolId: string | null;
   currentStepIndex: number;
+  // WHERE the team was, said in the one way that survives a content change. An
+  // index is only meaningful against the exact step array it was written from,
+  // and protocol edits reorder that array: the 2026-09-21 anaphylaxis rewrite
+  // turned index 6 from "give adrenaline" into "monitor response". The id names
+  // the step itself, so a resume lands on the step the team was actually on or
+  // refuses to resume at all. `currentStepIndex` is kept beside it as the
+  // fallback for blobs written before the id existed, and as the range check.
+  currentStepId: string | null;
   activeEvent: EmergencyEvent | null;
   // Wall-clock ISO strings (see anchorTimer), NOT performance.now() readings —
   // which is the only reason they mean anything after a reload.
@@ -686,7 +694,7 @@ export const useAppStore = create<AppState>()(
       // Bump `version` whenever the persisted shape below changes, and handle
       // the upgrade in `migrate`. Without this, a schema change silently
       // corrupts rehydrated eventHistory / practiceSetup from older installs.
-      version: 3,
+      version: 4,
       partialize: (state): PersistedAppState => ({
         practiceSetup: state.practiceSetup,
         eventHistory: state.eventHistory,
@@ -698,6 +706,9 @@ export const useAppStore = create<AppState>()(
         // live object is re-resolved from data/protocols on every rehydrate.
         activeProtocolId: state.activeProtocol?.id ?? null,
         currentStepIndex: state.currentStepIndex,
+        // v4: the step's own id, written every time the index is. See
+        // PersistedAppState — this is what makes a resume survive a reorder.
+        currentStepId: state.activeProtocol?.steps[state.currentStepIndex]?.id ?? null,
         activeEvent: state.activeEvent,
         timerAnchors: state.timerAnchors,
         // Task 0.6: a reload mid-drill must not silently end the drill and
@@ -746,7 +757,36 @@ export const useAppStore = create<AppState>()(
             isEmergencyActive: false,
             activeProtocolId: null,
             currentStepIndex: 0,
+            currentStepId: null,
             activeEvent: null,
+            timerAnchors: {}
+          };
+        }
+
+        // v3 ONLY, and for one reason: a v3 blob says where the team were with
+        // an ARRAY INDEX and nothing else. That was safe for exactly as long as
+        // the step arrays it was written against stayed put. The 2026-09-21
+        // anaphylaxis rewrite (14 steps -> 12, adrenaline moved to the front)
+        // ended that: a v3 index of 6 meant "give adrenaline" when it was
+        // written and means "monitor response" now, so resuming on it puts the
+        // team one screen PAST the dose — the drug never given, and nothing in
+        // the record to say so. Index 11 shifted the same way, from the
+        // cardiac-arrest check onto `start_cpr`.
+        //
+        // No id was persisted in v3, so there is no way to tell a shifted index
+        // from an intact one. That makes every v3 emergency unresumable —
+        // deliberately, and not lost with it: `activeEvent` is carried across
+        // precisely so `merge`'s unresumable branch can archive it through
+        // closeUnresumableEvent ("Record closed — the app restarted and the
+        // guide could not be resumed"). Refused, not guessed; closed, not lost.
+        if (version === 3) {
+          return {
+            ...carried,
+            isEmergencyActive: false,
+            activeProtocolId: state.activeProtocolId ?? null,
+            currentStepIndex: 0,
+            currentStepId: null,
+            activeEvent: state.activeEvent ?? null,
             timerAnchors: {}
           };
         }
@@ -764,11 +804,18 @@ export const useAppStore = create<AppState>()(
         // emergency or closes it into eventHistory. Resumed or archived, never
         // lost. Unknown extra keys from a newer shape are simply dropped by the
         // explicit list below, and merge narrows every value it reads anyway.
+        //
+        // v2 has no `currentStepId` either, so it falls back to its index the
+        // same way a v3 blob would — and that is acceptable here where it was
+        // not there: v2 blobs predate every step reorder this app has shipped,
+        // so a v2 index still names the step it was written for. A version
+        // >= 4 carries a real id and resolves by it.
         return {
           ...carried,
           isEmergencyActive: state.isEmergencyActive ?? false,
           activeProtocolId: state.activeProtocolId ?? null,
           currentStepIndex: state.currentStepIndex ?? 0,
+          currentStepId: state.currentStepId ?? null,
           activeEvent: state.activeEvent ?? null,
           timerAnchors: state.timerAnchors ?? {}
         };
@@ -829,9 +876,27 @@ export const useAppStore = create<AppState>()(
           const protocol = protocolId
             ? protocols.find((candidate) => candidate.id === protocolId) ?? null
             : null;
-          const stepIndex = Number.isInteger(p.currentStepIndex)
-            ? (p.currentStepIndex as number)
-            : 0;
+          // WHERE, by id first. The index is a position in an array that
+          // protocol edits reorder; the id names the step itself.
+          //
+          // Three outcomes, and the third is the point:
+          //  - the id resolves -> resume on THAT step, whatever the saved index
+          //    now says (a reorder moves the step, not the team);
+          //  - no id was ever written (null: a pre-v4 shape) -> the index is all
+          //    there is, so fall back to it;
+          //  - an id WAS written and no longer resolves -> the step the team
+          //    were on has been deleted. -1 drops through the range check below
+          //    onto the unresumable branch, where the record is archived. A
+          //    deleted step must not be silently swapped for whoever now
+          //    occupies that index.
+          const savedId = typeof p.currentStepId === 'string' ? p.currentStepId : null;
+          const byId = protocol ? stepIndexById(protocol.steps, savedId ?? undefined) : -1;
+          const stepIndex =
+            byId >= 0
+              ? byId
+              : savedId === null && Number.isInteger(p.currentStepIndex)
+                ? (p.currentStepIndex as number)
+                : -1;
           const savedEvent = isEmergencyEventish(p.activeEvent) ? p.activeEvent : null;
 
           // The salvage. Only ever reaches the close-into-history path below —

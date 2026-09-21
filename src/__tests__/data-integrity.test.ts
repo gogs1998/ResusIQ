@@ -501,9 +501,12 @@ describe('anaphylaxis landing integrity (clinical prescription 2026-09-21)', () 
     ).toBe(true);
   });
 
-  it('leaves the holding loop and the end-state census untouched', () => {
+  // The end-state census is NOT re-asserted here. It belongs to the terminal
+  // step describe above, which already pins it against the successor-less set
+  // it has to match — a second copy in a content-specific block is one more
+  // place to update, and the one most likely to be missed.
+  it('leaves the holding loop untouched', () => {
     expect(HOLDING_STEPS.has('anaphylaxis#continue_monitor')).toBe(true);
-    expect(Object.keys(TERMINAL_STEPS)).toHaveLength(14);
   });
 });
 

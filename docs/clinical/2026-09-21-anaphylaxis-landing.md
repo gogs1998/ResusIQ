@@ -57,8 +57,11 @@ render test in `ProtocolRunner.call999.test.tsx`.
 **Basis:** Resuscitation Council UK, *Emergency treatment of anaphylaxis* (May
 2021). Anaphylaxis requires sudden onset **plus** an Airway, Breathing or
 Circulation problem. Skin and mucosal changes alone are **not** anaphylaxis —
-they are present in the majority of cases but are not sufficient, and roughly
-one in five cases has no skin change at all. The old wording routed an isolated
+they are present in the majority of cases but are not sufficient, and skin or
+mucosal changes are absent in a significant minority of reactions and can be
+subtle, so their absence does not exclude anaphylaxis — and their presence alone
+does not establish it (RCUK, Emergency treatment of anaphylaxis, May 2021,
+diagnostic criteria). The old wording routed an isolated
 urticarial rash, or a wheeze in a known asthmatic, straight into an adrenaline
 protocol. The new wording names the A/B/C limb explicitly while staying
 answerable by a dental nurse under pressure.
@@ -72,6 +75,14 @@ The anaphylaxis `references` array now reads:
 - Resuscitation Council UK Guidelines 2025 (First Aid; Special Circumstances)
 - SDCEP
 - BNF
+
+## Follow-ups
+
+- Back from `call_help` onto the confirmed dose step re-offers a live "Confirm
+  given", so a second tap writes a second `drug_given` entry for a dose that was
+  given once — a double-log risk. The class is pre-existing (any Back into a
+  spent drug step), but this landing puts it one tap from the busiest screen in
+  the app. Ticket for the Phase 3 step-screen work.
 
 ## Caveat
 
