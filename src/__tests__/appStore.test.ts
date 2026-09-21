@@ -150,12 +150,24 @@ describe('appStore emergency lifecycle', () => {
     expect(s.activeEvent).toBeNull();
   });
 
-  it('does NOT skip recognition where clinical kept it (anaphylaxis) even on tile entry', () => {
-    useAppStore.getState().startEmergency('anaphylaxis', 'tile');
-    const s = useAppStore.getState();
-    // anaphylaxis recognition is intentionally NOT flagged — must still show first
-    expect(s.currentStepIndex).toBe(0);
-    expect(s.activeProtocol?.steps[0].id).toBe('recognition');
+  // Clinical prescription 2026-09-21 (AI review). The tile used to open on a
+  // recognition screen that told the team what they had already decided by
+  // tapping "Anaphylaxis", then two more taps before the dose. Adrenaline IS
+  // the treatment and delay is what kills, so the dose card is now step 0 and
+  // 999, the trigger and positioning ride in its detail. This must hold from
+  // EVERY entry source: tile entry takes the first non-recognition step and
+  // triage takes index 0, so both land here only while adrenaline is first.
+  it('anaphylaxis lands on the adrenaline drug step from every entry source', () => {
+    for (const source of ['tile', 'triage', undefined] as const) {
+      reset();
+      useAppStore.getState().startEmergency('anaphylaxis', source);
+      const s = useAppStore.getState();
+      const steps = s.activeProtocol!.steps;
+      expect(s.currentStepIndex, `source=${source}`).toBe(0);
+      expect(steps[0].id, `source=${source}`).toBe('adrenaline');
+      expect(steps[0].type, `source=${source}`).toBe('drug');
+      expect(steps[0].require_confirm, `source=${source}`).toBe(true);
+    }
   });
 });
 

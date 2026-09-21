@@ -442,6 +442,71 @@ describe('monotonic timer step integrity', () => {
   });
 });
 
+describe('anaphylaxis landing integrity (clinical prescription 2026-09-21)', () => {
+  // Option A: the tile IS the dose card. The recognition and stop_trigger
+  // screens are gone — their content moved into the adrenaline step's detail
+  // and the call_help step — so the array order is itself the clinical
+  // decision, and a well-meaning reorder would put a screen back in front of
+  // the only drug that treats this.
+  const anaphylaxis = protocols.find((p) => p.id === 'anaphylaxis')!;
+  const step = (id: string) => anaphylaxis.steps.find((s) => s.id === id)!;
+
+  it('opens on adrenaline and carries exactly the prescribed 12 steps, in order', () => {
+    expect(anaphylaxis.steps.map((s) => s.id)).toEqual([
+      'adrenaline',
+      'call_help',
+      'position',
+      'position_sit',
+      'position_flat',
+      'oxygen',
+      'monitor_response',
+      'reassess',
+      'repeat_adrenaline',
+      'continue_monitor',
+      'cardiac_arrest_check',
+      'start_cpr',
+    ]);
+    expect(anaphylaxis.steps).toHaveLength(12);
+  });
+
+  it('no longer holds a recognition or stop_trigger screen', () => {
+    const ids = new Set(anaphylaxis.steps.map((s) => s.id));
+    expect(ids).not.toContain('recognition');
+    expect(ids).not.toContain('stop_trigger');
+    // Nor a recognition-flagged step, which tile entry would skip past but
+    // triage entry would still open on.
+    expect(anaphylaxis.steps.some((s) => s.recognition)).toBe(false);
+  });
+
+  it('routes dose -> 999 -> positioning -> oxygen', () => {
+    expect(step('adrenaline').next).toBe('call_help');
+    expect(step('call_help').next).toBe('position');
+    // Both arms of the positioning decision rejoin at oxygen. Before the
+    // reorder they pointed BACK at adrenaline, which from the new order would
+    // be a loop that re-offers the dose.
+    expect(step('position_sit').next).toBe('oxygen');
+    expect(step('position_flat').next).toBe('oxygen');
+  });
+
+  it('keeps the 999 suggestion on call_help — and keeps it OFF the dose step', () => {
+    expect(step('call_help').actions ?? []).toContain('suggest:call_999');
+    // Hard rule from the reviewer: the 999 confirm footer REPLACES "Confirm
+    // given". Listing the dose step here would advance past adrenaline without
+    // ever logging the dose that was given.
+    expect(
+      CALL_999_CONFIRM_STEPS.some((s) => s.protocol === 'anaphylaxis' && s.step === 'adrenaline')
+    ).toBe(false);
+    expect(
+      CALL_999_CONFIRM_STEPS.some((s) => s.protocol === 'anaphylaxis' && s.step === 'call_help')
+    ).toBe(true);
+  });
+
+  it('leaves the holding loop and the end-state census untouched', () => {
+    expect(HOLDING_STEPS.has('anaphylaxis#continue_monitor')).toBe(true);
+    expect(Object.keys(TERMINAL_STEPS)).toHaveLength(14);
+  });
+});
+
 describe('AIAssistant PROTOCOL_MAP integrity', () => {
   it('every mapped value resolves to a real protocol id', () => {
     const protocolIds = new Set(protocols.map((p) => p.id));

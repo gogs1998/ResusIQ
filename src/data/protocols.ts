@@ -165,31 +165,26 @@ export const protocols: Protocol[] = [
     entry_criteria: [
       { question_id: 'rash_swelling_wheeze', equals: true }
     ],
-    references: ['Resuscitation Council UK 2021', 'SDCEP', 'BNF'],
+    references: ['Resuscitation Council UK — Emergency treatment of anaphylaxis (May 2021, current)', 'Resuscitation Council UK Guidelines 2025 (First Aid; Special Circumstances)', 'SDCEP', 'BNF'],
     steps: [
       {
-        id: 'recognition',
-        type: 'instruction',
-        say: 'They came on suddenly and have an Airway, Breathing or Circulation problem — this is anaphylaxis, so give adrenaline IM now. Skin changes may or may not be there.',
-        show: 'This is anaphylaxis — give adrenaline IM now\n\nSudden onset + an Airway, Breathing or Circulation problem.\nSkin changes may or may not be present.',
-        next: 'stop_trigger'
-      },
-      {
-        id: 'stop_trigger',
-        type: 'instruction',
-        say: 'Stop the trigger if you can. Stop any drug or infusion that might be the cause.',
-        show: 'Stop the trigger if you can\n\nStop any drug or infusion that could be causing it.',
+        id: 'adrenaline',
+        type: 'drug',
+        drug_id: 'adrenaline_im_adult',
+        say: 'Give adrenaline into the outer thigh now. For an adult that is 500 micrograms — half a millilitre of 1 in 1000.',
+        show: 'Give adrenaline into the outer thigh now\n\nAdult: 500 micrograms IM — 0.5 ml of 1:1000, into the outer mid-thigh. Child doses by age are shown below.\nWhile you draw it up: stop the trigger, send someone to call 999, and get the emergency kit and oxygen.\nKeep them lying flat with their legs raised. Never let them stand or walk. Sit them up only if breathing is the main problem.\nSudden onset with an airway, breathing or circulation problem is anaphylaxis — rash or no rash. If you are in doubt, give the adrenaline.',
+        require_confirm: true,
         next: 'call_help'
       },
       {
         id: 'call_help',
         type: 'role_assignment',
-        say: 'Get help now — call 999 and tell them anaphylaxis. Stay with them and get ready to give adrenaline.',
-        show: 'Call 999 now — say anaphylaxis\n\nGet the emergency drugs kit and stay with them.',
+        say: 'Call 999 now and say anaphylaxis. Tell them what time the adrenaline was given.',
+        show: 'Call 999 now — say anaphylaxis\n\nTell them the adrenaline is in, and the time it was given.\nStop the trigger if it is still running — any injection, drug, material or infusion.\nGet the emergency kit and the oxygen to the chairside.',
         roles: [
           { role: 'Person 1', task: 'Call 999 now — say anaphylaxis' },
-          { role: 'Person 2', task: 'Bring the emergency drugs kit' },
-          { role: 'You', task: 'Stay with them and give adrenaline' }
+          { role: 'Person 2', task: 'Stop the trigger, bring the kit and the oxygen' },
+          { role: 'You', task: 'Stay with them — watch their airway and breathing' }
         ],
         actions: ['suggest:call_999'],
         next: 'position'
@@ -208,24 +203,15 @@ export const protocols: Protocol[] = [
       {
         id: 'position_sit',
         type: 'instruction',
-        say: 'Sit them up to help their breathing, but never let them stand or walk. If they feel faint, lay them flat and raise their legs again straight away.',
-        show: 'Sit them up to ease breathing\n\nNever let them stand or walk.\nIf they feel faint: lay flat and raise the legs again immediately.',
-        next: 'adrenaline'
+        say: 'Sit them up with their legs out straight to help their breathing, but never let them stand or walk. If they feel faint, lay them flat and raise their legs again straight away.',
+        show: 'Sit them up, legs out straight\n\nNever let them stand or walk.\nIf they feel faint: lay flat and raise the legs again immediately.',
+        next: 'oxygen'
       },
       {
         id: 'position_flat',
         type: 'instruction',
         say: 'Lay them flat and raise their legs. Do not sit them up — it can drop their blood pressure further.',
         show: 'Lay them flat, legs raised\n\nDo not sit them up — it can worsen low blood pressure.',
-        next: 'adrenaline'
-      },
-      {
-        id: 'adrenaline',
-        type: 'drug',
-        drug_id: 'adrenaline_im_adult',
-        say: 'Give adrenaline into the outer thigh now. For an adult that is 500 micrograms — half a millilitre of 1 in 1000.',
-        show: 'Give adrenaline IM now\n\nAdult: 500 micrograms (0.5 ml of 1:1000), into the outer mid-thigh.\nChild doses by age are shown below.',
-        require_confirm: true,
         next: 'oxygen'
       },
       {
@@ -1181,7 +1167,7 @@ export const protocols: Protocol[] = [
 export const triageQuestions: TriageQuestion[] = [
   { id: 'conscious', text: 'Is the patient conscious?', type: 'boolean' },
   { id: 'breathing_normally', text: 'Is the patient breathing normally?', type: 'boolean' },
-  { id: 'rash_swelling_wheeze', text: 'Any rash, swelling, or wheeze?', type: 'boolean' },
+  { id: 'rash_swelling_wheeze', text: 'Sudden rash, swelling or wheeze — with trouble breathing, throat tightness, or feeling faint?', type: 'boolean' },
   { id: 'chest_pain', text: 'Chest pain or discomfort?', type: 'boolean' },
   { id: 'seizure', text: 'Is the patient having a seizure?', type: 'boolean' },
   { id: 'choking', text: 'Is the patient choking?', type: 'boolean' },

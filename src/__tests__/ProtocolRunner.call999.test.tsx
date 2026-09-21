@@ -197,3 +197,52 @@ describe('ProtocolRunner 999 confirm footer', () => {
     unmount();
   });
 });
+
+// Clinical prescription 2026-09-21 (AI review). The anaphylaxis tile opens on
+// the dose card, and the hard rule that comes with it lives here because it is
+// a property of THIS footer: a 999 confirm pair REPLACES "Confirm given", so
+// the moment a drug step were listed in CALL_999_CONFIRM_STEPS the dose would
+// advance without ever reaching the record.
+describe('ProtocolRunner anaphylaxis tile entry', () => {
+  beforeEach(() => {
+    useAppStore.setState({
+      isEmergencyActive: false,
+      activeProtocol: null,
+      currentStepIndex: 0,
+      activeEvent: null,
+      eventHistory: [],
+      currentScreen: 'home',
+      isMuted: true,
+    });
+  });
+
+  it('lands on the adrenaline dose card, confirms the dose, then asks about 999', () => {
+    act(() => useAppStore.getState().startEmergency('anaphylaxis', 'tile'));
+    render();
+
+    expect(container.textContent).toContain('Give adrenaline into the outer thigh now');
+
+    const confirm = buttonWithText('Confirm given');
+    expect(confirm, 'the dose step must offer Confirm given').toBeDefined();
+    // The dose step is NOT a 999 confirm step: that footer would take the place
+    // of the control above and the dose would never be logged.
+    expect(buttonWithText('Not yet — continue anyway')).toBeUndefined();
+    expect(buttonWithText('999 called — continue')).toBeUndefined();
+
+    act(() => confirm!.click());
+
+    const after = useAppStore.getState();
+    expect(after.activeProtocol!.steps[after.currentStepIndex].id).toBe('call_help');
+    expect(
+      after.activeEvent!.events.filter(
+        (e) => e.type === 'drug_given' && e.drug_id === 'adrenaline_im_adult'
+      )
+    ).toHaveLength(1);
+
+    // And 999 is asked about on the very next screen.
+    expect(buttonWithText('999 called — continue')).toBeDefined();
+    expect(buttonWithText('Not yet — continue anyway')).toBeDefined();
+
+    unmount();
+  });
+});
