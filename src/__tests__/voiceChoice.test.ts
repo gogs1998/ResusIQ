@@ -364,6 +364,30 @@ describe('useSpeech holds the first line for the voice list', () => {
     expect(spoken[2].voice?.name).toBe('Daniel');
   });
 
+  // The other half of "resolve live": resolving per line must not turn a
+  // momentarily empty list into a fresh decision. iOS empties getVoices() while
+  // it reloads them, and a re-pick on the far side of that is the narrator
+  // changing mid-emergency — the exact drift the held key exists to stop.
+  it('(q) keeps the held choice across a momentarily empty list', () => {
+    const kate = v('Kate', 'en-GB');
+    voiceList = [kate];
+    mount();
+
+    say('One');
+    expect(spoken[0].voice?.name).toBe('Kate');
+
+    // iOS reloading: nothing to resolve against right now.
+    voiceList = [];
+    say('Two');
+    // Voiceless for this line — `lang` still steers it — but NOT a re-decision.
+    expect(spoken[1].voice).toBeNull();
+
+    // Back, now with a Daniel that pickVoice would prefer if it were asked.
+    voiceList = [v('Kate', 'en-GB'), v('Daniel', 'en-GB')];
+    say('Three');
+    expect(spoken[2].voice?.name).toBe('Kate');
+  });
+
   it('(p) stop() abandons a line that is still waiting for the voice list', () => {
     vi.useFakeTimers();
     mount();

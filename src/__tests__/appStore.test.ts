@@ -666,7 +666,10 @@ describe('appStore persistence (an emergency survives a reload)', () => {
 
     const s = useAppStore.getState();
     expect(s.isEmergencyActive).toBe(true);
-    expect(s.currentStepIndex).toBe(2);
+    // The STEP, never the bare index. An index assertion passes just as happily
+    // after a reorder has moved the team onto a different instruction — which
+    // is the exact defect this whole block exists to catch.
+    expect(s.activeProtocol!.steps[s.currentStepIndex].id).toBe('position');
     expect(s.activeProtocol?.id).toBe('anaphylaxis');
     // Referentially the LIVE protocol from data/protocols — not a deserialized
     // snapshot of whatever the clinical text said when the tab was last open.
@@ -1052,12 +1055,16 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     expect(useAppStore.getState().isTrainingMode).toBe(false);
   });
 
-  // The trap the 0.2 review flagged. The v0/v1 migration blanks the emergency
-  // keys, which is right for shapes that never had them — v2 DID. Inheriting
-  // that here would throw away a live medico-legal record on the version bump.
-  it('a v2 blob carrying an in-flight emergency migrates to v3 with it intact', async () => {
+  // v2 carrying an in-flight emergency. The 0.2 review's trap was losing the
+  // record here — the v0/v1 migration blanks the emergency keys, which is right
+  // for shapes that never had them and would throw away a live medico-legal
+  // record for one that did. That is still the rule. What CHANGED is the
+  // destination: the record is archived rather than resumed, because a v2 blob
+  // has no step id and so cannot say where the team were in terms the current
+  // step array can honour.
+  it('a v2 blob carrying an in-flight emergency is archived, not resumed and not lost', async () => {
     seed(V2, {
-      practiceSetup: null,
+      practiceSetup: aPractice,
       eventHistory: [],
       isVoiceEnabled: true,
       isEmergencyActive: true,
@@ -1070,17 +1077,56 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     await useAppStore.persist.rehydrate();
 
     const s = useAppStore.getState();
-    expect(s.isEmergencyActive).toBe(true);
-    expect(s.activeProtocol).toBe(protocols.find((p) => p.id === 'anaphylaxis'));
-    expect(s.currentStepIndex).toBe(2);
-    expect(s.activeEvent?.id).toBe('evt-v2-live');
-    expect(s.activeEvent?.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
-    expect(s.timerAnchors['anaphylaxis#adrenaline']).toBe('2026-09-20T09:00:00.000Z');
-    expect(s.currentScreen).toBe('protocol');
-    // Nothing was archived: the emergency is still running, not closed.
-    expect(s.eventHistory).toHaveLength(0);
-    // ...and the new key took its default rather than tripping the narrowing.
+    // Not resumed.
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.activeEvent).toBeNull();
+    expect(s.timerAnchors).toEqual({});
+    // Archived, with the closing entry and the dose that was given.
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-v2-live']);
+    const closed = s.eventHistory[0];
+    expect(closed.completed).toBe(true);
+    expect(closed.outcome).toBe(OUTCOME_UNRESUMABLE);
+    expect(closed.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
+    expect(closed.events.some((e) => e.label.startsWith('Record closed'))).toBe(true);
+    // Everything that was not the emergency survives the migration.
+    expect(s.practiceSetup?.name).toBe('Corrupt Blob Practice');
     expect(s.isTrainingMode).toBe(false);
+
+    // And the close is written back at the CURRENT version, so the next boot
+    // reads a v4 blob with the record already in history — not the v2 emergency
+    // again.
+    useAppStore.getState().setScreen('reports'); // any ordinary write flushes
+    const rewritten = readPersisted();
+    expect(rewritten.version).toBe(VERSION);
+    expect((rewritten.state.eventHistory as { id: string }[]).map((e) => e.id)).toEqual([
+      'evt-v2-live',
+    ]);
+    expect(rewritten.state.isEmergencyActive).toBe(false);
+  });
+
+  it('never resumes a v2 emergency either — the same shifted index, one version older', async () => {
+    // The v3 probe, repeated for v2. An older blob has been through MORE
+    // content changes than a newer one, not fewer: index 6 named the adrenaline
+    // dose when this was written and names `monitor_response` today.
+    seed(V2, {
+      practiceSetup: null,
+      eventHistory: [],
+      isVoiceEnabled: true,
+      isEmergencyActive: true,
+      activeProtocolId: 'anaphylaxis',
+      currentStepIndex: 6,
+      activeEvent: anEvent('evt-v2-at-six'),
+      timerAnchors: { 'anaphylaxis#adrenaline': '2026-09-20T09:00:00.000Z' },
+    });
+
+    await useAppStore.persist.rehydrate();
+
+    const s = useAppStore.getState();
+    expect(s.isEmergencyActive).toBe(false);
+    expect(s.activeProtocol).toBeNull();
+    expect(s.eventHistory.map((e) => e.id)).toEqual(['evt-v2-at-six']);
+    expect(s.eventHistory[0].outcome).toBe(OUTCOME_UNRESUMABLE);
   });
 
   // A blob from a version this build has never heard of must not be treated as
@@ -1114,7 +1160,7 @@ describe('appStore persistence (an emergency survives a reload)', () => {
     expect(survivor.events.some((e) => e.drug_id === 'adrenaline_im_adult')).toBe(true);
   });
 
-  it('a v2 blob whose protocol is gone archives the record on the way to v3', async () => {
+  it('a v2 blob whose protocol is gone archives the record on the way forward', async () => {
     // The other half of the v2 branch: carrying the emergency keys across is
     // what lets `merge` reach its close-into-history path at all. Blanking them
     // in migrate would make this record vanish silently rather than be closed.
@@ -1189,11 +1235,6 @@ describe('appStore persistence (an emergency survives a reload)', () => {
   });
 
   it('resumes on the step the saved ID names, not the saved index', async () => {
-    const positionIndex = protocols
-      .find((p) => p.id === 'anaphylaxis')!
-      .steps.findIndex((step) => step.id === 'position');
-    expect(positionIndex).toBeGreaterThanOrEqual(0);
-
     seed(VERSION, {
       practiceSetup: null,
       eventHistory: [],
@@ -1212,8 +1253,9 @@ describe('appStore persistence (an emergency survives a reload)', () => {
 
     const s = useAppStore.getState();
     expect(s.isEmergencyActive).toBe(true);
-    expect(s.currentStepIndex).toBe(positionIndex);
     expect(s.activeProtocol!.steps[s.currentStepIndex].id).toBe('position');
+    // ...and NOT the step the stale index named.
+    expect(s.currentStepIndex).not.toBe(3);
   });
 
   it('archives rather than guesses when the saved step ID is gone from the protocol', async () => {
@@ -1260,7 +1302,9 @@ describe('appStore persistence (an emergency survives a reload)', () => {
 
     const s = useAppStore.getState();
     expect(s.isEmergencyActive).toBe(true);
-    expect(s.currentStepIndex).toBe(2);
+    // Stated as the step the index resolves to, so a reorder that invalidated
+    // this fallback would fail the test rather than quietly redefine it.
+    expect(s.activeProtocol!.steps[s.currentStepIndex].id).toBe('position');
   });
 
   it('persists the step ID alongside the index, and null when nothing is running', () => {

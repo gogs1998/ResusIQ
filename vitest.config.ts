@@ -12,7 +12,7 @@ export default defineConfig({
     // reports the SURVIVING files as a full pass — e.g. "Test Files 12 passed
     // (12)" while 3 files never ran at all. That false green is how unverified
     // code shipped on 2026-08-15. Threads has no such startup failure here.
-    // If you ever change this, verify the run reports 21 files / 362+ tests
+    // If you ever change this, verify the run reports 21 files / 381+ tests
     // (recount whenever a test file is added).
     pool: 'threads',
   },

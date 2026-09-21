@@ -763,23 +763,31 @@ export const useAppStore = create<AppState>()(
           };
         }
 
-        // v3 ONLY, and for one reason: a v3 blob says where the team were with
-        // an ARRAY INDEX and nothing else. That was safe for exactly as long as
-        // the step arrays it was written against stayed put. The 2026-09-21
-        // anaphylaxis rewrite (14 steps -> 12, adrenaline moved to the front)
-        // ended that: a v3 index of 6 meant "give adrenaline" when it was
-        // written and means "monitor response" now, so resuming on it puts the
-        // team one screen PAST the dose — the drug never given, and nothing in
-        // the record to say so. Index 11 shifted the same way, from the
-        // cardiac-arrest check onto `start_cpr`.
+        // v2 AND v3 — every shape that could hold a live emergency without also
+        // holding a step id.
         //
-        // No id was persisted in v3, so there is no way to tell a shifted index
-        // from an intact one. That makes every v3 emergency unresumable —
-        // deliberately, and not lost with it: `activeEvent` is carried across
-        // precisely so `merge`'s unresumable branch can archive it through
+        // Both say where the team were with an ARRAY INDEX and nothing else,
+        // which was safe for exactly as long as the step arrays they were
+        // written against stayed put. The 2026-09-21 anaphylaxis rewrite (14
+        // steps -> 12, adrenaline moved to the front) ended that: an index of 6
+        // meant "give adrenaline" when it was written and means "monitor
+        // response" now, so resuming on it puts the team one screen PAST the
+        // dose — the drug never given, and nothing in the record to say so.
+        // Index 11 shifted the same way, from the cardiac-arrest check onto
+        // `start_cpr`.
+        //
+        // Age is NOT a defence, and reading it as one is how v2 was missed the
+        // first time round: an older blob has been through MORE content changes
+        // than a newer one, not fewer. What matters is only whether the blob
+        // carries an id, and neither v2 nor v3 does — so neither can tell a
+        // shifted index from an intact one.
+        //
+        // That makes every v2 and v3 emergency unresumable — deliberately, and
+        // not lost with it: `activeEvent` is carried across precisely so
+        // `merge`'s unresumable branch can archive it through
         // closeUnresumableEvent ("Record closed — the app restarted and the
         // guide could not be resumed"). Refused, not guessed; closed, not lost.
-        if (version === 3) {
+        if (version === 2 || version === 3) {
           return {
             ...carried,
             isEmergencyActive: false,
@@ -791,7 +799,7 @@ export const useAppStore = create<AppState>()(
           };
         }
 
-        // v2 and ANYTHING ELSE — including a version from the future, which a
+        // ANYTHING ELSE — in practice a version from the FUTURE (>= 5), which a
         // PWA rollback really does produce (zustand runs migrate for any
         // numeric version that is not the current one, backwards as well as
         // forwards). Blanking is the dangerous default here, not the safe one:
@@ -805,11 +813,11 @@ export const useAppStore = create<AppState>()(
         // lost. Unknown extra keys from a newer shape are simply dropped by the
         // explicit list below, and merge narrows every value it reads anyway.
         //
-        // v2 has no `currentStepId` either, so it falls back to its index the
-        // same way a v3 blob would — and that is acceptable here where it was
-        // not there: v2 blobs predate every step reorder this app has shipped,
-        // so a v2 index still names the step it was written for. A version
-        // >= 4 carries a real id and resolves by it.
+        // Resuming IS available on this path, and safely, because every shape
+        // that reaches it is >= 4 and therefore carries `currentStepId`: merge
+        // resolves the step by id and refuses the resume if that id is gone.
+        // A rollback from a newer build is the case this exists for, and it
+        // hands over a real id. Anything with only an index is caught above.
         return {
           ...carried,
           isEmergencyActive: state.isEmergencyActive ?? false,
