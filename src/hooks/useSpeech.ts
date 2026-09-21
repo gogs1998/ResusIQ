@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { isNative } from '../lib/platform';
+import { pickVoice } from '../lib/voiceChoice';
+
+/**
+ * How long the very first line waits for iOS to publish its voice list.
+ * `getVoices()` is empty until `voiceschanged` fires, which on a cold launch is
+ * tens of milliseconds — but it is never guaranteed to fire at all. After this
+ * the line is spoken anyway, voiceless: a late line is a bug, a dropped one is
+ * a safety failure.
+ */
+const VOICE_LIST_WAIT_MS = 1000;
 
 // Web Speech API types for browsers
 interface SpeechRecognitionEvent extends Event {
@@ -45,6 +55,14 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  // The narrator, chosen once and held. Re-picking per utterance is what made
+  // the voice change between lines on a real iPhone.
+  const chosenVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  // Bumped by every interrupting speak(). A line still waiting for the voice
+  // list when this moves has been superseded and must not be spoken.
+  const interruptSeqRef = useRef(0);
+  // Teardown for any in-flight wait, so an unmount cannot speak.
+  const pendingWaitsRef = useRef<Array<() => void>>([]);
 
   // Read-aloud uses the browser's built-in SpeechSynthesis only: it works
   // offline, needs no API key, and never opens a websocket — so step narration
@@ -52,8 +70,24 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   // removed from the web app; it returns in the native iOS build, where audio
   // capture/playback is reliable. See docs/ios-plan.)
   useEffect(() => {
+    if (typeof speechSynthesis === 'undefined') return;
+
     const loadVoices = () => {
-      setVoices(speechSynthesis.getVoices());
+      const list = speechSynthesis.getVoices();
+      setVoices(list);
+      if (list.length === 0) return;
+
+      const held = chosenVoiceRef.current;
+      // Hold the first valid choice for the life of the hook. `voiceschanged`
+      // fires repeatedly on iOS (and re-orders the list each time); re-picking
+      // on every one of those is exactly the drift being fixed. Only a voice
+      // that has actually gone — iOS drops voices after a language change —
+      // earns a fresh choice.
+      const stillInstalled =
+        held !== null && list.some((v) => v.name === held.name && v.lang === held.lang);
+      if (!stillInstalled) {
+        chosenVoiceRef.current = pickVoice(list);
+      }
     };
 
     loadVoices();
@@ -64,15 +98,11 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     };
   }, []);
 
-  const getPreferredVoice = useCallback(() => {
-    // Prefer UK English voices
-    const ukVoice = voices.find(v => 
-      v.lang === 'en-GB' && (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Daniel'))
-    );
-    const anyUkVoice = voices.find(v => v.lang === 'en-GB');
-    const anyEnglishVoice = voices.find(v => v.lang.startsWith('en'));
-    return ukVoice || anyUkVoice || anyEnglishVoice || voices[0];
-  }, [voices]);
+  // Any wait still in flight when the hook unmounts must not fire.
+  useEffect(() => () => {
+    pendingWaitsRef.current.forEach((abort) => abort());
+    pendingWaitsRef.current = [];
+  }, []);
 
   const speak = useCallback((text: string, interrupt = true) => {
     if (!isVoiceEnabled || isMuted || !text) return;
@@ -80,25 +110,67 @@ export function useSpeech(options: UseSpeechOptions = {}) {
 
     if (interrupt) {
       speechSynthesis.cancel();
+      interruptSeqRef.current += 1;
+    }
+    const seq = interruptSeqRef.current;
+
+    const emit = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+      utterance.volume = volume;
+      // Always set, even when a voice object is: with no voice this is the
+      // only steer iOS gets, and it keeps the fallback consistent.
+      utterance.lang = 'en-GB';
+
+      const voice = chosenVoiceRef.current;
+      if (voice) {
+        utterance.voice = voice;
+      }
+
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      utteranceRef.current = utterance;
+      speechSynthesis.speak(utterance);
+    };
+
+    // The first line of an emergency arrives before iOS has published its
+    // voices, so it used to be read by the system default while every later
+    // line used the chosen voice. Hold it — briefly — for the list.
+    if (!chosenVoiceRef.current && speechSynthesis.getVoices().length === 0) {
+      let settled = false;
+
+      const release = () => {
+        if (settled) return false;
+        settled = true;
+        clearTimeout(timer);
+        speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+        pendingWaitsRef.current = pendingWaitsRef.current.filter((a) => a !== release);
+        return true;
+      };
+
+      const finish = () => {
+        if (!release()) return;
+        // A newer interrupting speak() has already cancelled this one.
+        if (interruptSeqRef.current !== seq) return;
+        if (!chosenVoiceRef.current) {
+          const list = speechSynthesis.getVoices();
+          if (list.length > 0) chosenVoiceRef.current = pickVoice(list);
+        }
+        emit();
+      };
+
+      const onVoicesChanged = () => finish();
+      const timer = setTimeout(finish, VOICE_LIST_WAIT_MS);
+      speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+      pendingWaitsRef.current.push(release);
+      return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    utterance.volume = volume;
-
-    const voice = getPreferredVoice();
-    if (voice) {
-      utterance.voice = voice;
-    }
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    utteranceRef.current = utterance;
-    speechSynthesis.speak(utterance);
-  }, [isVoiceEnabled, isMuted, rate, pitch, volume, getPreferredVoice]);
+    emit();
+  }, [isVoiceEnabled, isMuted, rate, pitch, volume]);
 
   const stop = useCallback(() => {
     speechSynthesis.cancel();

@@ -56,7 +56,15 @@ const spoken: string[] = [];
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   vi.stubGlobal('speechSynthesis', {
-    getVoices: () => [],
+    // A populated list on purpose. useSpeech HOLDS the first line for up to a
+    // second when `getVoices()` is empty — that is the iOS cold-launch fix
+    // pinned in voiceChoice.test.ts — so an empty stub here would make every
+    // line in this file asynchronous for reasons that have nothing to do with
+    // holding steps. A real browser has voices by the time a protocol is open.
+    getVoices: () => ([
+      { name: 'Samantha', lang: 'en-US' },
+      { name: 'Daniel', lang: 'en-GB' },
+    ] as unknown as SpeechSynthesisVoice[]),
     addEventListener: () => {},
     removeEventListener: () => {},
     speak: (u: { text: string }) => { spoken.push(u.text); },
@@ -68,6 +76,7 @@ beforeAll(() => {
   // before it calls speak().
   vi.stubGlobal('SpeechSynthesisUtterance', class {
     rate = 1; pitch = 1; volume = 1;
+    lang = '';
     voice: unknown = null;
     onstart: (() => void) | null = null;
     onend: (() => void) | null = null;
